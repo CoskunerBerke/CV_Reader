@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import JSZip from "jszip";
 import {
   CandidateCV,
   CompanyProfile,
@@ -226,6 +225,7 @@ export default function CVReaderApp() {
       if (ext === "zip") {
         try {
           setPdfParseStatus(`"${file.name}" arşivi tarayıcıda açılıyor...`);
+          const JSZip = (await import("jszip")).default;
           const buf = await file.arrayBuffer();
           const zip = await JSZip.loadAsync(buf);
           const entries = Object.values(zip.files).filter((e) => !e.dir);
