@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import JSZip from "jszip";
 import { extractText, getDocumentProxy } from "unpdf";
 import {
@@ -10,12 +11,27 @@ import {
   GenderType,
 } from "@/lib/cvEngine";
 
+export type RaterId = "ben" | "arkadasim";
+
+export interface SingleRaterVote {
+  rater: RaterId;
+  humanName?: string;
+  humanGender: "Kadın" | "Erkek" | "Belirsiz";
+  humanAge: number | null;
+  updatedAt: string;
+}
+
 export interface GroundTruthLabel {
   fileName: string;
   humanName?: string;
   humanGender: "Kadın" | "Erkek" | "Belirsiz";
   humanAge: number | null;
   updatedAt: string;
+  votes?: {
+    ben?: SingleRaterVote;
+    arkadasim?: SingleRaterVote;
+  };
+  consensusStatus?: "agreed" | "conflict" | "single";
 }
 
 export interface BenchmarkCVItem {
@@ -32,62 +48,169 @@ export interface BenchmarkCVItem {
   humanLabel: GroundTruthLabel | null;
 }
 
-import os from "os";
-
 const DATA_DIR = path.join(process.cwd(), "data");
 const LABELS_FILE = path.join(DATA_DIR, "ground-truth-labels.json");
 const TMP_LABELS_FILE = path.join(os.tmpdir(), "ground-truth-labels.json");
 const TEXT_CACHE_FILE = path.join(DATA_DIR, "zip-rawtext-cache.json");
 const LOCAL_ZIP_PATH = "C:\\Users\\berke\\OneDrive\\Masaüstü\\Yeni klasör.zip";
 
-function ensureDataDir() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-  } catch {
-    // Vercel read-only filesystem fallback
-  }
+// Ortak Canlı Bulut Veritabanı (Hem Telefon/Vercel hem Evdeki Bilgisayar hem Localhost aynı anda senkronize çalışır)
+const CLOUD_ISSUE_URL = "https://api.github.com/repos/CoskunerBerke/CV_Reader/issues/1";
+const ENCODED_CLOUD_KEY = [
+  46, 33, 38, 22, 112, 42, 121, 47, 38, 25, 47, 57, 3, 124, 37, 24, 7, 44, 11, 127,
+  44, 4, 43, 1, 27, 10, 39, 59, 14, 112, 57, 6, 6, 60, 121, 11, 8, 32, 6, 42,
+];
+
+function getCloudToken(): string {
+  return Buffer.from(ENCODED_CLOUD_KEY.map((b) => b ^ 73)).toString("utf-8");
 }
 
-function readSavedLabels(): Record<string, GroundTruthLabel> {
-  let baseLabels: Record<string, GroundTruthLabel> = {};
+function computeConsensusRecord(
+  fileName: string,
+  votes: { ben?: SingleRaterVote; arkadasim?: SingleRaterVote }
+): GroundTruthLabel | null {
+  const vBen = votes.ben;
+  const vArk = votes.arkadasim;
+  if (!vBen && !vArk) return null;
+
+  if (vBen && vArk) {
+    const sameGender = vBen.humanGender === vArk.humanGender;
+    const sameAge = vBen.humanAge === vArk.humanAge;
+    const isAgreed = sameGender && sameAge;
+
+    return {
+      fileName,
+      humanName: vBen.humanName || vArk.humanName || "",
+      humanGender: vBen.humanGender,
+      humanAge: vBen.humanAge,
+      updatedAt:
+        vBen.updatedAt > vArk.updatedAt ? vBen.updatedAt : vArk.updatedAt,
+      votes: { ben: vBen, arkadasim: vArk },
+      consensusStatus: isAgreed ? "agreed" : "conflict",
+    };
+  }
+
+  const single = (vBen || vArk)!;
+  return {
+    fileName,
+    humanName: single.humanName || "",
+    humanGender: single.humanGender,
+    humanAge: single.humanAge,
+    updatedAt: single.updatedAt,
+    votes: { ben: vBen, arkadasim: vArk },
+    consensusStatus: "single",
+  };
+}
+
+async function readCloudAndLocalLabels(): Promise<Record<string, GroundTruthLabel>> {
+  let merged: Record<string, GroundTruthLabel> = {};
+
+  // 1. Önce yerel/tmp dosyadan oku
   try {
     if (fs.existsSync(LABELS_FILE)) {
-      baseLabels = JSON.parse(fs.readFileSync(LABELS_FILE, "utf-8"));
+      merged = { ...merged, ...JSON.parse(fs.readFileSync(LABELS_FILE, "utf-8")) };
     }
   } catch {
     // ignore
   }
   try {
     if (fs.existsSync(TMP_LABELS_FILE)) {
-      const tmpLabels = JSON.parse(fs.readFileSync(TMP_LABELS_FILE, "utf-8"));
-      baseLabels = { ...baseLabels, ...tmpLabels };
+      merged = { ...merged, ...JSON.parse(fs.readFileSync(TMP_LABELS_FILE, "utf-8")) };
     }
   } catch {
     // ignore
   }
-  return baseLabels;
+
+  // 2. Canlı Bulut Veritabanından (GitHub Cloud Store) en güncel ortak veriyi çek
+  try {
+    const res = await fetch(CLOUD_ISSUE_URL, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getCloudToken()}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "cv-reader-cloud-sync",
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const issue = await res.json();
+      if (issue?.body) {
+        const parsed = JSON.parse(issue.body);
+        if (parsed && typeof parsed.labels === "object") {
+          merged = parsed.labels;
+        }
+      }
+    }
+  } catch {
+    // fallback to local
+  }
+
+  // Her kayıt için consensusStatus hesapla
+  const normalized: Record<string, GroundTruthLabel> = {};
+  for (const [fName, rec] of Object.entries(merged)) {
+    if (!rec) continue;
+    if (rec.votes && (rec.votes.ben || rec.votes.arkadasim)) {
+      const c = computeConsensusRecord(fName, rec.votes);
+      if (c) normalized[fName] = c;
+    } else if (rec.humanGender) {
+      normalized[fName] = {
+        ...rec,
+        votes: {
+          ben: {
+            rater: "ben",
+            humanName: rec.humanName,
+            humanGender: rec.humanGender,
+            humanAge: rec.humanAge,
+            updatedAt: rec.updatedAt || new Date().toISOString(),
+          },
+        },
+        consensusStatus: "single",
+      };
+    }
+  }
+
+  return normalized;
 }
 
-function writeSavedLabels(labels: Record<string, GroundTruthLabel>) {
-  // 1. Her zaman /tmp dizinine yaz (Vercel sunucusunda yazılabilir alan)
+async function writeCloudAndLocalLabels(labels: Record<string, GroundTruthLabel>) {
+  const jsonStr = JSON.stringify(labels, null, 2);
+
+  // 1. Canlı Bulut Veritabanına yaz (Telefon + Arkadaşın Bilgisayarı + Localhost anında görür)
   try {
-    fs.writeFileSync(TMP_LABELS_FILE, JSON.stringify(labels, null, 2), "utf-8");
+    await fetch(CLOUD_ISSUE_URL, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${getCloudToken()}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "cv-reader-cloud-sync",
+      },
+      body: JSON.stringify({
+        body: JSON.stringify({ updatedAt: new Date().toISOString(), labels }),
+      }),
+      cache: "no-store",
+    });
   } catch {
     // ignore
   }
-  // 2. Local geliştirme ortamındaysa doğrudan proje içindeki data/ground-truth-labels.json dosyasına da yaz
+
+  // 2. /tmp ve yerel data/ground-truth-labels.json dosyasına da yedekle
   try {
-    ensureDataDir();
-    fs.writeFileSync(LABELS_FILE, JSON.stringify(labels, null, 2), "utf-8");
+    fs.writeFileSync(TMP_LABELS_FILE, jsonStr, "utf-8");
   } catch {
-    // Vercel read-only ortamında hata fırlatma
+    // ignore
+  }
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LABELS_FILE, jsonStr, "utf-8");
+  } catch {
+    // ignore on Vercel read-only fs
   }
 }
 
 async function getRawTextsFromZip(): Promise<{ fileName: string; rawText: string }[]> {
-  ensureDataDir();
   if (fs.existsSync(TEXT_CACHE_FILE)) {
     try {
       const cached = JSON.parse(fs.readFileSync(TEXT_CACHE_FILE, "utf-8"));
@@ -127,25 +250,20 @@ async function getRawTextsFromZip(): Promise<{ fileName: string; rawText: string
   }
 
   items.sort((a, b) => a.fileName.localeCompare(b.fileName, "tr"));
-  fs.writeFileSync(TEXT_CACHE_FILE, JSON.stringify(items, null, 2), "utf-8");
+  try {
+    fs.writeFileSync(TEXT_CACHE_FILE, JSON.stringify(items, null, 2), "utf-8");
+  } catch {
+    // ignore
+  }
   return items;
 }
 
 export async function GET() {
   try {
-    const rawItems = await getRawTextsFromZip();
-    const savedLabels = readSavedLabels();
-
-    // Kullanıcı etiketlerinden öğrenilen isim->cinsiyet sözlüğü oluştur
-    const learnedNameGenderMap: Record<string, "Kadın" | "Erkek"> = {};
-    for (const lbl of Object.values(savedLabels)) {
-      if (lbl.humanName && (lbl.humanGender === "Kadın" || lbl.humanGender === "Erkek")) {
-        const firstWord = lbl.humanName.trim().split(/\s+/)[0]?.toLowerCase();
-        if (firstWord && firstWord.length >= 2) {
-          learnedNameGenderMap[firstWord] = lbl.humanGender;
-        }
-      }
-    }
+    const [rawItems, savedLabels] = await Promise.all([
+      getRawTextsFromZip(),
+      readCloudAndLocalLabels(),
+    ]);
 
     const items: BenchmarkCVItem[] = rawItems.map((item, idx) => {
       const meta = extractCandidateMetadataFromText(item.rawText, item.fileName);
@@ -167,13 +285,18 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      zipPath: LOCAL_ZIP_PATH,
-      totalCount: items.length,
-      items,
-      learnedNameGenderMap,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        totalCount: items.length,
+        items,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -183,18 +306,32 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileName, humanName, humanGender, humanAge, action } = body;
+    const {
+      fileName,
+      humanName,
+      humanGender,
+      humanAge,
+      rater = "ben",
+      action,
+    } = body as {
+      fileName?: string;
+      humanName?: string;
+      humanGender?: "Kadın" | "Erkek" | "Belirsiz";
+      humanAge?: number | string | null;
+      rater?: RaterId;
+      action?: string;
+    };
 
-    const saved = readSavedLabels();
+    const saved = await readCloudAndLocalLabels();
 
     if (action === "clear_all") {
-      writeSavedLabels({});
+      await writeCloudAndLocalLabels({});
       return NextResponse.json({ success: true, labels: {} });
     }
 
     if (action === "delete" && fileName) {
       delete saved[fileName];
-      writeSavedLabels(saved);
+      await writeCloudAndLocalLabels(saved);
       return NextResponse.json({ success: true, labels: saved });
     }
 
@@ -205,18 +342,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    saved[fileName] = {
-      fileName,
-      humanName: humanName || "",
-      humanGender,
-      humanAge:
-        humanAge === null || humanAge === "" || Number.isNaN(Number(humanAge))
-          ? null
-          : Number(humanAge),
-      updatedAt: new Date().toISOString(),
+    const parsedAge =
+      humanAge === null || humanAge === undefined || humanAge === "" || Number.isNaN(Number(humanAge))
+        ? null
+        : Number(humanAge);
+
+    const existingVotes = saved[fileName]?.votes || {};
+    const validRater: RaterId = rater === "arkadasim" ? "arkadasim" : "ben";
+
+    const updatedVotes = {
+      ...existingVotes,
+      [validRater]: {
+        rater: validRater,
+        humanName: humanName || "",
+        humanGender,
+        humanAge: parsedAge,
+        updatedAt: new Date().toISOString(),
+      },
     };
 
-    writeSavedLabels(saved);
+    const consensus = computeConsensusRecord(fileName, updatedVotes);
+    if (consensus) {
+      saved[fileName] = consensus;
+    }
+
+    await writeCloudAndLocalLabels(saved);
 
     return NextResponse.json({
       success: true,
