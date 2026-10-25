@@ -208,7 +208,8 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
   confidence: number;
   evidence: EvidenceSignal[];
 } {
-  const normText = normalizeTr(rawText);
+  const cleanCandidateOnlyText = stripReferenceAndDecoyLines(rawText);
+  const normText = normalizeTr(cleanCandidateOnlyText);
   const evidence: EvidenceSignal[] = [];
   let femaleScore = 0;
   let maleScore = 0;
@@ -944,7 +945,32 @@ function ageAgeScoreSafe(val: number): number {
 
 // ============================================================================
 // 8. PDF / DOCX METNİNDEN OTOMATİK AD SOYAD, ÜNİVERSİTE, ŞEHİR VE DENEYİM ÇIKARICI
+//    (Referans, Yönetici, Danışman ve Tuzak İsimleri Ayıklayan Akıllı Motor)
 // ============================================================================
+export function stripReferenceAndDecoyLines(rawText: string): string {
+  // Referanslar / References başlığından sonraki kısmı kes
+  const withoutRefSection = rawText.replace(
+    /\n\s*(?:referanslar|references|referans\s*bilgileri)\b[\s\S]*$/i,
+    "\n"
+  );
+
+  // Yönetici, Danışman, Referans, Müdür, Supervisor satırlarını filtrele
+  return withoutRefSection
+    .split(/\r?\n/)
+    .filter((line) => {
+      const l = normalizeTr(line);
+      if (
+        /(?:referans|reference|yönetici|müdür|supervisor|manager|danışman|advisor|raporlanan|reported\s*to|prof\.\s*dr|doç\.\s*dr|dr\.\s*öğr)/i.test(
+          l
+        )
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .join("\n");
+}
+
 export function extractCandidateMetadataFromText(
   rawText: string,
   fileName = ""
@@ -954,39 +980,100 @@ export function extractCandidateMetadataFromText(
   city: string;
   experienceYears: number;
 } {
-  const lines = rawText
+  const cleanCandidateText = stripReferenceAndDecoyLines(rawText);
+  const lines = cleanCandidateText
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 1);
 
-  // 1. AD SOYAD TESPİTİ
+  // 1. AD SOYAD TESPİTİ (4 Aşamalı)
   let fullName = "";
-  const explicitNameMatch = rawText.match(
-    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
+
+  // Aşama A: Açık Etiket ("Ad Soyad:", "Aday:", "Applicant:", "Name:")
+  const explicitNameMatch = cleanCandidateText.match(
+    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|aday\s*adı|aday|başvuran|applicant|candidate|name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
   );
+
+  // Aşama B: Paragraf İçi Kendini Tanıtma ("Ben Zeynep Kaya", "Adım ...", "My name is ...", "I am ...")
+  const selfIntroMatch =
+    cleanCandidateText.match(
+      /\b(?:ben|adım|ismim)\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/
+    ) ||
+    cleanCandidateText.match(
+      /\b(?:my\s+name\s+is|i\s+am|i,)\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/i
+    );
+
   if (explicitNameMatch && explicitNameMatch[1]) {
-    fullName = explicitNameMatch[1].split(/[\n|•]/)[0].trim();
+    fullName = explicitNameMatch[1].split(/[\n|•,]/)[0].trim();
+  } else if (selfIntroMatch && selfIntroMatch[1]) {
+    fullName = selfIntroMatch[1].trim();
   } else {
-    // İlk 6 satır içinde 2 veya 3 kelimelik, içinde rakam/@/cv/özgeçmiş geçmeyen satırı bul
-    for (const line of lines.slice(0, 6)) {
-      const cleaned = line.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "").trim();
+    // Aşama C: İlk 12 satır içinde gerçek insan ismi (Sözlükte bulunan ilk isim + soyisim) ara
+    for (const line of lines.slice(0, 12)) {
+      const cleaned = line
+        .replace(/\s*[\-–—|]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "")
+        .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "")
+        .trim();
       const words = cleaned.split(/\s+/).filter(Boolean);
       const lower = normalizeTr(cleaned);
+
       if (
         words.length >= 2 &&
         words.length <= 4 &&
-        cleaned.length <= 35 &&
+        cleaned.length <= 38 &&
         !lower.includes("özgeçmiş") &&
         !lower.includes("curriculum") &&
         !lower.includes("resume") &&
         !lower.includes("mühendis") &&
+        !lower.includes("engineer") &&
         !lower.includes("uzman") &&
-        !lower.includes("üniversite")
+        !lower.includes("üniversite") &&
+        !lower.includes("university") &&
+        !lower.includes("fakülte") &&
+        !lower.includes("bölüm") &&
+        !lower.includes("iletişim") &&
+        !lower.includes("eğitim")
       ) {
-        fullName = words
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(" ");
-        break;
+        const firstWordNorm = normalizeTr(words[0]);
+        if (
+          FEMALE_NAMES.has(firstWordNorm) ||
+          MALE_NAMES.has(firstWordNorm) ||
+          UNISEX_NAMES.has(firstWordNorm)
+        ) {
+          fullName = words
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ");
+          break;
+        }
+      }
+    }
+
+    // Sözlükte yoksa bile ilk 5 satırdaki temiz 2-3 kelimelik başlığı al
+    if (!fullName) {
+      for (const line of lines.slice(0, 5)) {
+        const cleaned = line
+          .replace(/\s*[\-–—|]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "")
+          .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "")
+          .trim();
+        const words = cleaned.split(/\s+/).filter(Boolean);
+        const lower = normalizeTr(cleaned);
+        if (
+          words.length >= 2 &&
+          words.length <= 3 &&
+          cleaned.length <= 32 &&
+          !lower.includes("özgeçmiş") &&
+          !lower.includes("curriculum") &&
+          !lower.includes("resume") &&
+          !lower.includes("mühendis") &&
+          !lower.includes("engineer") &&
+          !lower.includes("üniversite") &&
+          !lower.includes("university")
+        ) {
+          fullName = words
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ");
+          break;
+        }
       }
     }
   }

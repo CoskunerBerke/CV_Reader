@@ -54,6 +54,7 @@ export default function CVReaderApp() {
   const [uploadRawText, setUploadRawText] = useState<string>("");
   const [isParsingPdf, setIsParsingPdf] = useState<boolean>(false);
   const [pdfParseStatus, setPdfParseStatus] = useState<string>("");
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // Gemini AI Derin Analiz state
   const [geminiApiKey, setGeminiApiKey] = useState<string>("");
@@ -177,18 +178,21 @@ export default function CVReaderApp() {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // DOĞRUDAN HIZLI PDF / DOCX YÜKLEME (Ana ekrandan veya modaldan seçilen dosyaları anında ekler)
-  const handleDirectFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = e.target.files;
-    if (!fileList || fileList.length === 0) return;
+  // ORTAK DOSYA İŞLEME MOTORU (Tıklama ve Sürükle-Bırak + ZIP + Çoklu PDF Destekli)
+  const processFiles = async (
+    fileList: FileList | File[],
+    autoAddSingleInModal = true
+  ) => {
+    const filesArray = Array.from(fileList);
+    if (filesArray.length === 0) return;
 
     setIsParsingPdf(true);
-    setPdfParseStatus("PDF / Word dosyaları okunuyor...");
+    setPdfParseStatus("Dosyalar okunuyor ve analiz ediliyor...");
 
     try {
       const formData = new FormData();
-      for (let i = 0; i < fileList.length; i++) {
-        formData.append("files", fileList[i]);
+      for (const f of filesArray) {
+        formData.append("files", f);
       }
 
       const res = await fetch("/api/parse-cv", {
@@ -203,84 +207,89 @@ export default function CVReaderApp() {
         return;
       }
 
-      const addedCVs: CandidateCV[] = data.files.map(
-        (
-          f: {
-            fileName: string;
-            rawText: string;
-            fullName: string;
-            university: string;
-            city: string;
-            experienceYears: number;
-          },
-          idx: number
-        ) =>
-          buildCandidateFromRaw(
-            `cv-${Date.now()}-${idx}`,
-            f.fullName,
-            f.rawText,
-            f.experienceYears,
-            "Lisans",
-            f.university,
-            f.city,
-            activeCompany.requiredSkills,
-            f.fileName
-          )
-      );
+      // Birden fazla CV varsa (veya .zip açıldıysa) ya da doğrudan ekleme isteniyorsa hemen listeye ekle
+      if (data.files.length > 1 || autoAddSingleInModal) {
+        const addedCVs: CandidateCV[] = data.files.map(
+          (
+            f: {
+              fileName: string;
+              rawText: string;
+              fullName: string;
+              university: string;
+              city: string;
+              experienceYears: number;
+            },
+            idx: number
+          ) =>
+            buildCandidateFromRaw(
+              `cv-${Date.now()}-${idx}`,
+              f.fullName,
+              f.rawText,
+              f.experienceYears,
+              "Lisans",
+              f.university,
+              f.city,
+              activeCompany.requiredSkills,
+              f.fileName
+            )
+        );
 
-      setCandidates((prev) => [...addedCVs, ...prev]);
-      setSelectedCandidateId(addedCVs[0].id);
-      setPdfParseStatus(`✓ ${addedCVs.length} adet CV başarıyla yüklendi ve analiz edildi.`);
-      setIsUploadModalOpen(false);
+        setCandidates((prev) => [...addedCVs, ...prev]);
+        setSelectedCandidateId(addedCVs[0].id);
+        setPdfParseStatus(`✓ ${addedCVs.length} adet CV başarıyla yüklendi ve analiz edildi.`);
+        setIsUploadModalOpen(false);
+      } else {
+        const first = data.files[0];
+        setUploadName(first.fullName);
+        setUploadUni(first.university);
+        setUploadCity(first.city);
+        setUploadExp(first.experienceYears);
+        setUploadRawText(first.rawText);
+        setPdfParseStatus(
+          `✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`
+        );
+      }
     } catch {
       setPdfParseStatus("Dosya okunurken bir hata oluştu.");
     } finally {
       setIsParsingPdf(false);
-      e.target.value = "";
     }
   };
 
-  // Modal içinde tekli PDF seçildiğinde alanları doldurma veya doğrudan ekleme
+  // Input üzerinden seçildiğinde
+  const handleDirectFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    await processFiles(e.target.files, true);
+    e.target.value = "";
+  };
+
+  // Modal içinde dosya seçildiğinde
   const handleModalFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = e.target.files;
-    if (!fileList || fileList.length === 0) return;
+    if (!e.target.files || e.target.files.length === 0) return;
+    await processFiles(e.target.files, e.target.files.length > 1);
+    e.target.value = "";
+  };
 
-    // Birden fazla dosya seçildiyse doğrudan ekle
-    if (fileList.length > 1) {
-      await handleDirectFilesUpload(e);
-      return;
-    }
+  // Sürükle ve Bırak (Drag & Drop) Olay Yöneticileri
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
 
-    setIsParsingPdf(true);
-    setPdfParseStatus("PDF / Word dosyası okunuyor...");
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
 
-    try {
-      const formData = new FormData();
-      formData.append("files", fileList[0]);
+  const handleDropFiles = async (e: React.DragEvent, autoAdd = true) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
 
-      const res = await fetch("/api/parse-cv", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.files || data.files.length === 0) {
-        setPdfParseStatus(data.error || "Dosya okunamadı.");
-        setIsParsingPdf(false);
-        return;
-      }
-
-      const first = data.files[0];
-      setUploadName(first.fullName);
-      setUploadUni(first.university);
-      setUploadCity(first.city);
-      setUploadExp(first.experienceYears);
-      setUploadRawText(first.rawText);
-      setPdfParseStatus(`✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`);
-    } catch {
-      setPdfParseStatus("Dosya okunurken hata oluştu.");
-    } finally {
-      setIsParsingPdf(false);
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      await processFiles(e.dataTransfer.files, autoAdd);
     }
   };
 
@@ -383,7 +392,12 @@ export default function CVReaderApp() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+    <div
+      className="min-h-screen bg-zinc-50 text-zinc-900"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={(e) => handleDropFiles(e, true)}
+    >
       {/* =====================================================================
           1. SADE ÜST BAR (HEADER)
          ===================================================================== */}
@@ -617,7 +631,16 @@ export default function CVReaderApp() {
            ===================================================================== */}
         {candidates.length === 0 ? (
           <section className="bg-white border border-zinc-200 rounded-lg p-12 text-center shadow-xs">
-            <label className="max-w-md mx-auto block border-2 border-dashed border-zinc-300 hover:border-teal-600 rounded-xl p-8 cursor-pointer transition-colors bg-zinc-50/50 hover:bg-teal-50/20">
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropFiles(e, true)}
+              className={`max-w-md mx-auto block border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${
+                isDragging
+                  ? "border-teal-600 bg-teal-50/70 scale-[1.01]"
+                  : "border-zinc-300 hover:border-teal-600 bg-zinc-50/50 hover:bg-teal-50/20"
+              }`}
+            >
               {isParsingPdf ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
@@ -629,22 +652,24 @@ export default function CVReaderApp() {
                 <>
                   <FileUp className="w-10 h-10 text-teal-600 mx-auto mb-3" />
                   <h3 className="text-base font-bold text-zinc-950">
-                    İncelemek İstediğiniz PDF, Word veya HTML CV&apos;leri Yükleyin
+                    {isDragging
+                      ? "Dosyaları Buraya Bırakın!"
+                      : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Bilgisayarınızdan tek veya birden fazla{" "}
-                    <strong>.PDF, .DOCX, .HTML, .TXT</strong> dosyası seçin. Sistem yüklediğiniz
-                    CV&apos;lerdeki cinsiyet, yaş ve aradığınız kelimeleri otomatik analiz edecektir.
+                    Tek veya birden fazla <strong>.PDF, .DOCX, .HTML, .ZIP, .TXT</strong> dosyası
+                    sürükleyip bırakabilirsiniz. (Not: ZIP içindeyseniz önce klasöre çıkartın veya
+                    doğrudan <strong>.zip</strong> dosyasının kendisini sürükleyin.)
                   </p>
                   <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
-                    Bilgisayardan PDF / HTML / CV Seç
+                    Bilgisayardan PDF / ZIP / HTML Seç
                   </span>
                 </>
               )}
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.txt,.md,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.zip,.txt,.md,text/html,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleDirectFilesUpload}
                 className="hidden"
               />
@@ -996,19 +1021,31 @@ export default function CVReaderApp() {
               </button>
             </div>
 
-            {/* PDF / DOCX / HTML Dosya Seçim Kutusu */}
-            <label className="block border-2 border-dashed border-teal-500/50 hover:border-teal-600 bg-teal-50/40 rounded-lg p-5 text-center cursor-pointer transition-colors">
+            {/* PDF / DOCX / HTML / ZIP Dosya Seçim ve Sürükle-Bırak Kutusu */}
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropFiles(e, true)}
+              className={`block border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${
+                isDragging
+                  ? "border-teal-600 bg-teal-100/60"
+                  : "border-teal-500/50 hover:border-teal-600 bg-teal-50/40"
+              }`}
+            >
               <FileUp className="w-7 h-7 text-teal-600 mx-auto mb-2" />
               <span className="block text-sm font-semibold text-zinc-900">
-                Bilgisayardan PDF, Word (.docx) veya HTML (.html) CV Seçin
+                {isDragging
+                  ? "Dosyaları Buraya Bırakın!"
+                  : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
               </span>
               <span className="block text-xs text-zinc-500 mt-1">
-                Desteklenen formatlar: <strong>.PDF, .DOCX, .HTML, .HTM, .TXT</strong> (Çoklu seçim yapılabilir)
+                Desteklenenler: <strong>.PDF, .DOCX, .HTML, .ZIP, .TXT</strong> (Çoklu dosya veya
+                doğrudan .ZIP arşivi sürükleyebilirsiniz)
               </span>
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.txt,.md,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.zip,.txt,.md,text/html,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleModalFileSelect}
                 className="hidden"
               />
