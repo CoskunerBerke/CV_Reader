@@ -286,6 +286,35 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
     }
   }
 
+  // KATMAN 3B: EĞER BAŞLIKTA İSİM YOKSA, E-POSTA / LINKEDIN / İLK SATIRLARDAN İSİM YAKALA
+  if (femaleScore === 0 && maleScore === 0) {
+    const emailOrUrlTokens = normText.match(
+      /([a-zçğıöşü]{3,15})[._\-][a-zçğıöşü]{3,15}(?:@|\/)/g
+    );
+    if (emailOrUrlTokens) {
+      for (const tok of emailOrUrlTokens) {
+        const firstToken = tok.split(/[._\-@\/]/)[0];
+        if (FEMALE_NAMES.has(firstToken)) {
+          femaleScore += 86;
+          evidence.push({
+            layer: "Katman 3B (E-posta / Link Analizi)",
+            signal: `Başlıkta isim yok ancak iletişim adresinde '${firstToken.toUpperCase()}' kadın ismi yakalandı`,
+            weight: 86,
+            direction: "Kadın",
+          });
+        } else if (MALE_NAMES.has(firstToken)) {
+          maleScore += 86;
+          evidence.push({
+            layer: "Katman 3B (E-posta / Link Analizi)",
+            signal: `Başlıkta isim yok ancak iletişim adresinde '${firstToken.toUpperCase()}' erkek ismi yakalandı`,
+            weight: 86,
+            direction: "Erkek",
+          });
+        }
+      }
+    }
+  }
+
   // KATMAN 4: BAĞLAMSAL & SOSYOKÜLTÜREL İPUÇLARI (Topluluklar, Burslar, Etkinlikler)
   const femaleContextPatterns: { pattern: RegExp; desc: string }[] = [
     { pattern: /women\s*in\s*tech|womentechmakers|ieee\s*wie|women\s*in\s*engineering/i, desc: "Teknolojide Kadınlar / IEEE WIE topluluk üyeliği" },
