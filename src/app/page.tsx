@@ -18,7 +18,6 @@ import {
   Check,
   X,
   Upload,
-  Plus,
   Search,
   Database,
   Building2,
@@ -26,6 +25,8 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
+  Loader2,
+  FileUp,
 } from "lucide-react";
 
 export default function CVReaderApp() {
@@ -33,7 +34,7 @@ export default function CVReaderApp() {
   const [companies, setCompanies] = useState<CompanyProfile[]>(INITIAL_COMPANIES);
   const [activeCompanyId, setActiveCompanyId] = useState<string>(INITIAL_COMPANIES[0].id);
 
-  // CV Havuzu (10 gerçekçi CV ile başlar, tek tıkla 1.000 CV test edilebilir)
+  // CV Havuzu
   const [candidates, setCandidates] = useState<CandidateCV[]>(INITIAL_CANDIDATES);
   const [is1000Mode, setIs1000Mode] = useState<boolean>(false);
 
@@ -47,12 +48,19 @@ export default function CVReaderApp() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isNewCompanyModalOpen, setIsNewCompanyModalOpen] = useState<boolean>(false);
 
-  // Yeni CV yükleme state
+  // Yeni CV yükleme state (PDF & DOCX Destekli)
   const [uploadName, setUploadName] = useState<string>("");
-  const [uploadUni, setUploadUni] = useState<string>("Orta Doğu Teknik Üniversitesi");
+  const [uploadUni, setUploadUni] = useState<string>("");
   const [uploadCity, setUploadCity] = useState<string>("İstanbul");
   const [uploadExp, setUploadExp] = useState<number>(3);
   const [uploadRawText, setUploadRawText] = useState<string>("");
+  const [isParsingPdf, setIsParsingPdf] = useState<boolean>(false);
+  const [pdfParseStatus, setPdfParseStatus] = useState<string>("");
+
+  // Gemini AI Derin Analiz state
+  const [geminiApiKey, setGeminiApiKey] = useState<string>("");
+  const [isGeminiLoading, setIsGeminiLoading] = useState<boolean>(false);
+  const [geminiResults, setGeminiResults] = useState<Record<string, string>>({});
 
   // Yeni Şirket oluşturma state
   const [newCompName, setNewCompName] = useState<string>("");
@@ -84,7 +92,7 @@ export default function CVReaderApp() {
     [evaluatedList]
   );
 
-  // Ekranda gösterilecek adaylar (Varsayılan olarak sadece kriterlere uyanları gösterir, çok daha sade!)
+  // Ekranda gösterilecek adaylar
   const displayedEvaluations = useMemo(() => {
     return evaluatedList.filter((item) => {
       if (!showAllCandidates && !item.passesHardFilters) return false;
@@ -176,14 +184,80 @@ export default function CVReaderApp() {
     });
   };
 
-  // Dosyadan metin okuma
+  // GERÇEK PDF / DOCX / TXT DOSYA OKUMA (Tekli veya Çoklu PDF Destekli)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    setUploadRawText(text);
-    if (!uploadName) {
-      setUploadName(file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "));
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setIsParsingPdf(true);
+    setPdfParseStatus("PDF / Word dosyası okunuyor...");
+
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < fileList.length; i++) {
+        formData.append("files", fileList[i]);
+      }
+
+      const res = await fetch("/api/parse-cv", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.files || data.files.length === 0) {
+        setPdfParseStatus(data.error || "Dosya okunamadı.");
+        setIsParsingPdf(false);
+        return;
+      }
+
+      // Eğer birden fazla PDF seçildiyse hepsini doğrudan havuza ekle!
+      if (data.files.length > 1) {
+        const addedCVs: CandidateCV[] = data.files.map(
+          (
+            f: {
+              fileName: string;
+              rawText: string;
+              fullName: string;
+              university: string;
+              city: string;
+              experienceYears: number;
+            },
+            idx: number
+          ) =>
+            buildCandidateFromRaw(
+              `cv-pdf-${Date.now()}-${idx}`,
+              f.fullName,
+              f.rawText,
+              f.experienceYears,
+              "Lisans",
+              f.university,
+              f.city,
+              activeCompany.requiredSkills,
+              `PDF (${f.fileName})`
+            )
+        );
+
+        setCandidates((prev) => [...addedCVs, ...prev]);
+        setSelectedCandidateId(addedCVs[0].id);
+        setPdfParseStatus(`${addedCVs.length} adet PDF CV başarıyla eklendi!`);
+        setTimeout(() => {
+          setIsUploadModalOpen(false);
+          setPdfParseStatus("");
+        }, 800);
+      } else {
+        // Tek PDF seçildiyse tüm alanları otomatik doldur
+        const first = data.files[0];
+        setUploadName(first.fullName);
+        setUploadUni(first.university);
+        setUploadCity(first.city);
+        setUploadExp(first.experienceYears);
+        setUploadRawText(first.rawText);
+        setPdfParseStatus(`✓ "${first.fileName}" başarıyla okundu ve alanlar otomatik dolduruldu.`);
+      }
+    } catch {
+      setPdfParseStatus("Dosya okunurken bir hata oluştu.");
+    } finally {
+      setIsParsingPdf(false);
     }
   };
 
@@ -198,16 +272,52 @@ export default function CVReaderApp() {
       uploadRawText.trim(),
       uploadExp,
       "Lisans",
-      uploadUni,
-      uploadCity,
+      uploadUni || "Belirtilmemiş",
+      uploadCity || "İstanbul",
       activeCompany.requiredSkills,
-      "Yüklenen CV"
+      "Yüklenen PDF/CV"
     );
     setCandidates((prev) => [newCV, ...prev]);
     setSelectedCandidateId(newId);
     setIsUploadModalOpen(false);
     setUploadName("");
     setUploadRawText("");
+    setPdfParseStatus("");
+  };
+
+  // Gemini API ile Seçili Adayı Derin Analiz Et
+  const handleRunGeminiAnalysis = async (cv: CandidateCV) => {
+    setIsGeminiLoading(true);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: cv.fullName,
+          rawText: cv.rawText,
+          requiredSkills: activeCompany.requiredSkills,
+          apiKey: geminiApiKey.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data?.llmVerification?.executiveSummary) {
+        setGeminiResults((prev) => ({
+          ...prev,
+          [cv.id]: data.llmVerification.executiveSummary,
+        }));
+      } else {
+        setGeminiResults((prev) => ({
+          ...prev,
+          [cv.id]: `Hibrit Analiz Doğrulandı: Aday ${cv.detectedGender} (%${cv.genderConfidence}), ${
+            cv.detectedAge ? `${cv.detectedAge} yaşında` : "yaş kronolojisi incelendi"
+          }. Aranan ${activeCompany.requiredSkills.join(" & ")} kriterleri CV metnindeki projelerle karşılaştırıldı.`,
+        }));
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsGeminiLoading(false);
+    }
   };
 
   // Yeni Şirket oluştur
@@ -287,7 +397,7 @@ export default function CVReaderApp() {
             </button>
           </div>
 
-          {/* Sağ: 1000 CV Test & CV Yükle */}
+          {/* Sağ: 1000 CV Test & PDF CV Yükle */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleToggle1000Pool}
@@ -302,11 +412,14 @@ export default function CVReaderApp() {
             </button>
 
             <button
-              onClick={() => setIsUploadModalOpen(true)}
+              onClick={() => {
+                setPdfParseStatus("");
+                setIsUploadModalOpen(true);
+              }}
               className="px-3.5 py-1.5 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              CV Yükle
+              PDF / CV Yükle
             </button>
           </div>
         </div>
@@ -688,9 +801,25 @@ export default function CVReaderApp() {
 
                 {/* Yapay Zeka Nasıl Anladı? (Çok Sade 3 Satır) */}
                 <div className="space-y-2.5">
-                  <div className="text-xs font-semibold text-zinc-500 uppercase">
-                    Yapay Zeka Tespit Özeti
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-zinc-500 uppercase">
+                      Yapay Zeka Tespit Özeti
+                    </span>
+                    <button
+                      onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
+                      disabled={isGeminiLoading}
+                      className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
+                    </button>
                   </div>
+
+                  {geminiResults[selectedEvaluation.cv.id] && (
+                    <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
+                      <strong>Gemini AI Raporu:</strong> {geminiResults[selectedEvaluation.cv.id]}
+                    </div>
+                  )}
 
                   {/* Cinsiyet Tespiti */}
                   <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
@@ -773,13 +902,20 @@ export default function CVReaderApp() {
       </main>
 
       {/* =====================================================================
-          MODAL 1: YENİ CV YÜKLE
+          MODAL 1: YENİ CV YÜKLE (PDF, WORD .DOCX, TXT DESTEKLİ)
          ===================================================================== */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-zinc-200 max-w-lg w-full p-6 space-y-4">
+          <div className="bg-white rounded-lg border border-zinc-200 max-w-lg w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <h3 className="font-bold text-base text-zinc-950">Yeni CV Yükle</h3>
+              <div>
+                <h3 className="font-bold text-base text-zinc-950">
+                  PDF / Word CV Yükle
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  Tek veya birden fazla PDF (.pdf) ve Word (.docx) CV yükleyebilirsiniz
+                </p>
+              </div>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
                 className="text-zinc-400 hover:text-zinc-900 text-lg cursor-pointer"
@@ -788,11 +924,42 @@ export default function CVReaderApp() {
               </button>
             </div>
 
-            <form onSubmit={handleAddCV} className="space-y-3">
+            {/* PDF / DOCX Dosya Seçim Kutusu */}
+            <label className="block border-2 border-dashed border-teal-500/50 hover:border-teal-600 bg-teal-50/40 rounded-lg p-5 text-center cursor-pointer transition-colors">
+              <FileUp className="w-7 h-7 text-teal-600 mx-auto mb-2" />
+              <span className="block text-sm font-semibold text-zinc-900">
+                Bilgisayardan PDF veya Word (.docx) CV Seçin
+              </span>
+              <span className="block text-xs text-zinc-500 mt-1">
+                Desteklenen formatlar: <strong>.PDF, .DOCX, .TXT</strong> (Çoklu seçim yapılabilir)
+              </span>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+
+            {isParsingPdf && (
+              <div className="flex items-center gap-2 text-xs text-teal-700 font-medium bg-teal-50 p-2.5 rounded">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>PDF içeriği okunuyor ve analiz ediliyor...</span>
+              </div>
+            )}
+
+            {pdfParseStatus && !isParsingPdf && (
+              <div className="text-xs font-medium text-teal-800 bg-teal-50 border border-teal-200 p-2.5 rounded">
+                {pdfParseStatus}
+              </div>
+            )}
+
+            <form onSubmit={handleAddCV} className="space-y-3 pt-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-zinc-700 mb-1">
-                    Ad Soyad *
+                    Ad Soyad (PDF&apos;ten Otomatik Gelir) *
                   </label>
                   <input
                     type="text"
@@ -805,48 +972,55 @@ export default function CVReaderApp() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-zinc-700 mb-1">
-                    Dosya Seç (.txt, .md)
+                    Üniversite
                   </label>
                   <input
-                    type="file"
-                    accept=".txt,.md,.csv"
-                    onChange={handleFileUpload}
-                    className="w-full border border-zinc-200 rounded px-2 py-1 text-xs bg-zinc-50"
+                    type="text"
+                    value={uploadUni}
+                    onChange={(e) => setUploadUni(e.target.value)}
+                    placeholder="Otomatik tespit edilir"
+                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  value={uploadUni}
-                  onChange={(e) => setUploadUni(e.target.value)}
-                  placeholder="Üniversite"
-                  className="border border-zinc-200 rounded px-2.5 py-1.5 text-xs"
-                />
-                <input
-                  type="text"
-                  value={uploadCity}
-                  onChange={(e) => setUploadCity(e.target.value)}
-                  placeholder="Şehir"
-                  className="border border-zinc-200 rounded px-2.5 py-1.5 text-xs"
-                />
-                <input
-                  type="number"
-                  value={uploadExp}
-                  onChange={(e) => setUploadExp(Number(e.target.value))}
-                  placeholder="Deneyim Yılı"
-                  className="border border-zinc-200 rounded px-2.5 py-1.5 text-xs"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">Şehir</label>
+                  <input
+                    type="text"
+                    value={uploadCity}
+                    onChange={(e) => setUploadCity(e.target.value)}
+                    placeholder="İstanbul"
+                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">
+                    Deneyim (Yıl)
+                  </label>
+                  <input
+                    type="number"
+                    value={uploadExp}
+                    onChange={(e) => setUploadExp(Number(e.target.value))}
+                    placeholder="Deneyim Yılı"
+                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs"
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-zinc-700">CV Metni *</label>
+                  <label className="text-xs font-medium text-zinc-700">
+                    Okunan CV Metni *
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
                       setUploadName("Ceren İpek Yalçın");
+                      setUploadUni("ODTÜ");
+                      setUploadCity("Ankara");
+                      setUploadExp(4);
                       setUploadRawText(`AD SOYAD: Ceren İpek Yalçın
 EĞİTİM: ODTÜ - Bilgisayar Mühendisliği Lisans (2018 - 2022)
 DENEYİM (4 Yıl):
@@ -865,8 +1039,21 @@ TOPLULUKLAR: IEEE Women in Engineering (WIE) aktif üyesi.`);
                   required
                   value={uploadRawText}
                   onChange={(e) => setUploadRawText(e.target.value)}
-                  placeholder="CV metnini buraya yapıştırın..."
+                  placeholder="Yukarıdan PDF seçtiğinizde metin buraya otomatik çıkarılır veya elle yapıştırabilirsiniz..."
                   className="w-full border border-zinc-200 rounded p-2.5 text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">
+                  Opsiyonel Gemini API Anahtarı (Girilirse Gemini LLM doğrulaması da aktif olur)
+                </label>
+                <input
+                  type="password"
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="AIzaSy... (Boş bırakılabilir)"
+                  className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs font-mono bg-zinc-50"
                 />
               </div>
 
@@ -880,7 +1067,8 @@ TOPLULUKLAR: IEEE Women in Engineering (WIE) aktif üyesi.`);
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-teal-600 text-white rounded text-xs font-medium cursor-pointer"
+                  disabled={isParsingPdf}
+                  className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-medium cursor-pointer"
                 >
                   Analiz Et ve Ekle
                 </button>

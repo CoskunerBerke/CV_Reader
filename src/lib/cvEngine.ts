@@ -763,11 +763,109 @@ export function evaluateCandidateForCompany(
     totalMatchScore,
     passesHardFilters,
     genderMatchScore: Math.round(genderMatchScore),
-    ageMatchScore: Math.round(ageMatchScore),
+    ageMatchScore: Math.round(ageAgeScoreSafe(ageMatchScore)),
     skillsMatchScore,
     learnedBonusScore,
     skillAssessments,
     disqualificationReasons,
     aiSummaryReason,
   };
+}
+
+function ageAgeScoreSafe(val: number): number {
+  return Number.isNaN(val) ? 50 : val;
+}
+
+// ============================================================================
+// 8. PDF / DOCX METNİNDEN OTOMATİK AD SOYAD, ÜNİVERSİTE, ŞEHİR VE DENEYİM ÇIKARICI
+// ============================================================================
+export function extractCandidateMetadataFromText(
+  rawText: string,
+  fileName = ""
+): {
+  fullName: string;
+  university: string;
+  city: string;
+  experienceYears: number;
+} {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 1);
+
+  // 1. AD SOYAD TESPİTİ
+  let fullName = "";
+  const explicitNameMatch = rawText.match(
+    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
+  );
+  if (explicitNameMatch && explicitNameMatch[1]) {
+    fullName = explicitNameMatch[1].split(/[\n|•]/)[0].trim();
+  } else {
+    // İlk 6 satır içinde 2 veya 3 kelimelik, içinde rakam/@/cv/özgeçmiş geçmeyen satırı bul
+    for (const line of lines.slice(0, 6)) {
+      const cleaned = line.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "").trim();
+      const words = cleaned.split(/\s+/).filter(Boolean);
+      const lower = normalizeTr(cleaned);
+      if (
+        words.length >= 2 &&
+        words.length <= 4 &&
+        cleaned.length <= 35 &&
+        !lower.includes("özgeçmiş") &&
+        !lower.includes("curriculum") &&
+        !lower.includes("resume") &&
+        !lower.includes("mühendis") &&
+        !lower.includes("uzman") &&
+        !lower.includes("üniversite")
+      ) {
+        fullName = words
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+        break;
+      }
+    }
+  }
+
+  if (!fullName && fileName) {
+    fullName = fileName
+      .replace(/\.[^/.]+$/, "")
+      .replace(/\b(?:cv|ozgecmis|özgeçmiş|resume)\b/gi, "")
+      .replace(/[_-]+/g, " ")
+      .trim();
+  }
+  if (!fullName) {
+    fullName = "Yeni Aday";
+  }
+
+  // 2. ÜNİVERSİTE TESPİTİ
+  let university = "Belirtilmemiş";
+  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,35}\s+Üniversitesi|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bBoğaziçi Üniversitesi\b|\bBilkent Üniversitesi\b|\bHacettepe Üniversitesi\b|\bEge Üniversitesi\b|\bMarmara Üniversitesi\b)/i;
+  const uniMatch = rawText.match(uniRegex);
+  if (uniMatch && uniMatch[1]) {
+    university = uniMatch[1].replace(/\s+/g, " ").trim();
+  }
+
+  // 3. ŞEHİR TESPİTİ
+  const cities = [
+    "İstanbul", "Ankara", "İzmir", "Bursa", "Kocaeli", "Antalya", "Eskişehir",
+    "Adana", "Konya", "Gaziantep", "Kayseri", "Mersin", "Samsun", "Trabzon",
+    "Sakarya", "Tekirdağ", "Manisa", "Denizli", "Muğla", "Diyarbakır", "Erzurum"
+  ];
+  let city = "İstanbul";
+  const norm = normalizeTr(rawText);
+  for (const c of cities) {
+    if (norm.includes(normalizeTr(c))) {
+      city = c;
+      break;
+    }
+  }
+
+  // 4. DENEYİM YILI TESPİTİ
+  let experienceYears = 2;
+  const expMatch = norm.match(/(\d{1,2})\s*(?:\+\s*)?(?:yıl|sene|yıllık)\s*(?:deneyim|tecrübe|iş)/i) ||
+    norm.match(/deneyim\s*\(\s*(\d{1,2})\s*yıl/i);
+  if (expMatch && expMatch[1]) {
+    experienceYears = Math.min(35, Math.max(0, parseInt(expMatch[1], 10)));
+  }
+
+  return { fullName, university, city, experienceYears };
 }
