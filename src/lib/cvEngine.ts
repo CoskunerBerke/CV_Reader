@@ -869,14 +869,15 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // KATMAN 7: İlk İş / Staj / Üniversite Topluluğu Yılından Tahmin (Eğitim tarihi hiç yazılmamış CV'ler için)
+  // KATMAN 7 (EKSTRA CASE): Yaş ve Üniversite Giriş/Mezuniyet Tarihi Hiç Yazılmamış CV'ler
+  // Örn: Fikri Çetin ("20250730 Fikri CETIN Resume.pdf"), Hamza Uğur Sakarya ("A3-Hamza Sakarya-Resume.pdf")
   const allWorkOrClubYears = (normText.match(/\b(200\d|201\d|202[0-4])\b/g) || [])
     .map((y) => parseInt(y, 10))
     .filter((y) => y >= 2005 && y <= 2024);
 
   if (allWorkOrClubYears.length > 0) {
     const earliestYear = Math.min(...allWorkOrClubYears);
-    // İlk staj / üniversite kulübü / sertifika yılında genellikle ~20 yaşında, ilk tam zamanlı işte ~22 yaşındadır
+    // İlk staj / üniversite kulübü / sertifika yılında genellikle ~20 yaşında, son sınıf stajı / ilk tam zamanlı işte ~22 yaşındadır
     const hasInternOrSociety = /(?:intern|staj|society|club|topluluğu|student)/i.test(normText);
     const baseAgeAtEarliest = hasInternOrSociety && earliestYear <= 2022 ? 20 : 22;
     const estimatedAge = baseAgeAtEarliest + (refYear - earliestYear);
@@ -885,7 +886,7 @@ export function detectAgeFromCV(rawText: string): {
         age: estimatedAge,
         method: "İlk İş Deneyimi Tahmini",
         confidence: 82,
-        evidence: `Doğum ve eğitim tarihi belirtilmemiş; CV'deki en erken deneyim/faaliyet yılından (${earliestYear}) ~${estimatedAge} yaş tahmin edildi.`,
+        evidence: `[EKSTRA CASE: Yaş & Üni Tarihi Yok] CV'de doğum tarihi ve üniversite giriş yılı belirtilmemiş; en erken staj/iş başlangıç yılından (${earliestYear} → ~${baseAgeAtEarliest} yaş) ~${estimatedAge} yaş tahmin edildi.`,
       };
     }
   }

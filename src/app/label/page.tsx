@@ -207,7 +207,11 @@ export default function GroundTruthLabelerPage() {
       setInputName(currentItem.humanLabel.humanName || currentItem.aiName);
     } else {
       setInputGender(currentItem.aiGender === "Kadın" ? "Kadın" : "Erkek");
-      setInputAge(currentItem.aiAge !== null ? String(currentItem.aiAge) : "");
+      const isNoBirthOrEduDate =
+        currentItem.aiAge === null ||
+        currentItem.aiAgeMethod === "İlk İş Deneyimi Tahmini" ||
+        currentItem.aiAgeMethod === "Bilinmiyor";
+      setInputAge(isNoBirthOrEduDate ? "" : String(currentItem.aiAge));
       setInputName(currentItem.aiName);
     }
     setSaveMessage("");
@@ -268,11 +272,23 @@ export default function GroundTruthLabelerPage() {
       if (isGenderOk) genderCorrect++;
 
       let isAgeCloseOk = true;
+      ageLabeledCount++;
       if (lbl.humanAge !== null) {
-        ageLabeledCount++;
         const diff = it.aiAge !== null ? Math.abs(it.aiAge - lbl.humanAge) : 999;
         if (diff === 0) ageExactCorrect++;
         if (diff <= 1) {
+          ageCloseCorrect++;
+        } else {
+          isAgeCloseOk = false;
+        }
+      } else {
+        // Ekstra Case: Kullanıcı "Yaş & Üni Tarihi Yok (Belirsiz)" seçtiyse ve AI da doğrudan doğum/eğitim tarihi bulamayıp Ekstra Case kullandıysa tam isabet sayılır
+        const aiAlsoDetectedMissing =
+          it.aiAge === null ||
+          it.aiAgeMethod === "İlk İş Deneyimi Tahmini" ||
+          it.aiAgeMethod === "Bilinmiyor";
+        if (aiAlsoDetectedMissing) {
+          ageExactCorrect++;
           ageCloseCorrect++;
         } else {
           isAgeCloseOk = false;
@@ -436,9 +452,16 @@ export default function GroundTruthLabelerPage() {
       : null;
 
     const genderMatch = currentItem.aiGender === compareGender;
+    const isExtraCaseNoDate =
+      currentItem.aiAgeMethod === "İlk İş Deneyimi Tahmini" ||
+      currentItem.aiAgeMethod === "Bilinmiyor" ||
+      currentItem.aiAge === null;
+
     const ageDiff =
       compareAge !== null && currentItem.aiAge !== null
         ? Math.abs(currentItem.aiAge - compareAge)
+        : compareAge === null && isExtraCaseNoDate
+        ? 0
         : null;
 
     return {
@@ -446,6 +469,7 @@ export default function GroundTruthLabelerPage() {
       compareAge,
       genderMatch,
       ageDiff,
+      isExtraCaseNoDate,
     };
   }, [currentItem, inputGender, inputAge]);
 
@@ -859,8 +883,10 @@ export default function GroundTruthLabelerPage() {
                     <div className="font-bold mt-0.5">
                       {benVote
                         ? `${benVote.humanGender} • ${
-                            benVote.humanAge ?? "?"
-                          } Yaş`
+                            benVote.humanAge !== null
+                              ? `${benVote.humanAge} Yaş`
+                              : "🚫 Yaş/Üni Tarihi Yok"
+                          }`
                         : "Henüz girilmedi"}
                     </div>
                   </div>
@@ -878,8 +904,10 @@ export default function GroundTruthLabelerPage() {
                     <div className="font-bold mt-0.5">
                       {arkVote
                         ? `${arkVote.humanGender} • ${
-                            arkVote.humanAge ?? "?"
-                          } Yaş`
+                            arkVote.humanAge !== null
+                              ? `${arkVote.humanAge} Yaş`
+                              : "🚫 Yaş/Üni Tarihi Yok"
+                          }`
                         : "Henüz girilmedi"}
                     </div>
                   </div>
@@ -903,6 +931,20 @@ export default function GroundTruthLabelerPage() {
                     </span>
                   )}
                 </div>
+
+                {/* EKSTRA CASE UYARI KUTUSU: CV'de hem doğum tarihi hem üniversite giriş yılı yoksa */}
+                {activeComparison?.isExtraCaseNoDate && (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      📌 EKSTRA CASE: CV&apos;de Yaş ve Üniversite Giriş Tarihi Yok!
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-amber-800">
+                      Bu aday CV&apos;sinde ne doğum tarihini ne de üniversite giriş/mezuniyet yılını belirtmiş. Aşağıdaki{" "}
+                      <strong>&quot;🚫 Yaş &amp; Üni Tarihi Yok (Ekstra Case)&quot;</strong> butonuna basabilir veya AI&apos;ın ilk staj/iş yılından tahmin ettiği yaşı (~{currentItem.aiAge ?? 25}) onaylayabilirsiniz.
+                    </p>
+                  </div>
+                )}
 
                 {/* Ad Soyad */}
                 <div>
@@ -948,11 +990,18 @@ export default function GroundTruthLabelerPage() {
                   </div>
                 </div>
 
-                {/* Gerçek Yaş Girişi */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                    Gerçek Yaş (2026 Güncel Yıl Bazlı) *
-                  </label>
+                {/* Gerçek Yaş Girişi + EKSTRA CASE (Yaş & Üni Tarihi Yok) Seçeneği */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-zinc-700">
+                      Gerçek Yaş (2026 Güncel Yıl Bazlı) *
+                    </label>
+                    {inputAge.trim() === "" && (
+                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[11px] font-bold">
+                        🚫 Yaş &amp; Üni Tarihi Yok Seçili
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -977,8 +1026,8 @@ export default function GroundTruthLabelerPage() {
                           handleSaveLabel();
                         }
                       }}
-                      placeholder="Örn: 25"
-                      className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-center text-base font-bold focus:outline-none focus:border-teal-600"
+                      placeholder="🚫 Yaş & Üni Tarihi Yok"
+                      className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-center text-base font-bold focus:outline-none focus:border-teal-600 placeholder:text-xs placeholder:font-semibold placeholder:text-amber-700"
                     />
                     <button
                       type="button"
@@ -990,6 +1039,32 @@ export default function GroundTruthLabelerPage() {
                       className="px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 hover:bg-zinc-100 font-bold text-sm cursor-pointer"
                     >
                       +1
+                    </button>
+                  </div>
+
+                  {/* EKSTRA CASE BUTONLARI: Yaş & Üni Tarihi Yok */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setInputAge("")}
+                      className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                        inputAge.trim() === ""
+                          ? "bg-amber-600 border-amber-600 text-white shadow-2xs"
+                          : "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100"
+                      }`}
+                    >
+                      🚫 Yaş &amp; Üni Tarihi Yok Seç
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        setInputAge("");
+                        handleSaveLabel(inputGender, "", true);
+                      }}
+                      className="py-2 px-3 rounded-lg border border-zinc-900 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-all cursor-pointer"
+                    >
+                      ⚡ Yaş/Üni Yok Olarak Kaydet &amp; Geç
                     </button>
                   </div>
                 </div>
@@ -1076,7 +1151,9 @@ export default function GroundTruthLabelerPage() {
                     <span>
                       AI Yaş:{" "}
                       <strong className="underline">
-                        {currentItem.aiAge !== null
+                        {activeComparison?.isExtraCaseNoDate
+                          ? `Ekstra Case (~${currentItem.aiAge ?? "?"} Yaş)`
+                          : currentItem.aiAge !== null
                           ? `${currentItem.aiAge} Yaş`
                           : "Belirsiz"}
                       </strong>
@@ -1086,7 +1163,7 @@ export default function GroundTruthLabelerPage() {
                       <strong className="underline">
                         {activeComparison?.compareAge !== null
                           ? `${activeComparison?.compareAge} Yaş`
-                          : "Girilmedi"}
+                          : "🚫 Yaş & Üni Tarihi Yok"}
                       </strong>
                     </span>
                   </div>
@@ -1094,7 +1171,10 @@ export default function GroundTruthLabelerPage() {
                     <span className="text-zinc-600">{currentItem.aiAgeReason}</span>
                     {activeComparison?.ageDiff === 0 ? (
                       <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> TAM İSABET
+                        <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                        {activeComparison?.compareAge === null
+                          ? "EKSTRA CASE DOĞRU"
+                          : "TAM İSABET"}
                       </span>
                     ) : activeComparison?.ageDiff === 1 ? (
                       <span className="text-amber-700 font-bold flex items-center gap-1 shrink-0 ml-2">
