@@ -32,31 +32,58 @@ export interface BenchmarkCVItem {
   humanLabel: GroundTruthLabel | null;
 }
 
+import os from "os";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const LABELS_FILE = path.join(DATA_DIR, "ground-truth-labels.json");
+const TMP_LABELS_FILE = path.join(os.tmpdir(), "ground-truth-labels.json");
 const TEXT_CACHE_FILE = path.join(DATA_DIR, "zip-rawtext-cache.json");
 const LOCAL_ZIP_PATH = "C:\\Users\\berke\\OneDrive\\Masaüstü\\Yeni klasör.zip";
 
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch {
+    // Vercel read-only filesystem fallback
   }
 }
 
 function readSavedLabels(): Record<string, GroundTruthLabel> {
+  let baseLabels: Record<string, GroundTruthLabel> = {};
   try {
     if (fs.existsSync(LABELS_FILE)) {
-      return JSON.parse(fs.readFileSync(LABELS_FILE, "utf-8"));
+      baseLabels = JSON.parse(fs.readFileSync(LABELS_FILE, "utf-8"));
     }
   } catch {
     // ignore
   }
-  return {};
+  try {
+    if (fs.existsSync(TMP_LABELS_FILE)) {
+      const tmpLabels = JSON.parse(fs.readFileSync(TMP_LABELS_FILE, "utf-8"));
+      baseLabels = { ...baseLabels, ...tmpLabels };
+    }
+  } catch {
+    // ignore
+  }
+  return baseLabels;
 }
 
 function writeSavedLabels(labels: Record<string, GroundTruthLabel>) {
-  ensureDataDir();
-  fs.writeFileSync(LABELS_FILE, JSON.stringify(labels, null, 2), "utf-8");
+  // 1. Her zaman /tmp dizinine yaz (Vercel sunucusunda yazılabilir alan)
+  try {
+    fs.writeFileSync(TMP_LABELS_FILE, JSON.stringify(labels, null, 2), "utf-8");
+  } catch {
+    // ignore
+  }
+  // 2. Local geliştirme ortamındaysa doğrudan proje içindeki data/ground-truth-labels.json dosyasına da yaz
+  try {
+    ensureDataDir();
+    fs.writeFileSync(LABELS_FILE, JSON.stringify(labels, null, 2), "utf-8");
+  } catch {
+    // Vercel read-only ortamında hata fırlatma
+  }
 }
 
 async function getRawTextsFromZip(): Promise<{ fileName: string; rawText: string }[]> {

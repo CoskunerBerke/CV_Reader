@@ -52,13 +52,27 @@ export default function GroundTruthLabelerPage() {
   const [inputName, setInputName] = useState<string>("");
   const [saveMessage, setSaveMessage] = useState<string>("");
 
+  const STORAGE_KEY = "cv_ground_truth_labels_v1";
+
   const fetchAll = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/ground-truth");
       const data = await res.json();
+      let localMap: Record<string, GroundTruthLabel> = {};
+      try {
+        const rawLocal = localStorage.getItem(STORAGE_KEY);
+        if (rawLocal) localMap = JSON.parse(rawLocal);
+      } catch {
+        // ignore
+      }
+
       if (data.items) {
-        setItems(data.items);
+        const merged: BenchmarkCVItem[] = data.items.map((it: BenchmarkCVItem) => ({
+          ...it,
+          humanLabel: localMap[it.fileName] || it.humanLabel || null,
+        }));
+        setItems(merged);
       }
     } catch {
       // ignore
@@ -198,42 +212,84 @@ export default function GroundTruthLabelerPage() {
     const aToSave = customAge !== undefined ? customAge : inputAge;
     const parsedAge = aToSave.trim() === "" ? null : parseInt(aToSave.trim(), 10);
 
+    const newLabelObj: GroundTruthLabel = {
+      fileName: currentItem.fileName,
+      humanName: inputName.trim() || currentItem.aiName,
+      humanGender: gToSave,
+      humanAge: parsedAge,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Önce tarayıcı localStorage'ına kaydet (Vercel / Mobil yoldayken bile %100 kalıcı!)
     try {
-      const res = await fetch("/api/ground-truth", {
+      const existingRaw = localStorage.getItem(STORAGE_KEY);
+      const existingMap: Record<string, GroundTruthLabel> = existingRaw
+        ? JSON.parse(existingRaw)
+        : {};
+      existingMap[currentItem.fileName] = newLabelObj;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existingMap));
+    } catch {
+      // ignore
+    }
+
+    // 2. Ekrandaki state'i anında güncelle
+    setItems((prev) =>
+      prev.map((it) =>
+        it.fileName === currentItem.fileName
+          ? { ...it, humanLabel: newLabelObj }
+          : it
+      )
+    );
+    setSaveMessage("✓ Etiket kaydedildi ve öğrenme hafızasına işlendi.");
+
+    // 3. Sunucuya da gönder (Localde data/ground-truth-labels.json, Vercel'de /tmp)
+    try {
+      await fetch("/api/ground-truth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileName: currentItem.fileName,
-          humanName: inputName.trim() || currentItem.aiName,
+          humanName: newLabelObj.humanName,
           humanGender: gToSave,
           humanAge: parsedAge,
         }),
       });
-      const data = await res.json();
-      if (data.success && data.label) {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.fileName === currentItem.fileName
-              ? { ...it, humanLabel: data.label }
-              : it
-          )
-        );
-        setSaveMessage("✓ Etiket kaydedildi ve öğrenme hafızasına işlendi.");
-        if (autoNext && currentIndex < filteredItems.length - 1) {
-          setTimeout(() => {
-            setCurrentIndex((prev) => Math.min(filteredItems.length - 1, prev + 1));
-          }, 180);
-        }
-      }
     } catch {
-      setSaveMessage("⚠️ Kaydedilirken hata oluştu.");
+      // localStorage zaten kaydetti
     } finally {
       setSaving(false);
+      if (autoNext && currentIndex < filteredItems.length - 1) {
+        setTimeout(() => {
+          setCurrentIndex((prev) => Math.min(filteredItems.length - 1, prev + 1));
+        }, 150);
+      }
     }
+  };
+
+  const handleExportLabelsJson = () => {
+    const map: Record<string, GroundTruthLabel> = {};
+    for (const it of items) {
+      if (it.humanLabel) {
+        map[it.fileName] = it.humanLabel;
+      }
+    }
+    const jsonStr = JSON.stringify(map, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ground-truth-labels.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleClearAllLabels = async () => {
     if (!confirm("Tüm girdiğiniz etiketleri sıfırlamak istediğinize emin misiniz?")) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
     await fetch("/api/ground-truth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -340,13 +396,22 @@ export default function GroundTruthLabelerPage() {
             </div>
 
             {stats.totalLabeled > 0 && (
-              <button
-                onClick={handleClearAllLabels}
-                title="Tüm etiketleri sıfırla"
-                className="p-2 border border-zinc-200 rounded-lg hover:border-red-600 hover:text-red-600 text-zinc-500 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+              <>
+                <button
+                  onClick={handleExportLabelsJson}
+                  title="Etiketleri JSON olarak indir"
+                  className="px-2.5 py-2 border border-zinc-200 rounded-lg hover:border-teal-600 text-xs font-semibold text-zinc-700 bg-zinc-50 cursor-pointer"
+                >
+                  📥 JSON İndir
+                </button>
+                <button
+                  onClick={handleClearAllLabels}
+                  title="Tüm etiketleri sıfırla"
+                  className="p-2 border border-zinc-200 rounded-lg hover:border-red-600 hover:text-red-600 text-zinc-500 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -399,6 +464,14 @@ export default function GroundTruthLabelerPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  <a
+                    href={`/api/ground-truth/pdf?file=${encodeURIComponent(currentItem.fileName)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded text-xs font-medium bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100"
+                  >
+                    Tam Ekran PDF ↗
+                  </a>
                   <button
                     onClick={() => setViewMode("pdf")}
                     className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 cursor-pointer ${
@@ -595,7 +668,7 @@ export default function GroundTruthLabelerPage() {
                 {/* Gerçek Yaş Girişi */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                    Gerçek Yaş (2025 Bazlı) *
+                    Gerçek Yaş (2026 Güncel Yıl Bazlı) *
                   </label>
                   <div className="flex items-center gap-2">
                     <button

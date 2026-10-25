@@ -545,7 +545,7 @@ export function detectAgeFromCV(rawText: string): {
   const preCleaned = cleanPdfTextQuirks(rawText);
   // İngilizce büyük 'I' harfinin ('Intern', 'Institute', 'In') Türkçe 'ı'ya dönüşüp regex'leri bozmasını önlemek için 'ı' -> 'i' birleştirmesi yapıyoruz
   const normText = normalizeTr(preCleaned).replace(/ı/g, "i");
-  const refYear = 2025;
+  const refYear = new Date().getFullYear(); // İçinde bulunduğumuz güncel yıl (2026)
 
   // KATMAN 1A: Doğrudan Doğum Tarihi Etiketi (Örn: Doğum Tarihi: 14.05.1998, Born in Antalya, 21.08.1995, Date of Birth: 2nd June, 1984, Doğum Yeri ve Tarihi: Eskişehir-1980, Birthdate\n24.09.1991)
   const birthYearExplicit = normText.match(
@@ -670,17 +670,18 @@ export function detectAgeFromCV(rawText: string): {
     const sYear = parseInt(match[1], 10);
     const eRaw = match[2];
     const eYear = /^\d{4}$/.test(eRaw) ? parseInt(eRaw, 10) : null;
-    // Bir üniversite (Önlisans/Lisans) eğitimi aynı yıl içinde bitmez; en az 2 yıl sürer (0-1 yıllık aralıklar staj/iştir)
-    if (eYear !== null && (eYear - sYear < 2 || eYear - sYear > 10)) continue;
-
     const idx = match.index;
     const windowBefore = normText.slice(Math.max(0, idx - 115), idx);
     const windowAfter = normText.slice(idx, Math.min(normText.length, idx + match[0].length + 115));
     const localWindow = normText.slice(Math.max(0, idx - 60), Math.min(normText.length, idx + match[0].length + 60));
 
+    // Bir üniversite (Önlisans/Lisans) eğitimi en az 2 yıl sürer; ancak 1 yıllık İngilizce Hazırlık (Preparatory) sınıfı üniversite giriş yılıdır!
+    const isPrepClass = /(?:preparatory|hazirlik)/i.test(localWindow);
+    if (eYear !== null && ((eYear - sYear < 2 && !isPrepClass) || eYear - sYear > 10)) continue;
+
     // Lise veya Staj / İş / Asistanlık / Çalışan satırıysa atla
     if (
-      /(?:lise|lisesi|high\s*school|kolej|koleji|hsc|sslc|ortaöğretim|\bintern\b|internship|\bstaj\b|stajyer|teaching\s*assistant|student\s*assistant|research\s*engineer|software\s*engineer|software\s*developer|junior\s*|senior\s*|work\s*experience)/i.test(
+      /(?:lise|lisesi|high\s*school|kolej|koleji|hsc|sslc|ortaöğretim|\bintern\b|internship|\bstaj\b|stajyer|teaching\s*assistant|student\s*assistant|research\s*engineer|software\s*engineer|software\s*developer|junior\s*|senior\s*)/i.test(
         localWindow
       )
     ) {
@@ -704,7 +705,7 @@ export function detectAgeFromCV(rawText: string): {
   }
 
   if (bscYears.length > 0) {
-    // En erken üniversite (Önlisans/Lisans) başlangıç yılını seç (aday bu yılda ~18-19 yaşındadır)
+    // En erken üniversite (Hazırlık/Önlisans/Lisans) başlangıç yılını seç (aday bu yılda ~18 yaşındadır)
     bscYears.sort((a, b) => a.start - b.start);
     uniStartYear = bscYears[0].start;
     uniEndYear = bscYears[0].end;
@@ -721,10 +722,7 @@ export function detectAgeFromCV(rawText: string): {
   // KATMAN 3: Üniversite Giriş Yılı ve Lise Mezuniyet Yılı Birleşimi
   if (uniStartYear) {
     let estimatedAge = refYear - (uniStartYear - 18);
-    if (hsGradYear && hsGradYear <= uniStartYear && uniStartYear - hsGradYear <= 3) {
-      // Liseden mezun olduğunda 18 yaşındadır
-      estimatedAge = refYear - (hsGradYear - 18);
-    } else if (currentUniYearLevel !== null && uniStartYear >= 2020) {
+    if (currentUniYearLevel !== null && uniStartYear >= 2020) {
       estimatedAge = Math.max(estimatedAge, 18 + currentUniYearLevel);
     }
 
@@ -739,7 +737,7 @@ export function detectAgeFromCV(rawText: string): {
         confidence: 94,
         evidence: `Doğum tarihi yazmıyor; ${
           hsGradYear && hsGradYear <= uniStartYear ? `${hsGradYear} lise mezuniyeti ve ` : ""
-        }${uniStartYear} üniversite giriş yılı üzerinden ~${estimatedAge} yaş hesaplandı.`,
+        }${uniStartYear} üniversite giriş yılı üzerinden (${refYear} yılı bazlı) ~${estimatedAge} yaş hesaplandı.`,
       };
     }
   }
