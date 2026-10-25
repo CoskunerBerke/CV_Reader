@@ -629,22 +629,22 @@ export default function CVReaderApp() {
                 <>
                   <FileUp className="w-10 h-10 text-teal-600 mx-auto mb-3" />
                   <h3 className="text-base font-bold text-zinc-950">
-                    İncelemek İstediğiniz PDF veya Word CV&apos;leri Yükleyin
+                    İncelemek İstediğiniz PDF, Word veya HTML CV&apos;leri Yükleyin
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Bilgisayarınızdan tek veya birden fazla <strong>.PDF, .DOCX, .TXT</strong>{" "}
-                    dosyası seçin. Sistem yüklediğiniz CV&apos;lerdeki cinsiyet, yaş ve aradığınız
-                    kelimeleri otomatik analiz edecektir.
+                    Bilgisayarınızdan tek veya birden fazla{" "}
+                    <strong>.PDF, .DOCX, .HTML, .TXT</strong> dosyası seçin. Sistem yüklediğiniz
+                    CV&apos;lerdeki cinsiyet, yaş ve aradığınız kelimeleri otomatik analiz edecektir.
                   </p>
                   <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
-                    Bilgisayardan PDF / CV Seç
+                    Bilgisayardan PDF / HTML / CV Seç
                   </span>
                 </>
               )}
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.txt,.md,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleDirectFilesUpload}
                 className="hidden"
               />
@@ -982,10 +982,10 @@ export default function CVReaderApp() {
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-zinc-950">
-                  PDF / Word CV Yükle
+                  PDF / Word / HTML CV Yükle
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Tek veya birden fazla PDF (.pdf) ve Word (.docx) CV seçebilirsiniz
+                  Tek veya birden fazla PDF (.pdf), Word (.docx) ve HTML (.html) CV seçebilirsiniz
                 </p>
               </div>
               <button
@@ -996,19 +996,19 @@ export default function CVReaderApp() {
               </button>
             </div>
 
-            {/* PDF / DOCX Dosya Seçim Kutusu */}
+            {/* PDF / DOCX / HTML Dosya Seçim Kutusu */}
             <label className="block border-2 border-dashed border-teal-500/50 hover:border-teal-600 bg-teal-50/40 rounded-lg p-5 text-center cursor-pointer transition-colors">
               <FileUp className="w-7 h-7 text-teal-600 mx-auto mb-2" />
               <span className="block text-sm font-semibold text-zinc-900">
-                Bilgisayardan PDF veya Word (.docx) CV Seçin
+                Bilgisayardan PDF, Word (.docx) veya HTML (.html) CV Seçin
               </span>
               <span className="block text-xs text-zinc-500 mt-1">
-                Desteklenen formatlar: <strong>.PDF, .DOCX, .TXT</strong> (Çoklu seçim yapılabilir)
+                Desteklenen formatlar: <strong>.PDF, .DOCX, .HTML, .HTM, .TXT</strong> (Çoklu seçim yapılabilir)
               </span>
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.txt,.md,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleModalFileSelect}
                 className="hidden"
               />

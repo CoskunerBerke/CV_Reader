@@ -3,6 +3,30 @@ import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
 
+function parseHtmlToCleanText(html: string): string {
+  return html
+    // Remove script, style, svg, noscript blocks completely
+    .replace(/<(script|style|svg|noscript|head)[^>]*>[\s\S]*?<\/\1>/gi, "\n")
+    // Convert block-level closing tags and breaks to newlines
+    .replace(/<\/?(?:br|p|div|li|tr|h[1-6]|section|article|header|footer|blockquote|dd|dt)[^>]*>/gi, "\n")
+    // Convert table cells/headers to pipe separators
+    .replace(/<\/?(?:td|th)[^>]*>/gi, " | ")
+    // Strip all remaining HTML tags
+    .replace(/<[^>]+>/g, " ")
+    // Decode common HTML entities
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    // Clean up excessive spaces and empty lines
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -15,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (files.length === 0) {
       return NextResponse.json(
-        { error: "Lütfen en az bir CV dosyası (.pdf, .docx, .txt) seçin." },
+        { error: "Lütfen en az bir CV dosyası (.pdf, .docx, .html, .txt) seçin." },
         { status: 400 }
       );
     }
@@ -37,6 +61,9 @@ export async function POST(req: NextRequest) {
           buffer: Buffer.from(arrayBuffer),
         });
         extractedText = result.value || "";
+      } else if (ext === "html" || ext === "htm") {
+        const rawHtml = new TextDecoder("utf-8").decode(arrayBuffer);
+        extractedText = parseHtmlToCleanText(rawHtml);
       } else {
         // .txt, .md, .csv, vb.
         extractedText = new TextDecoder("utf-8").decode(arrayBuffer);
@@ -61,7 +88,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : "PDF/DOCX okunurken hata oluştu.";
+      err instanceof Error ? err.message : "Dosya okunurken hata oluştu.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
