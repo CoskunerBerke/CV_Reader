@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import JSZip from "jszip";
+import { createExtractorFromData } from "node-unrar-js";
 import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
 
 function parseHtmlToCleanText(html: string): string {
@@ -115,6 +116,24 @@ export async function POST(req: NextRequest) {
           const cleanEntryName = entry.name.split("/").pop() || entry.name;
           if (cleanEntryName.startsWith(".")) continue;
           const entryBuf = await entry.async("arraybuffer");
+          const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+          if (parsed) {
+            parsedResults.push(parsed);
+          }
+        }
+      } else if (ext === "rar") {
+        // RAR arşivinin içindeki tüm PDF / DOCX / HTML / TXT CV'leri otomatik çıkar!
+        const extractor = await createExtractorFromData({ data: arrayBuffer });
+        const extracted = extractor.extract();
+        for (const item of extracted.files) {
+          if (item.fileHeader.flags.directory || !item.extraction) continue;
+          const cleanEntryName =
+            item.fileHeader.name.split(/[\\/]/).pop() || item.fileHeader.name;
+          if (cleanEntryName.startsWith(".")) continue;
+          const entryBuf = item.extraction.buffer.slice(
+            item.extraction.byteOffset,
+            item.extraction.byteOffset + item.extraction.byteLength
+          ) as ArrayBuffer;
           const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
           if (parsed) {
             parsedResults.push(parsed);

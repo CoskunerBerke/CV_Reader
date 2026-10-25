@@ -104,15 +104,42 @@ const FEMALE_NAMES = new Set([
   "saliha", "saniye", "sebnem", "şebnem", "seda", "sedef", "sema", "semra", "senem", "serpil",
   "sevda", "sevim", "ulviye", "şeyda", "şirin", "şükran", "şükriye", "tuğçe", "tülin", "ülkü",
   "ümran", "ümmühan", "yağmur", "yaprak", "yaren", "yonca", "zerrin", "ziynet", "zührenaz",
+  "ecem", "aysu", "aleyna", "janset", "aslışah", "şevval", "sevval", "ümmü", "ummu", "gülnur",
+  "gulnur", "nurhan", "sude", "sudenaz", "su", "nisanur", "beyzanur", "senanur", "edanur",
+  "feyzanur", "esmanur", "ayşenur", "fatmanur", "semanur", "gamzenur", "mervenur", "zehranur",
+  "kübranur", "sılanur", "yurdanur", "ayşegül", "birgül", "özgül", "sevgül", "yurdagül",
+  "sarıgül", "gülşah", "dilşah", "neslişah", "gülce", "gülbin", "güldane", "gülnaz", "gülperi",
+  "gülseren", "gülten", "göksu", "bengisu", "pelinsu", "perisu", "aybüke", "ayça", "ayda",
+  "aydan", "ayfer", "ayla", "aysel", "aysun", "ayşen", "ayten", "arzu", "arzum", "asuman",
+  "banu", "berfin", "berrak", "buket", "burçin", "burçak", "cemile", "cennet", "çisil", "çisem",
+  "derin", "dilay", "duru", "ebrar", "ecehan", "efsun", "ela", "elanur", "elmas", "elvan",
+  "esila", "eslem", "esma", "esmeray", "eylem", "ferda", "feriha", "fidan", "firdevs", "füsun",
+  "gökçen", "göknur", "güler", "güzin", "habibe", "handan", "huriye", "hüma", "ışılay", "iclal",
+  "ilgın", "ilke", "ilkim", "imge", "jülide", "kıvılcım", "lara", "latife", "leman", "lütfiye",
+  "makbule", "manolya", "maral", "mediha", "melahat", "melda", "meliha", "menekşe", "meral",
+  "mesude", "mısra", "mihriban", "mina", "miray", "mualla", "muazzez", "mücella", "müjgan",
+  "münire", "mürvet", "müzeyyen", "naciye", "nadide", "naile", "naime", "nazife", "nazmiye",
+  "nebahat", "necmiye", "nedime", "nefise", "nejla", "nergiz", "nesibe", "nesli", "neval",
+  "nevbahar", "nezihe", "nida", "nigar", "nihal", "nilhan", "nisan", "nükhet", "övgü", "özen",
+  "pakize", "parla", "peri", "pırıl", "piraye", "rahime", "rahşan", "refika", "remziye", "rengin",
+  "rezzan", "ruken", "rüya", "rümeysa", "rumeysa", "sabahat", "sacide", "safinaz", "sahra",
+  "saime", "sakine", "samime", "sanem", "sare", "selcan", "selda", "selen", "selenay", "selinay",
+  "selma", "selvi", "semiha", "senay", "seniha", "seray", "seren", "serenay", "serin", "sermin",
+  "serra", "sertap", "seval", "sevcan", "sevde", "sevilay", "sevin", "sevinç", "sevtap", "sezen",
+  "sezgi", "sıdıka", "sıla", "sırma", "simay", "simla", "solmaz", "sonay", "sultan", "sumru",
+  "suna", "sunay", "suzan", "süeda", "süheyla", "sümeyra", "sümeyye", "süreyya", "şadiye",
+  "şahika", "şaziye", "şefika", "şehnaz", "şehriban", "şermin", "şilan", "şimal", "tijen",
+  "tilbe", "türkan", "türkü", "umay", "ülker", "vahide", "verda", "vesile", "yankı", "yeter",
+  "zahide", "zarife", "zekiye", "zübeyde", "zühal", "zühre", "züleyha", "zümra",
   // International Female Names
   "maya", "olivia", "emma", "amelia", "sophia", "isabella", "mia", "charlotte", "harper",
   "evelyn", "abigail", "emily", "elizabeth", "sofia", "avery", "ella", "scarlett", "grace",
   "chloe", "victoria", "riley", "aria", "lily", "aubrey", "zoey", "penelope", "lillian",
   "addison", "layla", "natalie", "camila", "hannah", "brooklyn", "zoe", "nora", "leah",
   "savannah", "audrey", "claire", "eleanor", "skylar", "ellie", "samantha", "stella",
-  "paisley", "violet", "mila", "allison", "alexa", "anna", "hazel", "aaLiyah", "ariana",
+  "paisley", "violet", "mila", "allison", "alexa", "anna", "hazel", "aaliyah", "ariana",
   "lucy", "caroline", "sarah", "genesis", "kennedy", "sadie", "gabriella", "madelyn",
-  "adeline", "maya", "alice", "laura", "rachel", "jessica", "maria", "elena"
+  "adeline", "alice", "laura", "rachel", "jessica", "maria", "elena"
 ]);
 
 const MALE_NAMES = new Set([
@@ -127,37 +154,43 @@ const MALE_NAMES = new Set([
   "semih", "serdar", "serhat", "sinan", "soner", "şahin", "tahir", "taner", "tarık", "tayfun",
   "timur", "tuna", "tuncay", "turgut", "ufuk", "uğur", "vedat", "volkan", "yasin", "yavuz",
   "yiğit", "yunus", "zafer", "zeki", "adem", "adnan", "akın", "alp", "altan", "anıl",
-  "arda", "arif", "armağan", "aslan", "ata", "atakan", "atilla", "ayبرk", "ayberk", "aydın",
+  "arda", "arif", "armağan", "aslan", "ata", "atakan", "atilla", "ayberk", "aydın",
   "aykut", "aytaç", "aziz", "bahadır", "baki", "bartu", "bayram", "bedirhan", "bekir", "berkay",
   "beşir", "bilal", "birol", "buğra", "bülent", "bünyamin", "cafer", "cahit", "celal", "cemal",
   "cemil", "cengiz", "cevdet", "cihat", "coşkun", "cumhur", "çağatay", "çağlar", "çetin", "davut",
   "demir", "devrim", "doğukan", "dursun", "ediz", "ekrem", "emin", "ender", "engin", "ercan",
   "erdal", "erdi", "erdoğan", "ergin", "ergün", "erkin", "erol", "ersin", "ertan", "eyüp",
-  "faruk", "fazıl", "fehmi", "ferdi", "feridun", "fevzi", "fikret", "fuat", "galip", "göktuğ",
+  "faruk", "fazıl", "fehmi", "ferdi", "feridun", "fevzi", "fikret", "fikri", "fuat", "galip", "göktuğ",
   "göktürk", "gürkan", "roland", "hakim", "haldun", "haluk", "hamdi", "hamit", "hamza", "haydar",
-  "hayri", "hızır", "hilmi", "üseyin", "hüsnü", "ilhan", "imran", "irfan", "isa", "izzet",
+  "hayri", "hızır", "hilmi", "hüsnü", "ilhan", "imran", "irfan", "isa", "izzet",
   "kamil", "kartal", "kazım", "kenan", "kılıç", "kıvanç", "köksal", "kubat", "kubilay", "kutay",
   "lokman", "lütfi", "mazhar", "mecit", "medet", "melih", "memduh", "mesut", "mete", "metehan",
   "mevlüt", "mithat", "muammer", "muharrem", "muhsin", "murathan", "mücahit", "müjdat", "mümtaz", "münir",
-  "mürsel", "müslüm", "naci", "adir", "nadir", "nafiz", "nahit", "nail", "namık", "nasuh",
+  "mürsel", "müslüm", "naci", "nadir", "nafiz", "nahit", "nail", "namık", "nasuh",
   "nazım", "nazmi", "nebi", "necdet", "necip", "nedim", "nejat", "nesim", "nevzat", "nezih",
   "nizamettin", "nuh", "nurettin", "nuri", "nurullah", "nusret", "oktay", "olgierd", "olgun", "omer",
   "orkun", "orçun", "önder", "özcan", "özer", "özkan", "pamir", "poyraz", "rafet", "rahmi",
   "raif", "ramiz", "rasim", "raşit", "recai", "refik", "remzi", "reşat", "reşit", "kerim",
-  "ıdvan", "rıdvan", "rıfat", "rüştü", "sabri", "sadık", "sadi", "sadri", "safa", "sait",
+  "rıdvan", "rıfat", "rüştü", "sabri", "sadık", "sadi", "sadri", "safa", "sait",
   "sami", "savaş", "seçkin", "sedat", "sefa", "sefer", "sezer", "ertac", "sıtkı", "suat",
   "suphi", "şaban", "şadi", "şafak", "şakir", "şamil", "şeref", "şerif", "şevket", "şinasi",
   "şükrü", "talat", "talha", "tamer", "tanju", "utku", "taylan", "tekin", "temel", "teoman",
   "tevfik", "tolgahan", "toygar", "tufan", "tuğrul", "turan", "turgay", "turhan", "tümer", "türker",
-  "ulvi", "ümit", "ünal", "vahap", "vahit", "veli", "veysel", "ural", "yahya", "yakup",
-  "yalçın", "yaman", "yaşar", "yekta", "yener", "yıldıray", "yılmaz", "yüksel", "zekeriya", "ziya",
-  "berat", "berkay", "mirac", "miraç", "efehan", "emirhan", "batu", "kaan", "alp",
+  "ulvi", "ümit", "ünal", "vahap", "vahit", "vahid", "veli", "veysel", "ural", "yahya", "yakup",
+  "yalçın", "yalcin", "yaman", "yaşar", "yekta", "yener", "yıldıray", "yılmaz", "yüksel", "zekeriya", "ziya",
+  "berat", "mirac", "miraç", "efehan", "batu",
+  "oğuzcan", "oguzcan", "muratcan", "buğrahan", "bugrahan", "denizeren", "altuğ", "altug",
+  "ahmed", "akif", "akman", "abdulkadir", "abdülkadir", "abdulhamit", "abdülhamit",
+  "abdallah", "abdelrahman", "abdurrahman", "abdulkerim", "abdülkerim", "abdulsamet", "abdüssamet",
+  "kivanc", "ugur", "aytac", "gorkem", "sakthi", "muthukrishnan", "ulaganathan",
+  "caner", "emrah", "kasım", "kasim", "burhan", "cihad", "zahid", "zahit", "ensar", "hulusi", "mümin",
   // International Male Names
   "henry", "jack", "daniel", "james", "john", "robert", "michael", "william", "david",
   "richard", "joseph", "thomas", "charles", "christopher", "matthew", "anthony", "mark",
   "donald", "steven", "paul", "andrew", "joshua", "kenneth", "kevin", "brian", "george",
   "edward", "ronald", "timothy", "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas",
-  "eric", "jonathan", "stephen", "larry", "justin", "scott", "brandon", "benjamin", "samuel"
+  "eric", "jonathan", "stephen", "larry", "justin", "scott", "brandon", "benjamin", "samuel",
+  "omar", "mohammed", "mohammad", "mahmoud", "tariq", "khalid", "zaid", "hassan", "hussein"
 ]);
 
 const UNISEX_NAMES = new Set([
@@ -211,8 +244,99 @@ export function normalizeTr(text: string): string {
   return text
     .replace(/İ/g, "i")
     .replace(/I/g, "ı")
+    .replace(/\u0307/g, "") // combining dot above from decomposed İ
     .toLowerCase()
     .trim();
+}
+
+export function toAsciiTr(text: string): string {
+  return normalizeTr(text)
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u");
+}
+
+// Clean broken PDF font ligatures (\u0000, Private Use icons, spaced-out letters, concatenated years)
+export function cleanPdfTextQuirks(rawText: string): string {
+  if (!rawText) return "";
+  let s = rawText
+    // Replace Private Use Area icons (FontAwesome etc. \uE000-\uF8FF) with space
+    .replace(/[\uE000-\uF8FF]/g, " ")
+    // Replace null byte \u0000 between or adjacent to letters with 'i' (broken PDF 'i'/'fi'/'ti' ligatures)
+    .replace(/(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ])\u0000|\u0000(?=[a-zA-ZçğıöşüÇĞİÖŞÜ])/g, "i")
+    .replace(/\u0000/g, " ")
+    // Fix broken font mapping where '2' or '4' or '-' replaces 'i' inside English/Turkish words (e.g. Educat2on, Un2vers2ty, Eng-neer-ng)
+    .replace(/(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ])[24](?=[a-zA-ZçğıöşüÇĞİÖŞÜ])/g, "i")
+    .replace(/Eng-neer-ng/gi, "Engineering")
+    .replace(/Eng-neer/gi, "Engineer")
+    // Insert space when a 4-digit year (1980-2029) is glued to letters (e.g., "EĞİTİM2011 – 2015Lise")
+    .replace(/(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ]{2})(?=(?:19[7-9]\d|20[0-2]\d)\b)/g, " ")
+    .replace(/(?<=\b(?:19[7-9]\d|20[0-2]\d))(?=[a-zA-ZçğıöşüÇĞİÖŞÜ]{2})/g, " ");
+
+  // Collapse spaced-out ALL-CAPS headers like "E D U C A T I O N" or "P R O F E S S I O N A L"
+  s = s.replace(
+    /^(\s*)([A-ZÇĞİÖŞÜ])(?:\s+([A-ZÇĞİÖŞÜ])){3,}(\s*)$/gm,
+    (match) => match.replace(/\s+/g, "")
+  );
+  // Collapse spaced-out emails like "a b d u l h a m i t g u n g o r e n @ g m a i l . c o m"
+  s = s.replace(
+    /\b(?:[a-z]\s+){3,}[a-z0-9._\-]+\s*@\s*(?:[a-z]\s+)+[a-z.]+\b/gi,
+    (match) => match.replace(/\s+/g, "")
+  );
+
+  return s;
+}
+
+const ASCII_FEMALE_NAMES = new Set(Array.from(FEMALE_NAMES).map(toAsciiTr));
+const ASCII_MALE_NAMES = new Set(Array.from(MALE_NAMES).map(toAsciiTr));
+const ASCII_UNISEX_NAMES = new Set(Array.from(UNISEX_NAMES).map(toAsciiTr));
+
+export function classifyGivenName(rawWord: string): "Kadın" | "Erkek" | "Üniseks" | null {
+  const w = normalizeTr(rawWord).replace(/[^a-zçğıöşü]/g, "");
+  if (!w || w.length < 2) return null;
+  const ascii = toAsciiTr(w);
+
+  if (UNISEX_NAMES.has(w) || ASCII_UNISEX_NAMES.has(ascii)) return "Üniseks";
+  if (FEMALE_NAMES.has(w) || ASCII_FEMALE_NAMES.has(ascii)) return "Kadın";
+  if (MALE_NAMES.has(w) || ASCII_MALE_NAMES.has(ascii)) return "Erkek";
+
+  // Arabic/Turkish 'Abdul-' / 'Abdül-' compound male names
+  if (/^(?:abdul|abdül|abdel|abdur|abdallah)/.test(w)) return "Erkek";
+
+  // Compound Turkish Female names ending with -nur, -gül, -su, -naz, -şah
+  const femSuffixMatch = w.match(/^([a-zçğıöşü]{3,})(?:nur|gül|gul|su|naz|şah|sah)$/);
+  if (femSuffixMatch) {
+    const prefix = femSuffixMatch[1];
+    const pAscii = toAsciiTr(prefix);
+    if (
+      FEMALE_NAMES.has(prefix) ||
+      ASCII_FEMALE_NAMES.has(pAscii) ||
+      UNISEX_NAMES.has(prefix) ||
+      ASCII_UNISEX_NAMES.has(pAscii)
+    ) {
+      return "Kadın";
+    }
+  }
+
+  // Compound Turkish Male names ending with -can, -han, -berk, -alp, -bey, -eren, -kan
+  const maleSuffixMatch = w.match(/^([a-zçğıöşü]{3,})(?:can|han|berk|alp|bey|eren|kan|tuğ|tug|türk|turk)$/);
+  if (maleSuffixMatch) {
+    const prefix = maleSuffixMatch[1];
+    const pAscii = toAsciiTr(prefix);
+    if (
+      MALE_NAMES.has(prefix) ||
+      ASCII_MALE_NAMES.has(pAscii) ||
+      UNISEX_NAMES.has(prefix) ||
+      ASCII_UNISEX_NAMES.has(pAscii)
+    ) {
+      return "Erkek";
+    }
+  }
+
+  return null;
 }
 
 // ============================================================================
@@ -223,15 +347,18 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
   confidence: number;
   evidence: EvidenceSignal[];
 } {
-  const cleanCandidateOnlyText = stripReferenceAndDecoyLines(rawText);
+  const preCleaned = cleanPdfTextQuirks(rawText);
+  const cleanCandidateOnlyText = stripReferenceAndDecoyLines(preCleaned);
   const normText = normalizeTr(cleanCandidateOnlyText);
   const evidence: EvidenceSignal[] = [];
   let femaleScore = 0;
   let maleScore = 0;
 
-  // KATMAN 1: AÇIK BEYAN (Cinsiyet: Kadın / Erkek, Kızlık Soyadı, Hitap)
-  const explicitFemaleRegex = /(?:cinsiyet|gender|sex)\s*[:\-]\s*(?:kadın|bayan|female|woman|k\b)|(?:\bms\.|\bmrs\.|\bshe\/her\b)|(?:kızlık soyadı)/i;
-  const explicitMaleRegex = /(?:cinsiyet|gender|sex)\s*[:\-]\s*(?:erkek|bay|male|man|e\b)|(?:\bmr\.|\bhe\/him\b)/i;
+  // KATMAN 1: AÇIK BEYAN (Cinsiyet: Kadın / Erkek, Kızlık Soyadı, Hitap veya İkonlu Satır)
+  const explicitFemaleRegex =
+    /(?:cinsiyet|gender|sex)\s*(?:[:\-]|\r?\n)\s*(?:kadın|bayan|female|woman|k\b)|(?:\bms\.|\bmrs\.|\bshe\/her\b)|(?:kızlık soyadı)|(?:^|\n)\s*(?:female|kadın|bayan)\s*(?:$|\n)/i;
+  const explicitMaleRegex =
+    /(?:cinsiyet|gender|sex)\s*(?:[:\-]|\r?\n)\s*(?:erkek|bay|male|man|e\b)|(?:\bmr\.|\bhe\/him\b)|(?:^|\n)\s*(?:male)\s*(?:$|\n)/i;
 
   if (explicitFemaleRegex.test(normText)) {
     femaleScore += 100;
@@ -253,7 +380,8 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
   }
 
   // KATMAN 2: ASKERLİK DURUMU KONTROLÜ (Türkiye CV'leri İçin En Kesin Ayırt Edici)
-  const militaryRegex = /(?:askerlik|military(?:\s*service)?)\s*[:\-]?\s*(?:yapıldı|tamamlandı|muaf|tecilli|completed|exempt|postponed|terhis|bedelli|yedek subay)/i;
+  const militaryRegex =
+    /(?:askerlik(?:\s*durumu)?|military(?:\s*services?)?|national\s*service)\s*(?:[:\-]|\r?\n|\()?\s*(?:yapıldı|tamamlandı|muaf|tecilli|completed|done|paid|exempt|postponed|fulfilled|deferred|terhis|bedelli|yedek\s*subay|reserved\s*engineer\s*officer)/i;
   if (militaryRegex.test(normText)) {
     maleScore += 98;
     evidence.push({
@@ -264,7 +392,7 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
     });
   }
 
-  // KATMAN 3: İSİM VE İKİNCİ İSİM ANALİZİ (Üniseks Çözümleyici Dahil)
+  // KATMAN 3: İSİM VE İKİNCİ İSİM ANALİZİ (Üniseks & Birleşik İsim Çözümleyici Dahil)
   const isUnnamedCandidate =
     !fullName ||
     normalizeTr(fullName).includes("isimsiz aday") ||
@@ -276,31 +404,46 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
     : normalizeTr(fullName)
         .replace(/[^a-zçğıöşü\s]/g, "")
         .split(/\s+/)
-        .filter(Boolean);
+        .filter((p) => p.length > 1);
 
   // Soyadı hariç ilk ve ikinci isimler
   const givenNames = nameParts.length > 1 ? nameParts.slice(0, -1) : nameParts;
+  const maleDominantUnisex = new Set([
+    "umut", "görkem", "gorkem", "barış", "baris", "çağrı", "cagri", "devrim",
+    "ümit", "umit", "cihan", "ihsan", "yücel", "yucel", "ayhan", "hikmet"
+  ]);
 
   for (let i = 0; i < givenNames.length; i++) {
     const part = givenNames[i];
     const label = i === 0 ? "İlk İsim" : "İkinci İsim";
+    const nameClass = classifyGivenName(part);
 
-    if (UNISEX_NAMES.has(part)) {
-      evidence.push({
-        layer: `Katman 3 (${label} - Üniseks)`,
-        signal: `'${part.toUpperCase()}' üniseks bir isimdir; diğer katmanlar ve ikinci isim kontrol ediliyor`,
-        weight: 50,
-        direction: "Kadın",
-      });
-    } else if (FEMALE_NAMES.has(part)) {
-      femaleScore += i === 0 ? 94 : 96; // İkinci isim üniseksliği bozduğu için çok güçlüdür
+    if (nameClass === "Üniseks") {
+      if (maleDominantUnisex.has(part) || maleDominantUnisex.has(toAsciiTr(part))) {
+        maleScore += 65;
+        evidence.push({
+          layer: `Katman 3 (${label} - İstatistiksel Dağılım)`,
+          signal: `'${part.toUpperCase()}' üniseks olmakla birlikte Türkiye'de %85+ erkek ağırlıklıdır`,
+          weight: 65,
+          direction: "Erkek",
+        });
+      } else {
+        evidence.push({
+          layer: `Katman 3 (${label} - Üniseks)`,
+          signal: `'${part.toUpperCase()}' üniseks bir isimdir; diğer katmanlar ve ikinci isim kontrol ediliyor`,
+          weight: 50,
+          direction: "Kadın",
+        });
+      }
+    } else if (nameClass === "Kadın") {
+      femaleScore += i === 0 ? 94 : 96;
       evidence.push({
         layer: `Katman 3 (${label} Sözlüğü)`,
         signal: `'${part.toUpperCase()}' isim veritabanında %99.4 Kadın ismidir`,
         weight: 95,
         direction: "Kadın",
       });
-    } else if (MALE_NAMES.has(part)) {
+    } else if (nameClass === "Erkek") {
       maleScore += i === 0 ? 94 : 96;
       evidence.push({
         layer: `Katman 3 (${label} Sözlüğü)`,
@@ -313,10 +456,10 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
 
   // KATMAN 4: BAĞLAMSAL & SOSYOKÜLTÜREL İPUÇLARI (Topluluklar, Burslar, Etkinlikler)
   const femaleContextPatterns: { pattern: RegExp; desc: string }[] = [
-    { pattern: /women\s*in\s*tech|womentechmakers|ieee\s*wie|women\s*in\s*engineering/i, desc: "Teknolojide Kadınlar / IEEE WIE topluluk üyeliği" },
-    { pattern: /kadın\s*mühendisler|kız\s*kardeşim|sisterslab|turkishwin|빈\s*yaprak|kagider/i, desc: "Kadın odaklı mesleki ağ / burs programı" },
+    { pattern: /women\s*in\s*tech|womentechmakers|ieee\s*wie|women\s*in\s*engineering|womentum|herdatacamp/i, desc: "Teknolojide Kadınlar / IEEE WIE / Womentum programı" },
+    { pattern: /kadın\s*mühendisler|kız\s*kardeşim|sisterslab|turkishwin|bin\s*yaprak|kagider/i, desc: "Kadın odaklı mesleki ağ / burs programı" },
     { pattern: /kız\s*(?:anadolu|meslek|imam\s*hatip|lisesi|öğrenci\s*yurdu)/i, desc: "Kız okulu / kız öğrenci yurdu geçmişi" },
-    { pattern: /doğum\s*izni|annelik\s*izni/i, desc: "Kariyer arasında doğum izni bilgisi" },
+    { pattern: /doğum\s*izni|annelik\s*izni|koro(?:\-\s*)?sunda\s*solistlik|ice[\s\-]*skating|piano\s*and\s*vocal/i, desc: "Bağlamsal profil / etkinlik sinyali" },
   ];
 
   for (const item of femaleContextPatterns) {
@@ -332,7 +475,7 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
   }
 
   const maleContextPatterns: { pattern: RegExp; desc: string }[] = [
-    { pattern: /erkek\s*öğrenci\s*yurdu|yedek\s*subay|asteğmen|erbaş/i, desc: "Erkek yurt / askerlik rütbe bağlamı" },
+    { pattern: /erkek\s*öğrenci\s*yurdu|yedek\s*subay|asteğmen|erbaş|air\s*force\s*high\s*school|military\s*high\s*school/i, desc: "Erkek yurt / askeri lise / rütbe bağlamı" },
   ];
 
   for (const item of maleContextPatterns) {
@@ -399,14 +542,14 @@ export function detectAgeFromCV(rawText: string): {
   confidence: number;
   evidence: string;
 } {
-  const normText = normalizeTr(rawText);
-  // CV içindeki en güncel referans yılını bul (yoksa 2025/2026 baz al)
-  const yearsInText = (normText.match(/\b(202[0-6])\b/g) || []).map((y) => parseInt(y, 10));
-  const refYear = yearsInText.length > 0 ? Math.max(2025, ...yearsInText) : 2025;
+  const preCleaned = cleanPdfTextQuirks(rawText);
+  // İngilizce büyük 'I' harfinin ('Intern', 'Institute', 'In') Türkçe 'ı'ya dönüşüp regex'leri bozmasını önlemek için 'ı' -> 'i' birleştirmesi yapıyoruz
+  const normText = normalizeTr(preCleaned).replace(/ı/g, "i");
+  const refYear = 2025;
 
-  // KATMAN 1: Doğrudan Doğum Tarihi (Örn: Doğum Tarihi: 14.05.1998, Born: 2002)
+  // KATMAN 1A: Doğrudan Doğum Tarihi Etiketi (Örn: Doğum Tarihi: 14.05.1998, Born in Antalya, 21.08.1995, Date of Birth: 2nd June, 1984, Doğum Yeri ve Tarihi: Eskişehir-1980, Birthdate\n24.09.1991)
   const birthYearExplicit = normText.match(
-    /(?:doğum\s*(?:tarihi|yılı)|d\.\s*tarihi|date\s*of\s*birth|born|birth\s*date)\s*[:\-]?\s*(?:\d{1,2}[.\/-]\d{1,2}[.\/-])?(19[6-9]\d|200\d)/i
+    /(?:doğum\s*(?:yeri\s*ve\s*)?(?:tarihi|yili)|d\.\s*tarihi|date\s*of\s*birth|birth\s*date|birthdate|\bborn(?:\s*in\s*[a-zçğiöşü]+,?)?)[\s:\-●•]*?(?:[a-zçğiöşü]+\s*[\-–,:]\s*)?(?:\d{1,2}\s*(?:st|nd|rd|th)?\s*(?:[a-zçğiöşü]+|\d{1,2})[\s,.\/-]*)?\b(19[5-9]\d|200[0-8])\b/i
   );
   if (birthYearExplicit && birthYearExplicit[1]) {
     const by = parseInt(birthYearExplicit[1], 10);
@@ -419,7 +562,28 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // "1998 doğumluyum" / "1999 doğumlu"
+  // KATMAN 1B: İkonlu / Etiketsiz Tam Doğum Tarihi Satırı (Örn: "20.05.2003" veya "28/01/1999" tek başına)
+  const standaloneFullBirthDate = normText.match(
+    /(?:^|\n|\s)(?:0?[1-9]|[12]\d|3[01])[.\/](?:0?[1-9]|1[0-2])[.\/](19[6-9]\d|200[0-6])(?=\s|$|\n)/
+  );
+  if (standaloneFullBirthDate && standaloneFullBirthDate[1]) {
+    const fullMatch = standaloneFullBirthDate[0];
+    // Tarih aralığı ("14/08/2017 - 10/07/2022") olmadığından emin ol
+    const matchIdx = standaloneFullBirthDate.index || 0;
+    const surrounding = normText.slice(Math.max(0, matchIdx - 15), Math.min(normText.length, matchIdx + fullMatch.length + 15));
+    if (!/[\-–—]|to|current|present/.test(surrounding)) {
+      const by = parseInt(standaloneFullBirthDate[1], 10);
+      const age = refYear - by;
+      return {
+        age,
+        method: "Doğrudan Doğum Tarihi",
+        confidence: 99,
+        evidence: `CV kişisel bilgilerinde doğum tarihi (${standaloneFullBirthDate[0].trim()}) tespit edildi → ${age} yaşında.`,
+      };
+    }
+  }
+
+  // KATMAN 1C: "1998 doğumluyum" / "1999 doğumlu"
   const birthYearProse = normText.match(/\b(19[6-9]\d|200[0-8])\s*doğumlu/i);
   if (birthYearProse && birthYearProse[1]) {
     const by = parseInt(birthYearProse[1], 10);
@@ -433,7 +597,7 @@ export function detectAgeFromCV(rawText: string): {
   }
 
   // KATMAN 2: Doğrudan Yaş Beyanı (Örn: Yaş: 27, Age: 22 veya 22 yaşındayım)
-  const explicitAge = normText.match(/(?:yaş|age)\s*[:\-]\s*(\d{2})\b|(\d{2})\s*yaşında/i);
+  const explicitAge = normText.match(/(?:yaş|age)\s*[:\-]\s*(\d{2})\b|(\d{2})\s*yaşinda/i);
   if (explicitAge) {
     const ageVal = parseInt(explicitAge[1] || explicitAge[2], 10);
     if (ageVal >= 17 && ageVal <= 65) {
@@ -446,50 +610,104 @@ export function detectAgeFromCV(rawText: string): {
     }
   }
 
-  // YARDIMCI SİNYAL A: E-posta adresinde doğum yılı var mı? (Örn: beraterdem2002@gmail.com)
+  // YARDIMCI SİNYAL A: E-posta adresinde doğum yılı var mı? (Örn: beraterdem2002@gmail.com veya afaruk96@hotmail.com)
   let emailBirthYear: number | null = null;
-  const emailYearMatch = normText.match(/[a-zçğıöşü._\-]+(19[7-9]\d|200[0-7])@[a-z0-9.\-]+/i);
-  if (emailYearMatch && emailYearMatch[1]) {
-    emailBirthYear = parseInt(emailYearMatch[1], 10);
+  const emailYear4Match = normText.match(/[a-zçğiöşü._\-]+(19[7-9]\d|200[0-6])@[a-z0-9.\-]+/i);
+  if (emailYear4Match && emailYear4Match[1]) {
+    emailBirthYear = parseInt(emailYear4Match[1], 10);
+  } else {
+    const emailYear2Match = normText.match(/\b[a-zçğiöşü._\-]{3,}?(8[5-9]|9[0-9])@[a-z0-9.\-]+/i);
+    if (emailYear2Match && emailYear2Match[1]) {
+      const twoDigit = parseInt(emailYear2Match[1], 10);
+      emailBirthYear = 1900 + twoDigit;
+    }
   }
 
-  // YARDIMCI SİNYAL B: Sınıf bilgisi var mı? (Örn: "3rd Year", "3. Sınıf", "4th Year")
+  // YARDIMCI SİNYAL B: Sınıf bilgisi var mı? (Örn: "3rd Year", "3. Sınıf", "4th Year", "Third Year", "Final-year")
   let currentUniYearLevel: number | null = null;
-  const yearLevelMatch = normText.match(/\b([1-4])(?:\.\s*sınıf|st\s*year|nd\s*year|rd\s*year|th\s*year)\b/i);
+  const yearLevelMatch = normText.match(/\b([1-4])(?:\.\s*sinif|st\s*year|nd\s*year|rd\s*year|th\s*year)\b/i);
   if (yearLevelMatch && yearLevelMatch[1]) {
     currentUniYearLevel = parseInt(yearLevelMatch[1], 10);
+  } else if (/\bthird\s*year\b/i.test(normText)) {
+    currentUniYearLevel = 3;
+  } else if (/\b(?:fourth\s*year|final[\s\-]*year)\b/i.test(normText)) {
+    currentUniYearLevel = 4;
   }
 
-  // YARDIMCI SİNYAL C: Lise / Kolej Mezuniyet Yılı (Örn: "Mod Eryaman College ... Graduated in 2021" veya "Anadolu Lisesi 2021")
+  // YARDIMCI SİNYAL C: Lise / Kolej Mezuniyet Yılı
+  // DİKKAT: "2013 - 2017 High School" yazıyorsa 2013 başlangıç (14 yaş), 2017 mezuniyet (18 yaş) yılıdır!
   let hsGradYear: number | null = null;
-  const hsMatch =
-    normText.match(
-      /(?:lise|lisesi|kolej|koleji|college|high\s*school)[\s\S]{0,90}?(?:graduated\s*in|mezuniyet|mezun|\-|\–|->)?\s*\b(19[8-9]\d|20[0-2]\d)\b/i
-    ) ||
-    normText.match(
-      /\b(19[8-9]\d|20[0-2]\d)\b[\s\S]{0,50}?(?:lise|lisesi|kolej|koleji|college|high\s*school)/i
+  const hsRangeBefore = normText.match(
+    /(?:lise|lisesi|kolej|koleji|high\s*school|science\s*&?\s*mathematics\s*branch)(?:(?!19\d\d|20\d\d)[\s\S]){0,70}?(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\b/i
+  );
+  const hsRangeAfter = normText.match(
+    /(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\b(?:(?!19\d\d|20\d\d)[\s\S]){0,65}?(?:lise|lisesi|kolej|koleji|high\s*school)/i
+  );
+  if (hsRangeAfter && hsRangeAfter[2]) {
+    hsGradYear = parseInt(hsRangeAfter[2], 10);
+  } else if (hsRangeBefore && hsRangeBefore[2]) {
+    hsGradYear = parseInt(hsRangeBefore[2], 10);
+  } else {
+    // Tekil Lise/Kolej mezuniyet yılı ("Mod Eryaman College ... Graduated in 2021" veya "A-Levels ... School | 2018")
+    const hsSingle = normText.match(
+      /(?:lise|lisesi|kolej|koleji|college|high\s*school|a-levels|igcse)(?:(?!üniversite|university|bachelor|lisans)[\s\S]){0,85}?(?:graduated\s*in|mezuniyet|mezun|ending\s*date|\|)\s*(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\b/i
     );
-  if (hsMatch && hsMatch[1]) {
-    hsGradYear = parseInt(hsMatch[1], 10);
+    if (hsSingle && hsSingle[1]) {
+      hsGradYear = parseInt(hsSingle[1], 10);
+    }
   }
 
-  // YARDIMCI SİNYAL D: Üniversite Giriş Yılı (Tarih aralığından veya Öğrenci Numarasından!)
+  // YARDIMCI SİNYAL D: Üniversite Giriş Yılı (En erken Lisans/Önlisans giriş yılını baz al; Yüksek Lisans/Doktora ve Staj/İş tarihleriyle karıştırma!)
   let uniStartYear: number | null = null;
   let uniEndYear: number | null = null;
-  const uniSectionMatch =
-    normText.match(
-      /(?:eğitim|education|üniversite|university|fakülte|faculty|b\.sc|bsc|b\.a|\bba\b|\bmsc\b|m\.sc|mühendislik|engineering|lisans|institute|enstitü)[\s\S]{0,120}?\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)/i
-    ) ||
-    normText.match(
-      /\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)[\s\S]{0,100}?(?:üniversite|university|b\.sc|bsc|\bba\b|\bmsc\b|mühendislik|engineering|lisans|institute|enstitü|school)/i
-    );
 
-  if (uniSectionMatch && uniSectionMatch[1]) {
-    uniStartYear = parseInt(uniSectionMatch[1], 10);
-    const endRaw = uniSectionMatch[2];
-    if (/^\d{4}$/.test(endRaw)) {
-      uniEndYear = parseInt(endRaw, 10);
+  const rangeRegex =
+    /(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?\b(19[8-9]\d|20[0-2]\d)\b(?:\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring)[a-z.]*)?[\s\/a-z.]*(?:->|\-|\–|—|\/|to)[\s\/a-z.]*(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?\b(19[8-9]\d|20[0-2]\d|present|current|ongoing|continues|devam|günümüz|şimdi)\b/gi;
+
+  const bscYears: { start: number; end: number | null }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = rangeRegex.exec(normText)) !== null) {
+    const sYear = parseInt(match[1], 10);
+    const eRaw = match[2];
+    const eYear = /^\d{4}$/.test(eRaw) ? parseInt(eRaw, 10) : null;
+    // Bir üniversite (Önlisans/Lisans) eğitimi aynı yıl içinde bitmez; en az 2 yıl sürer (0-1 yıllık aralıklar staj/iştir)
+    if (eYear !== null && (eYear - sYear < 2 || eYear - sYear > 10)) continue;
+
+    const idx = match.index;
+    const windowBefore = normText.slice(Math.max(0, idx - 115), idx);
+    const windowAfter = normText.slice(idx, Math.min(normText.length, idx + match[0].length + 115));
+    const localWindow = normText.slice(Math.max(0, idx - 60), Math.min(normText.length, idx + match[0].length + 60));
+
+    // Lise veya Staj / İş / Asistanlık / Çalışan satırıysa atla
+    if (
+      /(?:lise|lisesi|high\s*school|kolej|koleji|hsc|sslc|ortaöğretim|\bintern\b|internship|\bstaj\b|stajyer|teaching\s*assistant|student\s*assistant|research\s*engineer|software\s*engineer|software\s*developer|junior\s*|senior\s*|work\s*experience)/i.test(
+        localWindow
+      )
+    ) {
+      continue;
     }
+    // İş deneyimi / staj satırıysa ve yakınında üniversite kelimesi yoksa atla
+    const hasUniKeyword =
+      /(?:üniversite|university|fakülte|faculty|b\.sc|bsc|b\.s\.|bachelor|lisans|önlisans|\basc\b|m\.sc|msc|master|phd|doktora|enstitü|institute|\bodtü\b|\bitü\b|\bmetu\b)/i.test(
+        windowBefore + " " + windowAfter
+      );
+    if (!hasUniKeyword) continue;
+
+    // Eğer doğrudan MSc / LL.M / PhD satırıysa atla (Lisans / Önlisans tercih edilir)
+    const isPostGrad =
+      /(?:master|m\.sc|\bmsc\b|ll\.?m|yüksek\s*lisans|\bphd\b|ph\.d|doktora)/i.test(windowBefore + " " + localWindow) &&
+      !/(?:bachelor|b\.sc|\bbsc\b|lisans\s*eğitimi)/i.test(localWindow);
+
+    if (!isPostGrad) {
+      bscYears.push({ start: sYear, end: eYear });
+    }
+  }
+
+  if (bscYears.length > 0) {
+    // En erken üniversite (Önlisans/Lisans) başlangıç yılını seç (aday bu yılda ~18-19 yaşındadır)
+    bscYears.sort((a, b) => a.start - b.start);
+    uniStartYear = bscYears[0].start;
+    uniEndYear = bscYears[0].end;
   }
 
   // Öğrenci Numarası (Student ID: 220201052 -> ilk iki hane '22' = 2022 girişli)
@@ -500,26 +718,42 @@ export function detectAgeFromCV(rawText: string): {
     }
   }
 
-  // KATMAN 3: Lise Mezuniyet Yılı (18-19 yaş) + Üniversite / Sınıf Kronolojisi Birleşimi
+  // KATMAN 3: Üniversite Giriş Yılı ve Lise Mezuniyet Yılı Birleşimi
+  if (uniStartYear) {
+    let estimatedAge = refYear - (uniStartYear - 18);
+    if (hsGradYear && hsGradYear <= uniStartYear && uniStartYear - hsGradYear <= 3) {
+      // Liseden mezun olduğunda 18 yaşındadır
+      estimatedAge = refYear - (hsGradYear - 18);
+    } else if (currentUniYearLevel !== null && uniStartYear >= 2020) {
+      estimatedAge = Math.max(estimatedAge, 18 + currentUniYearLevel);
+    }
+
+    if (emailBirthYear && Math.abs(refYear - emailBirthYear - estimatedAge) <= 2) {
+      estimatedAge = refYear - emailBirthYear;
+    }
+
+    if (estimatedAge >= 18 && estimatedAge <= 65) {
+      return {
+        age: estimatedAge,
+        method: "Eğitim Kronolojisi Tahmini",
+        confidence: 94,
+        evidence: `Doğum tarihi yazmıyor; ${
+          hsGradYear && hsGradYear <= uniStartYear ? `${hsGradYear} lise mezuniyeti ve ` : ""
+        }${uniStartYear} üniversite giriş yılı üzerinden ~${estimatedAge} yaş hesaplandı.`,
+      };
+    }
+  }
+
+  // KATMAN 4: Lise Mezuniyet Yılı (18-19 yaş) + Sınıf / Mezuniyet Kronolojisi
   if (hsGradYear) {
-    // Liseden mezun olduğunda 18-19 yaşındadır.
-    // Eğer aktif üniversite sınıfı ("3rd year" / "3. sınıf") biliniyorsa:
     let estimatedAge: number;
     const evidenceParts: string[] = [
       `${hsGradYear} Lise/Kolej mezuniyetinde 18–19 yaşında olduğu baz alındı`,
     ];
 
     if (currentUniYearLevel !== null) {
-      // Liseden mezun olduktan sonra üniversiteye geçiş + sınıf yılı
-      const gapBeforeUni = uniStartYear && uniStartYear > hsGradYear ? uniStartYear - hsGradYear : 0;
-      estimatedAge = 18 + gapBeforeUni + currentUniYearLevel;
-      evidenceParts.push(
-        `${uniStartYear ? `${uniStartYear} üniversite girişi ve ` : ""}${currentUniYearLevel}. sınıf öğrencisi olmasıyla +${gapBeforeUni + currentUniYearLevel} yıl eklendi (~${estimatedAge - 1}–${estimatedAge + 1} yaş)`
-      );
-    } else if (uniEndYear && uniEndYear > hsGradYear) {
-      const yearsAfterHs = Math.max(refYear - hsGradYear, uniEndYear - hsGradYear);
-      estimatedAge = 18 + yearsAfterHs;
-      evidenceParts.push(`mezuniyet sonrası geçen ${yearsAfterHs} yıl eklendi`);
+      estimatedAge = 18 + currentUniYearLevel;
+      evidenceParts.push(`${currentUniYearLevel}. sınıf öğrencisi olmasıyla +${currentUniYearLevel} yıl eklendi`);
     } else {
       const yearsPassed = Math.max(1, refYear - hsGradYear);
       estimatedAge = 18 + yearsPassed;
@@ -534,28 +768,24 @@ export function detectAgeFromCV(rawText: string): {
     return {
       age: estimatedAge,
       method: "Eğitim Kronolojisi Tahmini",
-      confidence: 95,
+      confidence: 94,
       evidence: `Yaş açık yazmıyor; ${evidenceParts.join(", ")} → ~${estimatedAge} yaşında.`,
     };
   }
 
-  // KATMAN 4: Üniversite Giriş Yılı ve/veya Sınıf Bilgisi
-  if (uniStartYear) {
-    let estimatedAge = refYear - (uniStartYear - 18);
-    if (currentUniYearLevel !== null) {
-      estimatedAge = 18 + currentUniYearLevel + (uniStartYear < refYear - currentUniYearLevel ? 1 : 0);
-    }
-    if (emailBirthYear && Math.abs(refYear - emailBirthYear - estimatedAge) <= 2) {
-      estimatedAge = refYear - emailBirthYear;
-    }
-    if (estimatedAge >= 18 && estimatedAge <= 60) {
+  // KATMAN 5: Tekil Üniversite Mezuniyet Yılı ("Expected Graduation: 2025", "Inonu University / 2024", "Graduated in 2022")
+  const uniGradSingleMatch =
+    normText.match(/(?:expected\s*graduation|graduation|mezuniyet|graduated\s*in)\s*[:\-]?\s*(19[8-9]\d|20[0-2]\d)\b/i) ||
+    normText.match(/(?:university|üniversitesi)\s*[\/|]\s*(19[8-9]\d|20[0-2]\d)\b/i);
+  if (uniGradSingleMatch && uniGradSingleMatch[1]) {
+    const gradYear = parseInt(uniGradSingleMatch[1], 10);
+    const estimatedAge = refYear - (gradYear - 22);
+    if (estimatedAge >= 20 && estimatedAge <= 60) {
       return {
         age: estimatedAge,
         method: "Eğitim Kronolojisi Tahmini",
-        confidence: 92,
-        evidence: `Doğum tarihi yazmıyor; ${uniStartYear} üniversite giriş yılı${
-          currentUniYearLevel ? ` (${currentUniYearLevel}. sınıf)` : ""
-        }${emailBirthYear ? ` ve e-postadaki ${emailBirthYear} yılı` : ""} üzerinden ~${estimatedAge} yaş hesaplandı.`,
+        confidence: 90,
+        evidence: `Doğum tarihi yok; ${gradYear} üniversite mezuniyet yılından (22–23 yaş mezuniyet) ~${estimatedAge} yaş hesaplandı.`,
       };
     }
   }
@@ -571,44 +801,34 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // Sadece Mezuniyet Yılı varsa ("Graduated in 2022" / "Mezuniyet: 2022")
-  const gradMatch = normText.match(/(?:mezuniyet|mezun|graduated\s*in)\s*[:\-]?\s*(19[8-9]\d|20[0-2]\d)/i);
-  if (gradMatch && gradMatch[1]) {
-    const gradYear = parseInt(gradMatch[1], 10);
-    const estimatedAge = refYear - (gradYear - 22);
-    return {
-      age: estimatedAge,
-      method: "Eğitim Kronolojisi Tahmini",
-      confidence: 88,
-      evidence: `Doğum tarihi yok; ${gradYear} mezuniyet yılından ~${estimatedAge} yaş tahmin edildi.`,
-    };
-  }
-
-  // KATMAN 5: E-posta Adresindeki Doğum Yılı (Örn: adsoyad2002@gmail.com)
+  // KATMAN 6: E-posta Adresindeki Doğum Yılı (Örn: adsoyad2002@gmail.com veya afaruk96@hotmail.com)
   if (emailBirthYear) {
     const estimatedAge = refYear - emailBirthYear;
     return {
       age: estimatedAge,
       method: "Eğitim Kronolojisi Tahmini",
-      confidence: 85,
+      confidence: 88,
       evidence: `E-posta adresindeki '${emailBirthYear}' doğum yılı bilgisinden ~${estimatedAge} yaş hesaplandı.`,
     };
   }
 
-  // KATMAN 6: Genel Eğitim Bölümü Yıl Taraması (Herhangi bir lise/üniversite/mezuniyet yılı varsa)
-  const eduBlockMatch = normText.match(
-    /(?:eğitim|education|lise|kolej|college|school|üniversite|university|mezun|graduated|lisans|önlisans)[\s\S]{0,250}?\b(19[8-9]\d|20[0-2]\d)\b/i
-  );
-  if (eduBlockMatch && eduBlockMatch[1]) {
-    const foundYear = parseInt(eduBlockMatch[1], 10);
-    const yearsPassed = Math.max(0, refYear - foundYear);
-    const estimatedAge = 18 + yearsPassed;
-    if (estimatedAge >= 18 && estimatedAge <= 60) {
+  // KATMAN 7: İlk İş / Staj / Üniversite Topluluğu Yılından Tahmin (Eğitim tarihi hiç yazılmamış CV'ler için)
+  const allWorkOrClubYears = (normText.match(/\b(200\d|201\d|202[0-4])\b/g) || [])
+    .map((y) => parseInt(y, 10))
+    .filter((y) => y >= 2005 && y <= 2024);
+
+  if (allWorkOrClubYears.length > 0) {
+    const earliestYear = Math.min(...allWorkOrClubYears);
+    // İlk staj / üniversite kulübü / sertifika yılında genellikle ~20 yaşında, ilk tam zamanlı işte ~22 yaşındadır
+    const hasInternOrSociety = /(?:intern|staj|society|club|topluluğu|student)/i.test(normText);
+    const baseAgeAtEarliest = hasInternOrSociety && earliestYear <= 2022 ? 20 : 22;
+    const estimatedAge = baseAgeAtEarliest + (refYear - earliestYear);
+    if (estimatedAge >= 20 && estimatedAge <= 60) {
       return {
         age: estimatedAge,
-        method: "Eğitim Kronolojisi Tahmini",
-        confidence: 84,
-        evidence: `Eğitim geçmişindeki ${foundYear} tarihinde 18–19 yaşında olduğu ve üzerinden ${yearsPassed} yıl geçtiği hesaplanarak ~${estimatedAge} yaş tahmin edildi.`,
+        method: "İlk İş Deneyimi Tahmini",
+        confidence: 82,
+        evidence: `Doğum ve eğitim tarihi belirtilmemiş; CV'deki en erken deneyim/faaliyet yılından (${earliestYear}) ~${estimatedAge} yaş tahmin edildi.`,
       };
     }
   }
@@ -942,19 +1162,19 @@ function ageAgeScoreSafe(val: number): number {
 //    (Referans, Yönetici, Danışman ve Tuzak İsimleri Ayıklayan Akıllı Motor)
 // ============================================================================
 export function stripReferenceAndDecoyLines(rawText: string): string {
-  // Referans / Ekip Katılımcıları bloklarını bir sonraki ana başlığa kadar temizle
+  // Referans / Ekip Katılımcıları / Öneriler bloklarını bir sonraki ana başlığa kadar temizle
   const withoutRefBlocks = rawText.replace(
-    /\n\s*(?:referanslar|references|referans\s*kişisi|referans\s*iletişim\s*bilgileri|iş\s*referansları|referans|professional\s*contacts|detaylı\s*proje\s*katılımcıları)\b[\s\S]*?(?=\n\s*(?:tools|languages|professional\s*profile|experience|selected\s*projects|education|eğitim|iş\s*deneyimi|deneyim|beceriler|yetkinlikler|programlar|kişisel\s*açıklama|görev\s*tanımı)\b|$)/gi,
+    /\n\s*(?:referanslar|references|recommendations|referans\s*kişisi|referans\s*iletişim\s*bilgileri|iş\s*referansları|referans|professional\s*contacts|detaylı\s*proje\s*katılımcıları)\b[\s\S]*?(?=\n\s*(?:tools|languages|hobbies|interests|professional\s*profile|experience|selected\s*projects|projects|education|eğitim|iş\s*deneyimi|deneyim|beceriler|yetkinlikler|programlar|kişisel\s*açıklama|görev\s*tanımı)\b|$)/gi,
     "\n"
   );
 
-  // Yönetici, Danışman, Referans, Müdür, Supervisor, Ekip arkadaşı satırlarını filtrele
+  // Yönetici, Danışman, Referans, Müdür, Supervisor, Ekip arkadaşı, Akademisyen satırlarını filtrele
   return withoutRefBlocks
     .split(/\r?\n/)
     .filter((line) => {
       const l = normalizeTr(line);
       if (
-        /(?:referans|reference|yönetici|müdür|direktör|başmimar|supervisor|manager|danışman|advisor|raporlanan|reported\s*to|worked\s*with|partnered\s*with|collaborated\s*with|prepared\s*by|reviewed\s*by|gözetiminde|ile\s*birlikte|tarafından|ekip\s*üyesi|takım\s*lideri|ürün\s*sahibi|prof\.\s*dr|doç\.\s*dr|dr\.\s*)/i.test(
+        /(?:referans|reference|yönetici|müdür|direktör|başmimar|supervisor|manager|danışman|advisor|raporlanan|reported\s*to|worked\s*with|partnered\s*with|collaborated\s*with|prepared\s*by|reviewed\s*by|gözetiminde|ile\s*birlikte|tarafından|ekip\s*üyesi|takım\s*lideri|ürün\s*sahibi|prof\.\s*dr|doç\.\s*dr|dr\.\s*|\bprofessor\b|assist\.\s*prof|coworker|thesis\s*supervisor)/i.test(
           l
         )
       ) {
@@ -963,6 +1183,18 @@ export function stripReferenceAndDecoyLines(rawText: string): string {
       return true;
     })
     .join("\n");
+}
+
+function formatProperCaseName(words: string[]): string {
+  return words
+    .map((w) => {
+      const lower = normalizeTr(w);
+      const firstChar = lower.charAt(0);
+      const upperFirst =
+        firstChar === "i" ? "İ" : firstChar === "ı" ? "I" : firstChar.toUpperCase();
+      return upperFirst + lower.slice(1);
+    })
+    .join(" ");
 }
 
 export function extractCandidateMetadataFromText(
@@ -983,8 +1215,9 @@ export function extractCandidateMetadataFromText(
     };
   }
 
-  const cleanCandidateText = stripReferenceAndDecoyLines(rawText);
-  const lines = cleanCandidateText
+  const preCleaned = cleanPdfTextQuirks(rawText);
+  const cleanCandidateText = stripReferenceAndDecoyLines(preCleaned);
+  const rawLines = cleanCandidateText
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 1);
@@ -992,27 +1225,47 @@ export function extractCandidateMetadataFromText(
   // 1. AD SOYAD TESPİTİ
   let fullName = "";
 
-  // Aşama A: Açık Etiket ("Ad Soyad:", "Aday:", "Applicant:", "Candidate:")
+  // Aşama A: Açık Etiket ("Ad Soyad:", "Adı Soyadı :", "Aday:", "Applicant:", "Candidate:")
   const explicitNameMatch = cleanCandidateText.match(
-    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|aday\s*adı|başvuran\s*aday|applicant\s*name|candidate\s*name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
+    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|aday\s*adı|başvuran\s*aday|\baday\b|applicant\s*name|candidate\s*name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
   );
 
-  // Aşama B: Paragraf İçi Birinci Tekil Şahıs Kendini Tanıtma ("Ben, Zeynep Aksoy," / "I, Maya Sullivan,")
-  const selfIntroTrMatch = rawText.match(
-    /\b(?:[Bb]en|[Aa]dım|[İi]smim)\s*,?\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/
+  // Aşama B: Paragraf İçi Birinci Tekil Şahıs Kendini Tanıtma ("Ben, Zeynep Aksoy," / "I, Maya Sullivan," / "Sincerely,\nArda Uludağ")
+  const selfIntroTrMatch = preCleaned.match(
+    /\b(?:[Bb]en|[Aa]dım|[İi]smim)[ \t]*,?[ \t]*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:[ \t]+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})(?=$|[^a-zA-ZçğıöşüÇĞİÖŞÜ])/
   );
-  const selfIntroEnMatch = rawText.match(
-    /(?:\b[Mm]y\s+name\s+is\s+|\bI\s+am\s+|\bI,\s*)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/
+  const selfIntroEnMatch = preCleaned.match(
+    /(?:\b[Mm]y[ \t]+name[ \t]+is[ \t]+|\bI,[ \t]*)([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+){1,2})(?=$|[^a-zA-Z])/
+  );
+  const signOffMatch = cleanCandidateText.match(
+    /(?:sincerely|best[ \t]*regards|kind[ \t]*regards|saygılarımla)[ \t]*,?[ \t]*\r?\n[ \t]*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:[ \t]+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})(?=$|[^a-zA-ZçğıöşüÇĞİÖŞÜ])/i
   );
 
   if (explicitNameMatch && explicitNameMatch[1]) {
-    fullName = explicitNameMatch[1].split(/[\n|•,]/)[0].trim();
+    const rawExplicit = explicitNameMatch[1].split(/[\r\n|•,]/)[0].trim();
+    const w = rawExplicit.split(/\s+/).filter(Boolean);
+    if (w.length >= 2 && w.length <= 4) {
+      fullName = formatProperCaseName(w);
+    }
   } else if (selfIntroTrMatch && selfIntroTrMatch[1]) {
     fullName = selfIntroTrMatch[1].trim();
   } else if (selfIntroEnMatch && selfIntroEnMatch[1]) {
     fullName = selfIntroEnMatch[1].trim();
-  } else {
-    // Aşama C: İlk 6 satırda (Bölüm başlıklarından önce) sözlükte kayıtlı gerçek insan ismi var mı?
+  } else if (signOffMatch && signOffMatch[1]) {
+    fullName = signOffMatch[1].trim();
+  }
+
+  if (!fullName) {
+    // Aşama C: Çok Sütunlu / Farklı Tasarımlı PDF'ler İçin İletişim Çapraz Doğrulamalı İsim Tarayıcı
+    // Adayın e-posta, LinkedIn ve GitHub kullanıcı adlarını çıkar
+    const emailHandles = (cleanCandidateText.match(/([a-zA-Z0-9._\-]+)@[a-zA-Z0-9.\-]+/g) || []).map((e) =>
+      toAsciiTr(e.split("@")[0].replace(/[^a-zA-Z]/g, ""))
+    );
+    const socialHandles = (
+      cleanCandidateText.match(/(?:linkedin\.com\/in\/|github\.com\/|kaggle\.com\/)([a-zA-Z0-9_\-%]+)/gi) || []
+    ).map((u) => toAsciiTr(decodeURIComponent(u).split("/").pop() || "").replace(/[^a-z]/g, ""));
+    const contactSlugPool = [...emailHandles, ...socialHandles].filter((s) => s.length >= 4).join(" ");
+
     const nonNameKeywords = [
       "özgeçmiş", "curriculum", "vitae", "resume", "mühendis", "mühendisliği",
       "engineer", "engineering", "uzman", "uzmanı", "analist", "analyst",
@@ -1021,35 +1274,161 @@ export function extractCandidateMetadataFromText(
       "overview", "business", "intelligence", "social", "science", "research",
       "assistant", "proje", "koordinatörü", "veri", "data", "director",
       "manager", "lead", "studio", "üniversite", "university", "fakülte",
-      "bölüm", "iletişim", "contacts", "eğitim", "education", "profil", "profile"
+      "bölüm", "iletişim", "contacts", "eğitim", "education", "profil", "profile",
+      "konutları", "mahallesi", "mah", "sokak", "caddesi", "apartmanı", "sitesi",
+      "blok", "block", "addres", "address", "adres", "lisesi", "koleji",
+      "caterpillar", "confidential", "green", "ford", "otosan", "arzum",
+      "turkish", "aerospace", "industries", "huawei", "aselsan", "roketsan",
+      "tusaş", "tubitak", "tübitak", "teknoloji", "technology", "technologies",
+      "software", "hardware", "otomasyon", "automation", "academic", "work",
+      "history", "experience", "summary", "objective", "skills", "languages",
+      "certifications", "certificates", "projects", "publications", "interests",
+      "hobbies", "activities", "volunteer", "volunteering", "courses",
+      "personal", "information", "statement", "details", "bachelor", "master",
+      "doctorate", "degree", "department", "faculty", "school", "high",
+      "istanbul", "ankara", "izmir", "bursa", "kocaeli", "antalya", "eskişehir",
+      "konya", "gaziantep", "kayseri", "tekirdağ", "manisa", "türkiye", "turkey",
+      "www", "http", "https", "com", "linkedin", "github", "wwwlinkedincom"
     ];
 
-    for (const line of lines.slice(0, 6)) {
-      const cleaned = line
-        .replace(/\s*[\-–—|]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "")
-        .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "")
-        .trim();
-      const words = cleaned.split(/\s+/).filter(Boolean);
-      const lower = normalizeTr(cleaned);
+    // İki satıra bölünmüş isimleri ("Ümmü Gülnur\nÇİVİTCİ" veya "YALCIN CAN\nBENAL") ve birleşik satırları aday listesine ekle
+    const candidateEntries: { text: string; lineIdx: number; bonus?: number }[] = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      // Yayınlar / Referanslar başlığına gelindiyse alt satırlarda aday ismi arama
+      if (/^(?:publications|scientific\s*publications|yayınlar|references|referanslar|recommendations)\b/i.test(line)) {
+        break;
+      }
+      candidateEntries.push({ text: line, lineIdx: i });
 
-      const hasJobOrSectionWord = nonNameKeywords.some((kw) => lower.includes(kw));
-
-      if (!hasJobOrSectionWord && words.length >= 2 && words.length <= 4 && cleaned.length <= 38) {
-        const firstWordNorm = normalizeTr(words[0]);
-        const secondWordNorm = words.length > 1 ? normalizeTr(words[1]) : "";
+      // Eğer satır 1-2 kelimelik bir ÖN İSİM satırıysa (soyadı henüz yoksa) ve hemen alt satır tek kelimelik soyadıysa birleştir
+      if (i + 1 < rawLines.length) {
+        const w1 = line.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "").trim().split(/\s+/).filter(Boolean);
+        const nextLine = rawLines[i + 1].trim();
+        const w2 = nextLine.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "").trim().split(/\s+/).filter(Boolean);
+        const allW1AreGivenNames = w1.length >= 1 && w1.length <= 2 && w1.every((w) => classifyGivenName(w) !== null);
         if (
-          FEMALE_NAMES.has(firstWordNorm) ||
-          MALE_NAMES.has(firstWordNorm) ||
-          UNISEX_NAMES.has(firstWordNorm) ||
-          FEMALE_NAMES.has(secondWordNorm) ||
-          MALE_NAMES.has(secondWordNorm)
+          allW1AreGivenNames &&
+          w2.length === 1 &&
+          w2[0].length >= 3 &&
+          w2[0].length <= 18 &&
+          !nonNameKeywords.includes(normalizeTr(w2[0])) &&
+          !nonNameKeywords.includes(toAsciiTr(w2[0]))
         ) {
-          fullName = words
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-            .join(" ");
-          break;
+          candidateEntries.push({ text: `${w1.join(" ")} ${w2[0]}`, lineIdx: i, bonus: 15 });
         }
       }
+
+      // Özel durum: Satır sonunda yapışık "Osman Furkan" ve sonraki satır başında "Güneyosmanfurkanguney@..."
+      const endNameMatch = line.match(/([A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)$/);
+      if (endNameMatch && i + 1 < rawLines.length) {
+        const firstWordAscii = toAsciiTr(endNameMatch[1].split(/\s+/)[0]);
+        const nextLineRaw = rawLines[i + 1];
+        // Eğer sonraki satır e-posta ile birleşik başlıyorsa ve e-posta adayın ilk adıyla başlıyorsa soyadını tam ayır
+        const firstWordIdx = toAsciiTr(nextLineRaw).indexOf(firstWordAscii);
+        if (firstWordIdx >= 3 && firstWordIdx <= 18) {
+          const surnamePart = nextLineRaw.slice(0, firstWordIdx).trim();
+          if (/^[A-ZÇĞİÖŞÜ][a-zçğıöşü]+$/.test(surnamePart)) {
+            candidateEntries.push({ text: `${endNameMatch[1]} ${surnamePart}`, lineIdx: i, bonus: 25 });
+          }
+        }
+      }
+    }
+
+    let bestCandidate = "";
+    let bestScore = 0;
+
+    for (const entry of candidateEntries) {
+      let seg = entry.text;
+
+      // URL'leri temizle
+      seg = seg.replace(/(?:https?:\/\/|www\.|linkedin\.com|github\.com|kaggle\.com)\S*/gi, "").trim();
+
+      // Eğer satır başında yapışık şehir/kullanıcı adı varsa ve sonunda "Ad İkinciAd SOYAD" varsa ayıkla (Örn: "İstanbulabdullahaligunAbdullah Ali GÜN")
+      const gluedTailMatch = seg.match(/[a-z0-9]([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)*\s+[A-ZÇĞİÖŞÜ]{2,})$/);
+      if (gluedTailMatch && gluedTailMatch[1]) {
+        seg = gluedTailMatch[1];
+      }
+
+      // BÜYÜKHARF soyadına yapışık Şehir/Kelime varsa ayır (Örn: "ALTUĞ ALTINBAŞKarşıyaka" -> "ALTUĞ ALTINBAŞ")
+      seg = seg.replace(/([A-ZÇĞİÖŞÜ]{2,})([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})/g, "$1 | $2");
+
+      // Boru (|), noktalı virgül, virgül veya tire ile ayrılmış unvan/iletişim kısımlarının ilk parçasını al
+      seg = seg.split(/[|•·,]/)[0].trim();
+      seg = seg.replace(/\s*[\-–—]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "");
+
+      // Aynı satırdaki e-posta adresini ve telefon numarasını temizle (Örn: "Ahmed Akif OLGUN olgunahmed@hotmail.com")
+      seg = seg.replace(/\S+@\S+/g, "").replace(/\+?\d[\d\s()-]{7,}/g, "").trim();
+
+      // Satır sonundaki yaygın İngilizce/Türkçe meslek unvanlarını temizle (Örn: "Zeynep Aksun Software Developer")
+      seg = seg
+        .replace(
+          /\s+(?:software\s+developer|software\s+engineer|computer\s+engineer|data\s+scientist|data\s+analyst|machine\s+learning\s+engineer|ai\s+engineer|fullstack\s+developer|junior\s+.*|senior\s+.*|m\.?sc\.?|ph\.?d\.?|b\.?sc\.?)$/i,
+          ""
+        )
+        .trim();
+
+      const cleaned = seg.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ.\s]/g, " ").replace(/\s+/g, " ").trim();
+      let words = cleaned.split(/\s+/).filter(Boolean);
+
+      // Başta 2 harfli monogram varsa kaldır (Örn: "AG Abdulhamit Güngören" -> "Abdulhamit Güngören")
+      if (
+        words.length >= 3 &&
+        words[0].length === 2 &&
+        words[0] === words[0].toUpperCase() &&
+        words[1][0]?.toUpperCase() === words[0][0] &&
+        words[2][0]?.toUpperCase() === words[0][1]
+      ) {
+        words = words.slice(1);
+      }
+
+      // "A. Faruk Topkaya" gibi tek harfli başlangıç kısaltmasını koru ama kontrol için anlamlı kelimelere bak
+      const significantWords = words.filter((w) => w.replace(/\./g, "").length > 1);
+      if (significantWords.length < 2 || words.length > 4 || cleaned.length > 42) continue;
+
+      const lowerWords = significantWords.map((w) => normalizeTr(w.replace(/\./g, "")));
+      const hasNonNameWord = lowerWords.some((lw) => nonNameKeywords.includes(lw));
+      if (hasNonNameWord) continue;
+
+      const firstClass = classifyGivenName(lowerWords[0]);
+      const secondClass = lowerWords.length > 1 ? classifyGivenName(lowerWords[1]) : null;
+
+      // En az bir kelimesi bilinen insan ismi sözlüğünde VEYA e-posta/LinkedIn kullanıcı adında geçmeli
+      const matchesSlug = lowerWords.some((lw) => {
+        const asciiW = toAsciiTr(lw);
+        return asciiW.length >= 4 && contactSlugPool.includes(asciiW);
+      });
+
+      if (!firstClass && !secondClass && !(matchesSlug && entry.lineIdx < 5)) {
+        continue;
+      }
+
+      let score = entry.bonus || 0;
+      if (firstClass) score += 35;
+      if (secondClass) score += 20;
+      if (entry.lineIdx < 8) score += 60 - entry.lineIdx * 3;
+      if (matchesSlug) score += 100;
+
+      // Yakın satırlarda (3 satır altı/üstü) doğum tarihi, e-posta, telefon, cinsiyet veya meslek unvanı varsa +40 puan
+      const nearbyText = rawLines
+        .slice(Math.max(0, entry.lineIdx - 2), Math.min(rawLines.length, entry.lineIdx + 5))
+        .join(" ");
+      if (
+        /(?:@|date\s*of\s*birth|birthdate|doğum|nationality|gender|\+90|05\d{2}|linkedin\.com|developer|engineer|mühendis|architect|analyst|specialist|designer)/i.test(
+          nearbyText
+        )
+      ) {
+        score += 40;
+      }
+
+      if (score >= 60 && score > bestScore) {
+        bestScore = score;
+        bestCandidate = formatProperCaseName(words.map((w) => w.replace(/\./g, "")));
+      }
+    }
+
+    if (bestCandidate) {
+      fullName = bestCandidate;
     }
   }
 

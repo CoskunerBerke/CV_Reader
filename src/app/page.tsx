@@ -657,19 +657,19 @@ export default function CVReaderApp() {
                       : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Tek veya birden fazla <strong>.PDF, .DOCX, .HTML, .ZIP, .TXT</strong> dosyası
-                    sürükleyip bırakabilirsiniz. (Not: ZIP içindeyseniz önce klasöre çıkartın veya
-                    doğrudan <strong>.zip</strong> dosyasının kendisini sürükleyin.)
+                    Tek veya birden fazla <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> dosyası
+                    sürükleyip bırakabilirsiniz. (Not: Arşiv içindeyseniz önce klasöre çıkartın veya
+                    doğrudan <strong>.zip / .rar</strong> dosyasının kendisini sürükleyin.)
                   </p>
                   <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
-                    Bilgisayardan PDF / ZIP / HTML Seç
+                    Bilgisayardan PDF / ZIP / RAR / HTML Seç
                   </span>
                 </>
               )}
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.zip,.txt,.md,text/html,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleDirectFilesUpload}
                 className="hidden"
               />
@@ -1039,13 +1039,13 @@ export default function CVReaderApp() {
                   : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
               </span>
               <span className="block text-xs text-zinc-500 mt-1">
-                Desteklenenler: <strong>.PDF, .DOCX, .HTML, .ZIP, .TXT</strong> (Çoklu dosya veya
-                doğrudan .ZIP arşivi sürükleyebilirsiniz)
+                Desteklenenler: <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> (Çoklu dosya veya
+                doğrudan .ZIP / .RAR arşivi sürükleyebilirsiniz)
               </span>
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.zip,.txt,.md,text/html,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleModalFileSelect}
                 className="hidden"
               />

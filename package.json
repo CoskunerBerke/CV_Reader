@@ -13,6 +13,7 @@
     "lucide-react": "^0.475.0",
     "mammoth": "^1.13.0",
     "next": "^15.1.7",
+    "node-unrar-js": "^2.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "unpdf": "^1.9.1"
