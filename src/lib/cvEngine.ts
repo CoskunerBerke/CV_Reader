@@ -637,14 +637,16 @@ export function detectAgeFromCV(rawText: string): {
   // YARDIMCI SİNYAL C: Lise / Kolej Mezuniyet Yılı
   // DİKKAT: "2013 - 2017 High School" yazıyorsa 2013 başlangıç (14 yaş), 2017 mezuniyet (18 yaş) yılıdır!
   let hsGradYear: number | null = null;
+  // 1) Aynı satırda tarih aralığından hemen sonra "Lise / High School" geliyorsa (Örn: "2011 – 2015 Lise Hasan Şadoğlu Lisesi" veya "2008-2011Sıdıka Rodop Lisesi")
+  const hsRangeSameLineAfter = normText.match(
+    /(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?(19[7-9]\d|20[0-2]\d)(?!\d)[^\r\n0-9]{0,45}?(?:lise|lisesi|kolej|koleji|high\s*school)/i
+  );
+  // 2) "High School / Lise" başlığından sonra tarih aralığı geliyorsa (Örn: "NUH MEHMET KUCUKCALIK HIGH SCHOOL\nHigh School Diploma, Science 09/2013 – 06/2017")
   const hsRangeBefore = normText.match(
-    /(?:lise|lisesi|kolej|koleji|high\s*school|science\s*&?\s*mathematics\s*branch)(?:(?!19\d\d|20\d\d)[\s\S]){0,70}?(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\b/i
+    /(?:lise|lisesi|kolej|koleji|high\s*school|science\s*&?\s*mathematics\s*branch)(?:(?!19\d\d|20\d\d|üniversite|university|bachelor|lisans)[\s\S]){0,90}?(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?(19[7-9]\d|20[0-2]\d)(?!\d)/i
   );
-  const hsRangeAfter = normText.match(
-    /(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(?:0?\d[\/.]\s*)?\b(19[7-9]\d|20[0-2]\d)\b(?:(?!19\d\d|20\d\d)[\s\S]){0,65}?(?:lise|lisesi|kolej|koleji|high\s*school)/i
-  );
-  if (hsRangeAfter && hsRangeAfter[2]) {
-    hsGradYear = parseInt(hsRangeAfter[2], 10);
+  if (hsRangeSameLineAfter && hsRangeSameLineAfter[2]) {
+    hsGradYear = parseInt(hsRangeSameLineAfter[2], 10);
   } else if (hsRangeBefore && hsRangeBefore[2]) {
     hsGradYear = parseInt(hsRangeBefore[2], 10);
   } else {
@@ -657,12 +659,19 @@ export function detectAgeFromCV(rawText: string): {
     }
   }
 
-  // YARDIMCI SİNYAL D: Üniversite Giriş Yılı (En erken Lisans/Önlisans giriş yılını baz al; Yüksek Lisans/Doktora ve Staj/İş tarihleriyle karıştırma!)
+  // YARDIMCI SİNYAL D: Üniversite Giriş Yılı (En erken Lisans/Önlisans giriş yılını baz al; Yüksek Lisans/Doktora, Lise ve Staj/İş tarihleriyle karıştırma!)
   let uniStartYear: number | null = null;
   let uniEndYear: number | null = null;
 
   const rangeRegex =
-    /(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?\b(19[8-9]\d|20[0-2]\d)\b(?:\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring)[a-z.]*)?[\s\/a-z.]*(?:->|\-|\–|—|\/|to)[\s\/a-z.]*(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?\b(19[8-9]\d|20[0-2]\d|present|current|ongoing|continues|devam|günümüz|şimdi)\b/gi;
+    /(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?\b(19[8-9]\d|20[0-2]\d)\b(?:\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring)[a-z.]*)?[\s\/a-z.]*(?:->|\-|\–|—|\/|to)[\s\/a-z.]*(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|ocak|şubat|mart|nisan|mayis|haziran|temmuz|ağustos|eylül|ekim|kasim|aralik|fall|spring|0?\d)[a-z.]*[\s\/.]*)?(19[8-9]\d|20[0-2]\d|present|current|ongoing|continues|devam|günümüz|şimdi)(?!\d)/gi;
+
+  const bscRegex = /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|lisans|önlisans|\basc\b|associate\s*degree|preparatory|hazirlik)/i;
+  const postGradRegex = /(?:master|m\.sc|\bmsc\b|\bll\.m\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora)/i;
+  const hsKeywordRegex = /(?:lise|lisesi|high\s*school|kolej|koleji|hsc|sslc|ortaöğretim)/i;
+  const uniNameRegex = /(?:üniversite|university|fakülte|faculty|enstitü|institute|\bodtü\b|\bitü\b|\bmetu\b)/i;
+  const jobRoleRegex =
+    /(?:\bintern\b|internship|\bstaj\b|stajyer|teaching\s*assistant|student\s*assistant|freelancer|team\s*leader|project\s*manager|product\s*manager|data\s*analyst|data\s*scientist|machine\s*learning\s*engineer|software\s*engineer|software\s*developer|research\s*engineer|design\s*engineer|process\s*engineer|quality\s*engineer|welding\s*engineer|production\s*chief|specialist|consultant|coordinator)/i;
 
   const bscYears: { start: number; end: number | null }[] = [];
   let match: RegExpExecArray | null;
@@ -671,33 +680,83 @@ export function detectAgeFromCV(rawText: string): {
     const eRaw = match[2];
     const eYear = /^\d{4}$/.test(eRaw) ? parseInt(eRaw, 10) : null;
     const idx = match.index;
-    const windowBefore = normText.slice(Math.max(0, idx - 115), idx);
-    const windowAfter = normText.slice(idx, Math.min(normText.length, idx + match[0].length + 115));
-    const localWindow = normText.slice(Math.max(0, idx - 60), Math.min(normText.length, idx + match[0].length + 60));
+    const windowBefore = normText.slice(Math.max(0, idx - 120), idx);
+    const windowAfter = normText.slice(idx, Math.min(normText.length, idx + match[0].length + 90));
 
-    // Bir üniversite (Önlisans/Lisans) eğitimi en az 2 yıl sürer; ancak 1 yıllık İngilizce Hazırlık (Preparatory) sınıfı üniversite giriş yılıdır!
-    const isPrepClass = /(?:preparatory|hazirlik)/i.test(localWindow);
+    // Tarihin bulunduğu tam satır (sameLine), üst satırlar (prevLine, prevPrevLine) ve alt satır (nextLine)
+    const lineStartIdx = normText.lastIndexOf("\n", Math.max(0, idx - 1));
+    const lineEndIdx = normText.indexOf("\n", idx + match[0].length);
+    const sameLine = normText
+      .slice(lineStartIdx === -1 ? 0 : lineStartIdx + 1, lineEndIdx === -1 ? normText.length : lineEndIdx)
+      .trim();
+
+    const prevLineStartIdx = lineStartIdx > 0 ? normText.lastIndexOf("\n", lineStartIdx - 1) : -1;
+    const prevLine =
+      lineStartIdx > 0
+        ? normText.slice(prevLineStartIdx === -1 ? 0 : prevLineStartIdx + 1, lineStartIdx).trim()
+        : "";
+
+    const prevPrevLineStartIdx = prevLineStartIdx > 0 ? normText.lastIndexOf("\n", prevLineStartIdx - 1) : -1;
+    const prevPrevLine =
+      prevLineStartIdx > 0
+        ? normText.slice(prevPrevLineStartIdx === -1 ? 0 : prevPrevLineStartIdx + 1, prevLineStartIdx).trim()
+        : "";
+
+    const nextLineEndIdx = lineEndIdx !== -1 ? normText.indexOf("\n", lineEndIdx + 1) : -1;
+    const nextLine =
+      lineEndIdx !== -1
+        ? normText.slice(lineEndIdx + 1, nextLineEndIdx === -1 ? normText.length : nextLineEndIdx).trim()
+        : "";
+
+    // 1. Aynı satırda Lise / Kolej kelimesi varsa bu %100 lise satırıdır, asla üniversite olarak alma!
+    if (hsKeywordRegex.test(sameLine)) continue;
+
+    // 2. Bir üniversite (Önlisans/Lisans) eğitimi en az 2 yıl sürer; ancak 1 yıllık İngilizce Hazırlık (Preparatory) sınıfı üniversite giriş yılıdır!
+    const isPrepClass = /(?:preparatory|hazirlik)/i.test(sameLine + " " + prevLine);
     if (eYear !== null && ((eYear - sYear < 2 && !isPrepClass) || eYear - sYear > 10)) continue;
 
-    // Lise veya Staj / İş / Asistanlık / Çalışan satırıysa atla
-    if (
-      /(?:lise|lisesi|high\s*school|kolej|koleji|hsc|sslc|ortaöğretim|\bintern\b|internship|\bstaj\b|stajyer|teaching\s*assistant|student\s*assistant|research\s*engineer|software\s*engineer|software\s*developer|junior\s*|senior\s*)/i.test(
-        localWindow
-      )
-    ) {
+    // 3. Aynı satırda iş/staj unvanı varsa ve aynı satırda üniversite/lisans kelimesi yoksa atla
+    if (jobRoleRegex.test(sameLine) && !uniNameRegex.test(sameLine) && !bscRegex.test(sameLine)) {
       continue;
     }
-    // İş deneyimi / staj satırıysa ve yakınında üniversite kelimesi yoksa atla
+
+    // 4. Hangi satırların bu tarih aralığının derece/okul bilgisini taşıdığını (Layout A vs Layout B) belirle:
+    let degreeContext = sameLine;
+    if (bscRegex.test(sameLine) || postGradRegex.test(sameLine)) {
+      // Tarih ile derece aynı satırda (Örn: "Bachelor of Science, Industrial Engineering. 09/2018 – 06/2023")
+      degreeContext = sameLine;
+    } else if (uniNameRegex.test(sameLine)) {
+      // Tarih ile Üniversite adı aynı satırda (Örn: "Istanbul Technical University, Istanbul 2023 - 2026\nMSc - Mechatronics...")
+      if ((bscRegex.test(nextLine) || postGradRegex.test(nextLine)) && !hsKeywordRegex.test(nextLine)) {
+        degreeContext = sameLine + " " + nextLine;
+      } else if (!/\b(19[8-9]\d|20[0-2]\d)\b/.test(prevLine)) {
+        degreeContext = prevLine + " " + sameLine;
+      }
+    } else {
+      // Tarih tek başına veya bölümle aynı satırda, Üniversite adı üst veya alt satırda (Örn: "BACHELOR'S DEGREE...\nHACETTEPE UNIVERSITY\n09.2016 - 05.2022")
+      degreeContext = prevPrevLine + " " + prevLine + " " + sameLine;
+      if (!bscRegex.test(degreeContext) && !postGradRegex.test(degreeContext) && (bscRegex.test(nextLine) || postGradRegex.test(nextLine))) {
+        degreeContext += " " + nextLine;
+      }
+    }
+
+    // Üst satırda Lise veya İş/Staj unvanı varsa (ve açıkça Lisans/Üniversite değilse) atla
+    const isExplicitBachelor = bscRegex.test(degreeContext) && !postGradRegex.test(degreeContext);
+    if (!isExplicitBachelor && !uniNameRegex.test(sameLine)) {
+      if (hsKeywordRegex.test(prevLine) || jobRoleRegex.test(prevLine)) {
+        continue;
+      }
+    }
+
+    // Yakın çevrede (ilgili satırlarda) üniversite veya lisans anahtar kelimesi yoksa atla
     const hasUniKeyword =
-      /(?:üniversite|university|fakülte|faculty|b\.sc|bsc|b\.s\.|bachelor|lisans|önlisans|\basc\b|m\.sc|msc|master|phd|doktora|enstitü|institute|\bodtü\b|\bitü\b|\bmetu\b)/i.test(
-        windowBefore + " " + windowAfter
-      );
+      isExplicitBachelor ||
+      uniNameRegex.test(prevPrevLine + " " + prevLine + " " + sameLine + " " + nextLine) ||
+      bscRegex.test(windowBefore + " " + windowAfter);
     if (!hasUniKeyword) continue;
 
-    // Eğer doğrudan MSc / LL.M / PhD satırıysa atla (Lisans / Önlisans tercih edilir)
-    const isPostGrad =
-      /(?:master|m\.sc|\bmsc\b|ll\.?m|yüksek\s*lisans|\bphd\b|ph\.d|doktora)/i.test(windowBefore + " " + localWindow) &&
-      !/(?:bachelor|b\.sc|\bbsc\b|lisans\s*eğitimi)/i.test(localWindow);
+    // Eğer doğrudan MSc / LL.M / PhD / Yüksek Lisans kaydıysa atla (Lisans / Önlisans tercih edilir)
+    const isPostGrad = !isExplicitBachelor && postGradRegex.test(degreeContext);
 
     if (!isPostGrad) {
       bscYears.push({ start: sYear, end: eYear });
