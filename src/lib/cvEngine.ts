@@ -141,7 +141,8 @@ const MALE_NAMES = new Set([
   "şükrü", "talat", "talha", "tamer", "tanju", "utku", "taylan", "tekin", "temel", "teoman",
   "tevfik", "tolgahan", "toygar", "tufan", "tuğrul", "turan", "turgay", "turhan", "tümer", "türker",
   "ulvi", "ümit", "ünal", "vahap", "vahit", "veli", "veysel", "ural", "yahya", "yakup",
-  "yalçın", "yaman", "yaşar", "yekta", "yener", "yıldıray", "yılmaz", "yüksel", "zekeriya", "ziya"
+  "yalçın", "yaman", "yaşar", "yekta", "yener", "yıldıray", "yılmaz", "yüksel", "zekeriya", "ziya",
+  "berat", "berkay", "mirac", "miraç", "efehan", "emirhan", "batu", "kaan", "alp"
 ]);
 
 const UNISEX_NAMES = new Set([
@@ -395,10 +396,8 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
 }
 
 // ============================================================================
-// 4. 4 KATMANLI YAŞ TESPİT MOTORU (DOĞRUDAN + EĞİTİM KRONOLOJİSİ)
+// 4. ÇOK KATMANLI YAŞ & KRONOLOJİ TESPİT MOTORU (LİSE / ÜNİVERSİTE / E-POSTA)
 // ============================================================================
-const CURRENT_YEAR = 2026;
-
 export function detectAgeFromCV(rawText: string): {
   age: number | null;
   method: CandidateCV["ageMethod"];
@@ -406,19 +405,22 @@ export function detectAgeFromCV(rawText: string): {
   evidence: string;
 } {
   const normText = normalizeTr(rawText);
+  // CV içindeki en güncel referans yılını bul (yoksa 2025/2026 baz al)
+  const yearsInText = (normText.match(/\b(202[0-6])\b/g) || []).map((y) => parseInt(y, 10));
+  const refYear = yearsInText.length > 0 ? Math.max(2025, ...yearsInText) : 2025;
 
-  // KATMAN 1: Doğrudan Doğum Tarihi (Örn: Doğum Tarihi: 14.05.1998 veya D.Tarihi: 1999)
+  // KATMAN 1: Doğrudan Doğum Tarihi (Örn: Doğum Tarihi: 14.05.1998, Born: 2002)
   const birthYearExplicit = normText.match(
-    /(?:doğum\s*(?:tarihi|yılı)|d\.\s*tarihi|born|birth\s*date)\s*[:\-]?\s*(?:\d{1,2}[.\/-]\d{1,2}[.\/-])?(19[6-9]\d|200\d)/i
+    /(?:doğum\s*(?:tarihi|yılı)|d\.\s*tarihi|date\s*of\s*birth|born|birth\s*date)\s*[:\-]?\s*(?:\d{1,2}[.\/-]\d{1,2}[.\/-])?(19[6-9]\d|200\d)/i
   );
   if (birthYearExplicit && birthYearExplicit[1]) {
     const by = parseInt(birthYearExplicit[1], 10);
-    const age = CURRENT_YEAR - by;
+    const age = refYear - by;
     return {
       age,
       method: "Doğrudan Doğum Tarihi",
       confidence: 100,
-      evidence: `CV'de açık doğum yılı (${by}) belirtilmiş → ${CURRENT_YEAR} itibarıyla ${age} yaşında.`,
+      evidence: `CV'de açık doğum yılı (${by}) belirtilmiş → ${age} yaşında.`,
     };
   }
 
@@ -426,7 +428,7 @@ export function detectAgeFromCV(rawText: string): {
   const birthYearProse = normText.match(/\b(19[6-9]\d|200[0-8])\s*doğumlu/i);
   if (birthYearProse && birthYearProse[1]) {
     const by = parseInt(birthYearProse[1], 10);
-    const age = CURRENT_YEAR - by;
+    const age = refYear - by;
     return {
       age,
       method: "Doğrudan Doğum Tarihi",
@@ -435,11 +437,11 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // KATMAN 2: Doğrudan Yaş Beyanı (Örn: Yaş: 27 veya 28 yaşındayım)
-  const explicitAge = normText.match(/(?:yaş\s*[:\-]\s*(\d{2}))|(?:(\d{2})\s*yaşında)/i);
+  // KATMAN 2: Doğrudan Yaş Beyanı (Örn: Yaş: 27, Age: 22 veya 22 yaşındayım)
+  const explicitAge = normText.match(/(?:yaş|age)\s*[:\-]\s*(\d{2})\b|(\d{2})\s*yaşında/i);
   if (explicitAge) {
     const ageVal = parseInt(explicitAge[1] || explicitAge[2], 10);
-    if (ageVal >= 18 && ageVal <= 65) {
+    if (ageVal >= 17 && ageVal <= 65) {
       return {
         age: ageVal,
         method: "Doğrudan Yaş Beyanı",
@@ -449,43 +451,178 @@ export function detectAgeFromCV(rawText: string): {
     }
   }
 
-  // KATMAN 3: Eğitim Kronolojisinden Yaş Tahmini (Üniversite Lisans Başlangıç Yılından +18 Yaş)
-  const uniRangeMatch = normText.match(
-    /(?:lisans|üniversitesi|mühendisliği|fakültesi|bölümü).*?(19[8-9]\d|20[0-2]\d)\s*[\-–—]\s*(19[8-9]\d|20[0-2]\d|devam)/i
-  ) || normText.match(/(19[8-9]\d|20[0-2]\d)\s*[\-–—]\s*(19[8-9]\d|20[0-2]\d)\s*(?:lisans|üniversite|mühendislik|b\.sc)/i);
+  // YARDIMCI SİNYAL A: E-posta adresinde doğum yılı var mı? (Örn: beraterdem2002@gmail.com)
+  let emailBirthYear: number | null = null;
+  const emailYearMatch = normText.match(/[a-zçğıöşü._\-]+(19[7-9]\d|200[0-7])@[a-z0-9.\-]+/i);
+  if (emailYearMatch && emailYearMatch[1]) {
+    emailBirthYear = parseInt(emailYearMatch[1], 10);
+  }
 
-  if (uniRangeMatch && uniRangeMatch[1]) {
-    const startYear = parseInt(uniRangeMatch[1], 10);
-    const estimatedBirthYear = startYear - 18;
-    const estimatedAge = CURRENT_YEAR - estimatedBirthYear;
-    if (estimatedAge >= 20 && estimatedAge <= 60) {
+  // YARDIMCI SİNYAL B: Sınıf bilgisi var mı? (Örn: "3rd Year", "3. Sınıf", "4th Year")
+  let currentUniYearLevel: number | null = null;
+  const yearLevelMatch = normText.match(/\b([1-4])(?:\.\s*sınıf|st\s*year|nd\s*year|rd\s*year|th\s*year)\b/i);
+  if (yearLevelMatch && yearLevelMatch[1]) {
+    currentUniYearLevel = parseInt(yearLevelMatch[1], 10);
+  }
+
+  // YARDIMCI SİNYAL C: Lise / Kolej Mezuniyet Yılı (Örn: "Mod Eryaman College ... Graduated in 2021" veya "Anadolu Lisesi 2021")
+  let hsGradYear: number | null = null;
+  const hsMatch =
+    normText.match(
+      /(?:lise|lisesi|kolej|koleji|college|high\s*school)[\s\S]{0,90}?(?:graduated\s*in|mezuniyet|mezun|\-|\–|->)?\s*\b(19[8-9]\d|20[0-2]\d)\b/i
+    ) ||
+    normText.match(
+      /\b(19[8-9]\d|20[0-2]\d)\b[\s\S]{0,50}?(?:lise|lisesi|kolej|koleji|college|high\s*school)/i
+    );
+  if (hsMatch && hsMatch[1]) {
+    hsGradYear = parseInt(hsMatch[1], 10);
+  }
+
+  // YARDIMCI SİNYAL D: Üniversite Giriş Yılı (Tarih aralığından veya Öğrenci Numarasından!)
+  let uniStartYear: number | null = null;
+  let uniEndYear: number | null = null;
+  const uniSectionMatch =
+    normText.match(
+      /(?:üniversite|university|fakülte|faculty|b\.sc|mühendislik|engineering|lisans)[\s\S]{0,120}?\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)/i
+    ) ||
+    normText.match(
+      /\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)[\s\S]{0,100}?(?:üniversite|university|b\.sc|mühendislik|engineering|lisans)/i
+    );
+
+  if (uniSectionMatch && uniSectionMatch[1]) {
+    uniStartYear = parseInt(uniSectionMatch[1], 10);
+    const endRaw = uniSectionMatch[2];
+    if (/^\d{4}$/.test(endRaw)) {
+      uniEndYear = parseInt(endRaw, 10);
+    }
+  }
+
+  // Öğrenci Numarası (Student ID: 220201052 -> ilk iki hane '22' = 2022 girişli)
+  if (!uniStartYear) {
+    const studentIdMatch = normText.match(/(?:student\s*id|öğrenci\s*no)\s*[:\-]?\s*(2[0-5])\d{5,9}/i);
+    if (studentIdMatch && studentIdMatch[1]) {
+      uniStartYear = 2000 + parseInt(studentIdMatch[1], 10);
+    }
+  }
+
+  // KATMAN 3: Lise Mezuniyet Yılı (18-19 yaş) + Üniversite / Sınıf Kronolojisi Birleşimi
+  if (hsGradYear) {
+    // Liseden mezun olduğunda 18-19 yaşındadır.
+    // Eğer aktif üniversite sınıfı ("3rd year" / "3. sınıf") biliniyorsa:
+    let estimatedAge: number;
+    const evidenceParts: string[] = [
+      `${hsGradYear} Lise/Kolej mezuniyetinde 18–19 yaşında olduğu baz alındı`,
+    ];
+
+    if (currentUniYearLevel !== null) {
+      // Liseden mezun olduktan sonra üniversiteye geçiş + sınıf yılı
+      const gapBeforeUni = uniStartYear && uniStartYear > hsGradYear ? uniStartYear - hsGradYear : 0;
+      estimatedAge = 18 + gapBeforeUni + currentUniYearLevel;
+      evidenceParts.push(
+        `${uniStartYear ? `${uniStartYear} üniversite girişi ve ` : ""}${currentUniYearLevel}. sınıf öğrencisi olmasıyla +${gapBeforeUni + currentUniYearLevel} yıl eklendi (~${estimatedAge - 1}–${estimatedAge + 1} yaş)`
+      );
+    } else if (uniEndYear && uniEndYear > hsGradYear) {
+      const yearsAfterHs = Math.max(refYear - hsGradYear, uniEndYear - hsGradYear);
+      estimatedAge = 18 + yearsAfterHs;
+      evidenceParts.push(`mezuniyet sonrası geçen ${yearsAfterHs} yıl eklendi`);
+    } else {
+      const yearsPassed = Math.max(1, refYear - hsGradYear);
+      estimatedAge = 18 + yearsPassed;
+      evidenceParts.push(`üzerinden geçen ${yearsPassed} yıl eklendi (~${estimatedAge} yaş)`);
+    }
+
+    if (emailBirthYear && Math.abs(refYear - emailBirthYear - estimatedAge) <= 2) {
+      estimatedAge = refYear - emailBirthYear;
+      evidenceParts.push(`e-posta adresindeki '${emailBirthYear}' doğum yılıyla doğrulandı`);
+    }
+
+    return {
+      age: estimatedAge,
+      method: "Eğitim Kronolojisi Tahmini",
+      confidence: 95,
+      evidence: `Yaş açık yazmıyor; ${evidenceParts.join(", ")} → ~${estimatedAge} yaşında.`,
+    };
+  }
+
+  // KATMAN 4: Üniversite Giriş Yılı ve/veya Sınıf Bilgisi
+  if (uniStartYear) {
+    let estimatedAge = refYear - (uniStartYear - 18);
+    if (currentUniYearLevel !== null) {
+      estimatedAge = 18 + currentUniYearLevel + (uniStartYear < refYear - currentUniYearLevel ? 1 : 0);
+    }
+    if (emailBirthYear && Math.abs(refYear - emailBirthYear - estimatedAge) <= 2) {
+      estimatedAge = refYear - emailBirthYear;
+    }
+    if (estimatedAge >= 18 && estimatedAge <= 60) {
       return {
         age: estimatedAge,
         method: "Eğitim Kronolojisi Tahmini",
         confidence: 92,
-        evidence: `Doğum tarihi yazmıyor; ${startYear} lisans giriş yılından (18 yaş baz alınarak) ~${estimatedAge} yaş hesaplandı.`,
+        evidence: `Doğum tarihi yazmıyor; ${uniStartYear} üniversite giriş yılı${
+          currentUniYearLevel ? ` (${currentUniYearLevel}. sınıf)` : ""
+        }${emailBirthYear ? ` ve e-postadaki ${emailBirthYear} yılı` : ""} üzerinden ~${estimatedAge} yaş hesaplandı.`,
       };
     }
   }
 
-  // Alternatif: "Mezuniyet: 2022" -> mezuniyet yaşında ortalama 22.5
-  const gradMatch = normText.match(/(?:mezuniyet|mezun)\s*[:\-]?\s*(19[8-9]\d|20[0-2]\d)/i);
-  if (gradMatch && gradMatch[1]) {
-    const gradYear = parseInt(gradMatch[1], 10);
-    const estimatedAge = CURRENT_YEAR - (gradYear - 22);
+  // Sadece Sınıf Bilgisi varsa ("3rd Year Computer Engineering Student")
+  if (currentUniYearLevel !== null) {
+    const estimatedAge = 18 + currentUniYearLevel;
     return {
       age: estimatedAge,
       method: "Eğitim Kronolojisi Tahmini",
       confidence: 88,
-      evidence: `Doğum tarihi yok; ${gradYear} üniversite mezuniyet yılından (~22 yaş mezuniyet) ~${estimatedAge} yaş tahmin edildi.`,
+      evidence: `Üniversite ${currentUniYearLevel}. sınıf öğrencisi olmasından (18 yaş giriş + ${currentUniYearLevel} yıl) ~${estimatedAge}–${estimatedAge + 1} yaş tahmin edildi.`,
     };
+  }
+
+  // Sadece Mezuniyet Yılı varsa ("Graduated in 2022" / "Mezuniyet: 2022")
+  const gradMatch = normText.match(/(?:mezuniyet|mezun|graduated\s*in)\s*[:\-]?\s*(19[8-9]\d|20[0-2]\d)/i);
+  if (gradMatch && gradMatch[1]) {
+    const gradYear = parseInt(gradMatch[1], 10);
+    const estimatedAge = refYear - (gradYear - 22);
+    return {
+      age: estimatedAge,
+      method: "Eğitim Kronolojisi Tahmini",
+      confidence: 88,
+      evidence: `Doğum tarihi yok; ${gradYear} mezuniyet yılından ~${estimatedAge} yaş tahmin edildi.`,
+    };
+  }
+
+  // KATMAN 5: E-posta Adresindeki Doğum Yılı (Örn: adsoyad2002@gmail.com)
+  if (emailBirthYear) {
+    const estimatedAge = refYear - emailBirthYear;
+    return {
+      age: estimatedAge,
+      method: "Eğitim Kronolojisi Tahmini",
+      confidence: 85,
+      evidence: `E-posta adresindeki '${emailBirthYear}' doğum yılı bilgisinden ~${estimatedAge} yaş hesaplandı.`,
+    };
+  }
+
+  // KATMAN 6: Genel Eğitim Bölümü Yıl Taraması (Herhangi bir lise/üniversite/mezuniyet yılı varsa)
+  const eduBlockMatch = normText.match(
+    /(?:eğitim|education|lise|kolej|college|school|üniversite|university|mezun|graduated|lisans|önlisans)[\s\S]{0,250}?\b(19[8-9]\d|20[0-2]\d)\b/i
+  );
+  if (eduBlockMatch && eduBlockMatch[1]) {
+    const foundYear = parseInt(eduBlockMatch[1], 10);
+    const yearsPassed = Math.max(0, refYear - foundYear);
+    const estimatedAge = 18 + yearsPassed;
+    if (estimatedAge >= 18 && estimatedAge <= 60) {
+      return {
+        age: estimatedAge,
+        method: "Eğitim Kronolojisi Tahmini",
+        confidence: 84,
+        evidence: `Eğitim geçmişindeki ${foundYear} tarihinde 18–19 yaşında olduğu ve üzerinden ${yearsPassed} yıl geçtiği hesaplanarak ~${estimatedAge} yaş tahmin edildi.`,
+      };
+    }
   }
 
   return {
     age: null,
     method: "Bilinmiyor",
     confidence: 0,
-    evidence: "Doğum tarihi veya eğitim yılı kronolojisi tespit edilemedi.",
+    evidence: "Doğum tarihi, lise/üniversite mezuniyet yılı veya sınıf kronolojisi tespit edilemedi.",
   };
 }
 
@@ -533,8 +670,8 @@ export function evaluateSkillInCV(skillRaw: string, rawText: string): SkillAsses
   let hasActionVerb = false;
   let isSurfaceOnly = false;
 
-  const actionVerbs = /(?:geliştirdim|geliştirilmesi|tasarladım|mimari|projesinde|aktif olarak|yüksek performanslı|üretim|yazdım|entegrasyon|optimizasyon|kullandım|yönettim|uyguladım|sistem|modül|backend|servis)/i;
-  const surfaceNegative = /(?:başlangıç seviyesi|temel eğitim|kursuna katıldım|giriş dersi|aşinalık|öğreniyorum)/i;
+  const actionVerbs = /(?:geliştirdim|geliştirilmesi|tasarladım|mimari|projesinde|aktif olarak|yüksek performanslı|üretim|yazdım|entegrasyon|optimizasyon|kullandım|yönettim|uyguladım|sistem|modül|backend|servis|developed|designed|architected|implemented|built)/i;
+  const surfaceNegative = /(?:başlangıç seviyesi|temel eğitim|kursuna katıldım|giriş dersi|aşinalık|öğreniyorum|\bbasic\b|\bbeginner\b|\belementary\b)/i;
 
   for (const sen of sentences) {
     const normSen = normalizeTr(sen);
@@ -865,9 +1002,9 @@ export function extractCandidateMetadataFromText(
     fullName = "Yeni Aday";
   }
 
-  // 2. ÜNİVERSİTE TESPİTİ
+  // 2. ÜNİVERSİTE TESPİTİ (Türkçe & İngilizce)
   let university = "Belirtilmemiş";
-  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,35}\s+Üniversitesi|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bBoğaziçi Üniversitesi\b|\bBilkent Üniversitesi\b|\bHacettepe Üniversitesi\b|\bEge Üniversitesi\b|\bMarmara Üniversitesi\b)/i;
+  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}){0,3}\s+(?:Üniversitesi|University)|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bMETU\b)/i;
   const uniMatch = rawText.match(uniRegex);
   if (uniMatch && uniMatch[1]) {
     university = uniMatch[1].replace(/\s+/g, " ").trim();
