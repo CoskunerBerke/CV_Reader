@@ -12,14 +12,12 @@ import {
   INITIAL_CANDIDATES,
   INITIAL_COMPANIES,
   buildCandidateFromRaw,
-  generateBulkSimulationCVs,
 } from "@/lib/mockGenerator";
 import {
   Check,
   X,
   Upload,
   Search,
-  Database,
   Building2,
   Sparkles,
   FileText,
@@ -27,6 +25,7 @@ import {
   AlertCircle,
   Loader2,
   FileUp,
+  Trash2,
 } from "lucide-react";
 
 export default function CVReaderApp() {
@@ -34,13 +33,12 @@ export default function CVReaderApp() {
   const [companies, setCompanies] = useState<CompanyProfile[]>(INITIAL_COMPANIES);
   const [activeCompanyId, setActiveCompanyId] = useState<string>(INITIAL_COMPANIES[0].id);
 
-  // CV Havuzu
+  // CV Havuzu (Tamamen boş başlar — sadece kullanıcının yüklediği CV'ler yer alır)
   const [candidates, setCandidates] = useState<CandidateCV[]>(INITIAL_CANDIDATES);
-  const [is1000Mode, setIs1000Mode] = useState<boolean>(false);
 
   // Arayüz durumları
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>("cv-001");
-  const [showAllCandidates, setShowAllCandidates] = useState<boolean>(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
+  const [showAllCandidates, setShowAllCandidates] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [newSkillInput, setNewSkillInput] = useState<string>("");
 
@@ -52,7 +50,7 @@ export default function CVReaderApp() {
   const [uploadName, setUploadName] = useState<string>("");
   const [uploadUni, setUploadUni] = useState<string>("");
   const [uploadCity, setUploadCity] = useState<string>("İstanbul");
-  const [uploadExp, setUploadExp] = useState<number>(3);
+  const [uploadExp, setUploadExp] = useState<number>(2);
   const [uploadRawText, setUploadRawText] = useState<string>("");
   const [isParsingPdf, setIsParsingPdf] = useState<boolean>(false);
   const [pdfParseStatus, setPdfParseStatus] = useState<string>("");
@@ -64,10 +62,10 @@ export default function CVReaderApp() {
 
   // Yeni Şirket oluşturma state
   const [newCompName, setNewCompName] = useState<string>("");
-  const [newCompGender, setNewCompGender] = useState<"Kadın" | "Erkek" | "Farketmez">("Kadın");
-  const [newCompMinAge, setNewCompMinAge] = useState<number>(22);
-  const [newCompMaxAge, setNewCompMaxAge] = useState<number>(32);
-  const [newCompSkills, setNewCompSkills] = useState<string>("C++, Java");
+  const [newCompGender, setNewCompGender] = useState<"Kadın" | "Erkek" | "Farketmez">("Farketmez");
+  const [newCompMinAge, setNewCompMinAge] = useState<number>(18);
+  const [newCompMaxAge, setNewCompMaxAge] = useState<number>(45);
+  const [newCompSkills, setNewCompSkills] = useState<string>("");
 
   const activeCompany = useMemo(
     () => companies.find((c) => c.id === activeCompanyId) || companies[0],
@@ -114,23 +112,13 @@ export default function CVReaderApp() {
     );
   }, [evaluatedList, displayedEvaluations, selectedCandidateId]);
 
-  // 1.000 CV Simülasyonu Aç/Kapat
-  const handleToggle1000Pool = () => {
-    if (!is1000Mode) {
-      setCandidates(generateBulkSimulationCVs(1000));
-      setIs1000Mode(true);
-    } else {
-      setCandidates(INITIAL_CANDIDATES);
-      setIs1000Mode(false);
-    }
-  };
-
   // Doğal dil cümlesinden kriterleri otomatik uygula
   const handleApplyPrompt = () => {
     const parsed = parseNaturalLanguageCriteria(activeCompany.naturalLanguagePrompt);
     updateActiveCompany((prev) => ({
       ...prev,
       targetGender: parsed.gender ?? prev.targetGender,
+      strictGender: parsed.gender ? parsed.gender !== "Farketmez" : prev.strictGender,
       minAge: parsed.minAge ?? prev.minAge,
       maxAge: parsed.maxAge ?? prev.maxAge,
       requiredSkills: parsed.skills.length > 0 ? parsed.skills : prev.requiredSkills,
@@ -184,13 +172,18 @@ export default function CVReaderApp() {
     });
   };
 
-  // GERÇEK PDF / DOCX / TXT DOSYA OKUMA (Tekli veya Çoklu PDF Destekli)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Tek bir CV'yi sil
+  const handleDeleteCandidate = (id: string) => {
+    setCandidates((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // DOĞRUDAN HIZLI PDF / DOCX YÜKLEME (Ana ekrandan veya modaldan seçilen dosyaları anında ekler)
+  const handleDirectFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
     setIsParsingPdf(true);
-    setPdfParseStatus("PDF / Word dosyası okunuyor...");
+    setPdfParseStatus("PDF / Word dosyaları okunuyor...");
 
     try {
       const formData = new FormData();
@@ -210,58 +203,88 @@ export default function CVReaderApp() {
         return;
       }
 
-      // Eğer birden fazla PDF seçildiyse hepsini doğrudan havuza ekle!
-      if (data.files.length > 1) {
-        const addedCVs: CandidateCV[] = data.files.map(
-          (
-            f: {
-              fileName: string;
-              rawText: string;
-              fullName: string;
-              university: string;
-              city: string;
-              experienceYears: number;
-            },
-            idx: number
-          ) =>
-            buildCandidateFromRaw(
-              `cv-pdf-${Date.now()}-${idx}`,
-              f.fullName,
-              f.rawText,
-              f.experienceYears,
-              "Lisans",
-              f.university,
-              f.city,
-              activeCompany.requiredSkills,
-              `PDF (${f.fileName})`
-            )
-        );
+      const addedCVs: CandidateCV[] = data.files.map(
+        (
+          f: {
+            fileName: string;
+            rawText: string;
+            fullName: string;
+            university: string;
+            city: string;
+            experienceYears: number;
+          },
+          idx: number
+        ) =>
+          buildCandidateFromRaw(
+            `cv-${Date.now()}-${idx}`,
+            f.fullName,
+            f.rawText,
+            f.experienceYears,
+            "Lisans",
+            f.university,
+            f.city,
+            activeCompany.requiredSkills,
+            f.fileName
+          )
+      );
 
-        setCandidates((prev) => [...addedCVs, ...prev]);
-        setSelectedCandidateId(addedCVs[0].id);
-        setPdfParseStatus(`${addedCVs.length} adet PDF CV başarıyla eklendi!`);
-        setTimeout(() => {
-          setIsUploadModalOpen(false);
-          setPdfParseStatus("");
-        }, 800);
-      } else {
-        // Tek PDF seçildiyse tüm alanları otomatik doldur
-        const first = data.files[0];
-        setUploadName(first.fullName);
-        setUploadUni(first.university);
-        setUploadCity(first.city);
-        setUploadExp(first.experienceYears);
-        setUploadRawText(first.rawText);
-        setPdfParseStatus(`✓ "${first.fileName}" başarıyla okundu ve alanlar otomatik dolduruldu.`);
-      }
+      setCandidates((prev) => [...addedCVs, ...prev]);
+      setSelectedCandidateId(addedCVs[0].id);
+      setPdfParseStatus(`✓ ${addedCVs.length} adet CV başarıyla yüklendi ve analiz edildi.`);
+      setIsUploadModalOpen(false);
     } catch {
       setPdfParseStatus("Dosya okunurken bir hata oluştu.");
+    } finally {
+      setIsParsingPdf(false);
+      e.target.value = "";
+    }
+  };
+
+  // Modal içinde tekli PDF seçildiğinde alanları doldurma veya doğrudan ekleme
+  const handleModalFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    // Birden fazla dosya seçildiyse doğrudan ekle
+    if (fileList.length > 1) {
+      await handleDirectFilesUpload(e);
+      return;
+    }
+
+    setIsParsingPdf(true);
+    setPdfParseStatus("PDF / Word dosyası okunuyor...");
+
+    try {
+      const formData = new FormData();
+      formData.append("files", fileList[0]);
+
+      const res = await fetch("/api/parse-cv", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.files || data.files.length === 0) {
+        setPdfParseStatus(data.error || "Dosya okunamadı.");
+        setIsParsingPdf(false);
+        return;
+      }
+
+      const first = data.files[0];
+      setUploadName(first.fullName);
+      setUploadUni(first.university);
+      setUploadCity(first.city);
+      setUploadExp(first.experienceYears);
+      setUploadRawText(first.rawText);
+      setPdfParseStatus(`✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`);
+    } catch {
+      setPdfParseStatus("Dosya okunurken hata oluştu.");
     } finally {
       setIsParsingPdf(false);
     }
   };
 
-  // Yeni CV ekle
+  // Modal üzerinden CV ekle
   const handleAddCV = (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadName.trim() || !uploadRawText.trim()) return;
@@ -275,12 +298,13 @@ export default function CVReaderApp() {
       uploadUni || "Belirtilmemiş",
       uploadCity || "İstanbul",
       activeCompany.requiredSkills,
-      "Yüklenen PDF/CV"
+      "Yüklenen CV"
     );
     setCandidates((prev) => [newCV, ...prev]);
     setSelectedCandidateId(newId);
     setIsUploadModalOpen(false);
     setUploadName("");
+    setUploadUni("");
     setUploadRawText("");
     setPdfParseStatus("");
   };
@@ -308,9 +332,9 @@ export default function CVReaderApp() {
       } else {
         setGeminiResults((prev) => ({
           ...prev,
-          [cv.id]: `Hibrit Analiz Doğrulandı: Aday ${cv.detectedGender} (%${cv.genderConfidence}), ${
-            cv.detectedAge ? `${cv.detectedAge} yaşında` : "yaş kronolojisi incelendi"
-          }. Aranan ${activeCompany.requiredSkills.join(" & ")} kriterleri CV metnindeki projelerle karşılaştırıldı.`,
+          [cv.id]: `Analiz Özeti: Aday ${cv.detectedGender} (%${cv.genderConfidence}), ${
+            cv.detectedAge ? `${cv.detectedAge} yaşında` : "yaş bilgisi incelendi"
+          }.`,
         }));
       }
     } catch {
@@ -335,17 +359,17 @@ export default function CVReaderApp() {
       name: newCompName.trim(),
       sector: "Kurumsal",
       roleTitle: "Genel Başvuru",
-      naturalLanguagePrompt: `${newCompGender} olsun, ${newCompMinAge}-${newCompMaxAge} yaş arası, ${skillsArr.join(", ")} bilsin.`,
+      naturalLanguagePrompt: "",
       targetGender: newCompGender,
       minAge: newCompMinAge,
       maxAge: newCompMaxAge,
       strictGender: newCompGender !== "Farketmez",
       strictAge: true,
-      requiredSkills: skillsArr.length > 0 ? skillsArr : ["C++"],
+      requiredSkills: skillsArr,
       preferredSkills: [],
-      minExperienceYears: 1,
+      minExperienceYears: 0,
       learnedKeywordWeights: {},
-      learnedUniversityBonus: true,
+      learnedUniversityBonus: false,
       feedbackCount: 0,
       approvedCandidateIds: [],
       rejectedCandidateIds: [],
@@ -355,6 +379,7 @@ export default function CVReaderApp() {
     setActiveCompanyId(id);
     setIsNewCompanyModalOpen(false);
     setNewCompName("");
+    setNewCompSkills("");
   };
 
   return (
@@ -391,25 +416,25 @@ export default function CVReaderApp() {
             <button
               onClick={() => setIsNewCompanyModalOpen(true)}
               className="px-2.5 py-1.5 border border-zinc-200 rounded-md hover:border-zinc-900 text-xs font-medium text-zinc-700 whitespace-nowrap shrink-0 cursor-pointer"
-              title="Yeni Şirket Ekle"
             >
               + Yeni Şirket
             </button>
           </div>
 
-          {/* Sağ: 1000 CV Test & PDF CV Yükle */}
+          {/* Sağ: PDF CV Yükle */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleToggle1000Pool}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                is1000Mode
-                  ? "bg-zinc-900 text-white border-zinc-900"
-                  : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-900"
-              }`}
-            >
-              <Database className="w-3.5 h-3.5" />
-              {is1000Mode ? "1.000 CV Aktif (Sıfırla)" : "1.000 CV Test Et"}
-            </button>
+            {candidates.length > 0 && (
+              <button
+                onClick={() => {
+                  setCandidates([]);
+                  setSelectedCandidateId("");
+                }}
+                className="px-3 py-1.5 rounded-md border border-zinc-200 hover:border-red-600 hover:text-red-600 text-zinc-600 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Tümünü Temizle
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -588,317 +613,364 @@ export default function CVReaderApp() {
         </section>
 
         {/* =====================================================================
-            3. SONUÇLAR: SOLDA ADAY LİSTESİ, SAĞDA SEÇİLİ ADAY DETAYI
+            3. SONUÇLAR VEYA BOŞ DURUMDA DOĞRUDAN PDF YÜKLEME EKRANI
            ===================================================================== */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* SOL: ADAY LİSTESİ (7 Sütun) */}
-          <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
-            {/* Liste Başlığı */}
-            <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-sm text-zinc-950">
-                  Uygun Adaylar ({passingCount})
-                </h2>
-                <span className="text-xs text-zinc-400">
-                  / Toplam {candidates.length} CV tarandı
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={showAllCandidates}
-                    onChange={(e) => setShowAllCandidates(e.target.checked)}
-                    className="accent-zinc-900 rounded"
-                  />
-                  <span>Elenenleri de göster</span>
-                </label>
-
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Aday ara..."
-                    className="pl-8 pr-2.5 py-1 border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-900 w-36"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Aday Kartları */}
-            <div className="divide-y divide-zinc-100 max-h-[620px] overflow-y-auto">
-              {displayedEvaluations.length === 0 ? (
-                <div className="p-8 text-center text-sm text-zinc-500">
-                  Aradığınız kriterlere tam uyan aday bulunamadı. Filtreleri esnetebilir veya
-                  &ldquo;Elenenleri de göster&rdquo; seçeneğini açabilirsiniz.
+        {candidates.length === 0 ? (
+          <section className="bg-white border border-zinc-200 rounded-lg p-12 text-center shadow-xs">
+            <label className="max-w-md mx-auto block border-2 border-dashed border-zinc-300 hover:border-teal-600 rounded-xl p-8 cursor-pointer transition-colors bg-zinc-50/50 hover:bg-teal-50/20">
+              {isParsingPdf ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+                  <span className="text-sm font-semibold text-zinc-900">
+                    CV dosyaları okunuyor ve analiz ediliyor...
+                  </span>
                 </div>
               ) : (
-                displayedEvaluations.slice(0, 80).map((item) => {
-                  const isSelected = selectedEvaluation?.cv.id === item.cv.id;
-                  const isApproved = activeCompany.approvedCandidateIds.includes(item.cv.id);
-                  const isRejected = activeCompany.rejectedCandidateIds.includes(item.cv.id);
-
-                  return (
-                    <div
-                      key={item.cv.id}
-                      onClick={() => setSelectedCandidateId(item.cv.id)}
-                      className={`p-4 transition-colors cursor-pointer flex items-center justify-between gap-4 ${
-                        isSelected
-                          ? "bg-zinc-900 text-white"
-                          : item.passesHardFilters
-                          ? "bg-white hover:bg-zinc-50"
-                          : "bg-zinc-50/70 text-zinc-400 hover:bg-zinc-100"
-                      }`}
-                    >
-                      {/* Sol Bilgi */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm truncate">
-                            {item.cv.fullName}
-                          </span>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              isSelected
-                                ? "bg-zinc-800 text-zinc-200"
-                                : item.cv.detectedGender === "Kadın"
-                                ? "bg-teal-50 text-teal-800"
-                                : "bg-zinc-100 text-zinc-700"
-                            }`}
-                          >
-                            {item.cv.detectedGender}
-                          </span>
-                          <span
-                            className={`text-xs ${
-                              isSelected ? "text-zinc-300" : "text-zinc-500"
-                            }`}
-                          >
-                            • {item.cv.detectedAge ? `${item.cv.detectedAge} Yaş` : "Yaş Belirsiz"}
-                          </span>
-                          <span
-                            className={`text-xs hidden sm:inline ${
-                              isSelected ? "text-zinc-400" : "text-zinc-400"
-                            }`}
-                          >
-                            • {item.cv.experienceYears} Yıl Deneyim
-                          </span>
-                        </div>
-
-                        {/* Yetenek Etiketleri */}
-                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                          {item.skillAssessments.map((sa) => (
-                            <span
-                              key={sa.skill}
-                              className={`text-[11px] px-2 py-0.5 rounded font-medium ${
-                                isSelected
-                                  ? sa.level === "Uzman / Proje Kanıtlı"
-                                    ? "bg-teal-900/60 text-teal-200 border border-teal-700"
-                                    : sa.level === "Yüzeysel / Sadece Listede"
-                                    ? "bg-amber-900/50 text-amber-200"
-                                    : "bg-red-900/40 text-red-200"
-                                  : sa.level === "Uzman / Proje Kanıtlı"
-                                  ? "bg-zinc-100 text-zinc-800"
-                                  : sa.level === "Yüzeysel / Sadece Listede"
-                                  ? "bg-amber-50 text-amber-800"
-                                  : "bg-red-50 text-red-700"
-                              }`}
-                            >
-                              {sa.skill}:{" "}
-                              {sa.level === "Uzman / Proje Kanıtlı"
-                                ? "✓ Biliyor (Projeli)"
-                                : sa.level === "Orta / Uygulamalı"
-                                ? "✓ Orta"
-                                : sa.level === "Yüzeysel / Sadece Listede"
-                                ? "⚠️ Sadece Adı Geçiyor"
-                                : "✕ Yok"}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Sağ: Skor & Uygun/Ele */}
-                      <div
-                        className="flex items-center gap-3 shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="text-right">
-                          <div
-                            className={`text-base font-bold ${
-                              isSelected
-                                ? "text-white"
-                                : item.totalMatchScore >= 80
-                                ? "text-teal-700"
-                                : "text-zinc-700"
-                            }`}
-                          >
-                            %{item.totalMatchScore}
-                          </div>
-                          <div
-                            className={`text-[10px] ${
-                              isSelected ? "text-zinc-400" : "text-zinc-400"
-                            }`}
-                          >
-                            Uyum
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleFeedback(item.cv, "approved")}
-                            title="Uygun (Yapay zeka bu tarz adayları öğrenir)"
-                            className={`p-1.5 rounded border cursor-pointer ${
-                              isApproved
-                                ? "bg-teal-600 text-white border-teal-600"
-                                : isSelected
-                                ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
-                                : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
-                            }`}
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleFeedback(item.cv, "rejected")}
-                            title="Ele"
-                            className={`p-1.5 rounded border cursor-pointer ${
-                              isRejected
-                                ? "bg-red-600 text-white border-red-600"
-                                : isSelected
-                                ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
-                                : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
-                            }`}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                <>
+                  <FileUp className="w-10 h-10 text-teal-600 mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-zinc-950">
+                    İncelemek İstediğiniz PDF veya Word CV&apos;leri Yükleyin
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                    Bilgisayarınızdan tek veya birden fazla <strong>.PDF, .DOCX, .TXT</strong>{" "}
+                    dosyası seçin. Sistem yüklediğiniz CV&apos;lerdeki cinsiyet, yaş ve aradığınız
+                    kelimeleri otomatik analiz edecektir.
+                  </p>
+                  <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
+                    Bilgisayardan PDF / CV Seç
+                  </span>
+                </>
               )}
-            </div>
-          </div>
-
-          {/* SAĞ: SEÇİLİ ADAYIN SADE ÖZETİ VE CV'Sİ (5 Sütun) */}
-          <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-lg p-5 shadow-xs space-y-5">
-            {selectedEvaluation ? (
-              <>
-                {/* Aday Başlığı */}
-                <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-zinc-950">
-                      {selectedEvaluation.cv.fullName}
-                    </h3>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      {selectedEvaluation.cv.university} • {selectedEvaluation.cv.city}
-                    </p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 font-bold text-sm">
-                    %{selectedEvaluation.totalMatchScore} Uyum
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleDirectFilesUpload}
+                className="hidden"
+              />
+            </label>
+          </section>
+        ) : (
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* SOL: ADAY LİSTESİ (7 Sütun) */}
+            <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
+              {/* Liste Başlığı */}
+              <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-sm text-zinc-950">
+                    Yüklenen CV&apos;ler ({candidates.length})
+                  </h2>
+                  <span className="text-xs text-teal-700 font-medium">
+                    • {passingCount} Uygun
                   </span>
                 </div>
 
-                {/* Yapay Zeka Nasıl Anladı? (Çok Sade 3 Satır) */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-zinc-500 uppercase">
-                      Yapay Zeka Tespit Özeti
-                    </span>
-                    <button
-                      onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
-                      disabled={isGeminiLoading}
-                      className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
-                    </button>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showAllCandidates}
+                      onChange={(e) => setShowAllCandidates(e.target.checked)}
+                      className="accent-zinc-900 rounded"
+                    />
+                    <span>Elenenleri de göster</span>
+                  </label>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Aday ara..."
+                      className="pl-8 pr-2.5 py-1 border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-900 w-36"
+                    />
                   </div>
+                </div>
+              </div>
 
-                  {geminiResults[selectedEvaluation.cv.id] && (
-                    <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
-                      <strong>Gemini AI Raporu:</strong> {geminiResults[selectedEvaluation.cv.id]}
-                    </div>
-                  )}
-
-                  {/* Cinsiyet Tespiti */}
-                  <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
-                    <div className="flex items-center justify-between font-semibold text-zinc-900">
-                      <span>Cinsiyet: {selectedEvaluation.cv.detectedGender}</span>
-                      <span className="text-teal-700">
-                        %{selectedEvaluation.cv.genderConfidence} Doğruluk
-                      </span>
-                    </div>
-                    <p className="text-zinc-600">
-                      {selectedEvaluation.cv.genderEvidence
-                        .map((e) => e.signal)
-                        .slice(0, 2)
-                        .join(" + ")}
-                    </p>
+              {/* Aday Kartları */}
+              <div className="divide-y divide-zinc-100 max-h-[620px] overflow-y-auto">
+                {displayedEvaluations.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-500">
+                    Seçili filtrelere uyan aday bulunamadı. &ldquo;Elenenleri de göster&rdquo;
+                    kutucuğunu işaretleyerek yüklediğiniz tüm CV&apos;leri görebilirsiniz.
                   </div>
+                ) : (
+                  displayedEvaluations.map((item) => {
+                    const isSelected = selectedEvaluation?.cv.id === item.cv.id;
+                    const isApproved = activeCompany.approvedCandidateIds.includes(item.cv.id);
+                    const isRejected = activeCompany.rejectedCandidateIds.includes(item.cv.id);
 
-                  {/* Yaş Tespiti */}
-                  <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
-                    <div className="flex items-center justify-between font-semibold text-zinc-900">
-                      <span>
-                        Yaş:{" "}
-                        {selectedEvaluation.cv.detectedAge
-                          ? `${selectedEvaluation.cv.detectedAge} Yaşında`
-                          : "Belirsiz"}
-                      </span>
-                      <span className="text-zinc-500">{selectedEvaluation.cv.ageMethod}</span>
-                    </div>
-                    <p className="text-zinc-600">{selectedEvaluation.cv.ageEvidence}</p>
-                  </div>
+                    return (
+                      <div
+                        key={item.cv.id}
+                        onClick={() => setSelectedCandidateId(item.cv.id)}
+                        className={`p-4 transition-colors cursor-pointer flex items-center justify-between gap-4 ${
+                          isSelected
+                            ? "bg-zinc-900 text-white"
+                            : item.passesHardFilters
+                            ? "bg-white hover:bg-zinc-50"
+                            : "bg-zinc-50/70 text-zinc-400 hover:bg-zinc-100"
+                        }`}
+                      >
+                        {/* Sol Bilgi */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm truncate">
+                              {item.cv.fullName}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                isSelected
+                                  ? "bg-zinc-800 text-zinc-200"
+                                  : item.cv.detectedGender === "Kadın"
+                                  ? "bg-teal-50 text-teal-800"
+                                  : "bg-zinc-100 text-zinc-700"
+                              }`}
+                            >
+                              {item.cv.detectedGender}
+                            </span>
+                            <span
+                              className={`text-xs ${
+                                isSelected ? "text-zinc-300" : "text-zinc-500"
+                              }`}
+                            >
+                              •{" "}
+                              {item.cv.detectedAge
+                                ? `${item.cv.detectedAge} Yaş`
+                                : "Yaş Belirtilmemiş"}
+                            </span>
+                          </div>
 
-                  {/* Yetenek Kanıtları */}
-                  {selectedEvaluation.skillAssessments.map((sa) => (
-                    <div
-                      key={sa.skill}
-                      className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between font-semibold text-zinc-900">
-                        <span className="flex items-center gap-1.5">
-                          {sa.level === "Uzman / Proje Kanıtlı" ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                          ) : (
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                          {/* Yetenek Etiketleri (Sadece kullanıcının aradığı kelimeler) */}
+                          {item.skillAssessments.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                              {item.skillAssessments.map((sa) => (
+                                <span
+                                  key={sa.skill}
+                                  className={`text-[11px] px-2 py-0.5 rounded font-medium ${
+                                    isSelected
+                                      ? sa.level === "Uzman / Proje Kanıtlı"
+                                        ? "bg-teal-900/60 text-teal-200 border border-teal-700"
+                                        : sa.level === "Yüzeysel / Sadece Listede"
+                                        ? "bg-amber-900/50 text-amber-200"
+                                        : "bg-red-900/40 text-red-200"
+                                      : sa.level === "Uzman / Proje Kanıtlı"
+                                      ? "bg-zinc-100 text-zinc-800"
+                                      : sa.level === "Yüzeysel / Sadece Listede"
+                                      ? "bg-amber-50 text-amber-800"
+                                      : "bg-red-50 text-red-700"
+                                  }`}
+                                >
+                                  {sa.skill}:{" "}
+                                  {sa.level === "Uzman / Proje Kanıtlı"
+                                    ? "✓ Biliyor (Projeli)"
+                                    : sa.level === "Orta / Uygulamalı"
+                                    ? "✓ Orta"
+                                    : sa.level === "Yüzeysel / Sadece Listede"
+                                    ? "⚠️ Sadece Adı Geçiyor"
+                                    : "✕ Yok"}
+                                </span>
+                              ))}
+                            </div>
                           )}
-                          {sa.skill}
-                        </span>
-                        <span
-                          className={
-                            sa.level === "Uzman / Proje Kanıtlı"
-                              ? "text-teal-700"
-                              : "text-amber-700"
-                          }
+                        </div>
+
+                        {/* Sağ: Skor & Uygun/Ele/Sil */}
+                        <div
+                          className="flex items-center gap-3 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {sa.level}
+                          <div className="text-right">
+                            <div
+                              className={`text-base font-bold ${
+                                isSelected
+                                  ? "text-white"
+                                  : item.totalMatchScore >= 80
+                                  ? "text-teal-700"
+                                  : "text-zinc-700"
+                              }`}
+                            >
+                              %{item.totalMatchScore}
+                            </div>
+                            <div
+                              className={`text-[10px] ${
+                                isSelected ? "text-zinc-400" : "text-zinc-400"
+                              }`}
+                            >
+                              Uyum
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleFeedback(item.cv, "approved")}
+                              title="Uygun"
+                              className={`p-1.5 rounded border cursor-pointer ${
+                                isApproved
+                                  ? "bg-teal-600 text-white border-teal-600"
+                                  : isSelected
+                                  ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
+                                  : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleFeedback(item.cv, "rejected")}
+                              title="Ele"
+                              className={`p-1.5 rounded border cursor-pointer ${
+                                isRejected
+                                  ? "bg-red-600 text-white border-red-600"
+                                  : isSelected
+                                  ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
+                                  : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
+                              }`}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCandidate(item.cv.id)}
+                              title="CV'yi Kaldır"
+                              className={`p-1.5 rounded border cursor-pointer ${
+                                isSelected
+                                  ? "border-zinc-700 text-zinc-400 hover:text-red-400"
+                                  : "border-zinc-200 text-zinc-400 hover:text-red-600"
+                              }`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* SAĞ: SEÇİLİ ADAYIN SADE ÖZETİ VE CV'Sİ (5 Sütun) */}
+            <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-lg p-5 shadow-xs space-y-5">
+              {selectedEvaluation ? (
+                <>
+                  {/* Aday Başlığı */}
+                  <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-zinc-950">
+                        {selectedEvaluation.cv.fullName}
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {selectedEvaluation.cv.university} • {selectedEvaluation.cv.city} •{" "}
+                        {selectedEvaluation.cv.source}
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 font-bold text-sm">
+                      %{selectedEvaluation.totalMatchScore} Uyum
+                    </span>
+                  </div>
+
+                  {/* Yapay Zeka Tespit Özeti */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase">
+                        Yapay Zeka Tespit Özeti
+                      </span>
+                      <button
+                        onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
+                        disabled={isGeminiLoading}
+                        className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
+                      </button>
+                    </div>
+
+                    {geminiResults[selectedEvaluation.cv.id] && (
+                      <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
+                        <strong>Gemini AI Raporu:</strong> {geminiResults[selectedEvaluation.cv.id]}
+                      </div>
+                    )}
+
+                    {/* Cinsiyet Tespiti */}
+                    <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
+                      <div className="flex items-center justify-between font-semibold text-zinc-900">
+                        <span>Cinsiyet: {selectedEvaluation.cv.detectedGender}</span>
+                        <span className="text-teal-700">
+                          %{selectedEvaluation.cv.genderConfidence} Doğruluk
                         </span>
                       </div>
-                      <p className="text-zinc-600 italic">&ldquo;{sa.evidenceSnippet}&rdquo;</p>
+                      <p className="text-zinc-600">
+                        {selectedEvaluation.cv.genderEvidence
+                          .map((e) => e.signal)
+                          .slice(0, 2)
+                          .join(" + ")}
+                      </p>
                     </div>
-                  ))}
-                </div>
 
-                {/* CV Metni */}
-                <div>
-                  <div className="text-xs font-semibold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    Adayın CV Metni
+                    {/* Yaş Tespiti */}
+                    <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
+                      <div className="flex items-center justify-between font-semibold text-zinc-900">
+                        <span>
+                          Yaş:{" "}
+                          {selectedEvaluation.cv.detectedAge
+                            ? `${selectedEvaluation.cv.detectedAge} Yaşında`
+                            : "Belirsiz"}
+                        </span>
+                        <span className="text-zinc-500">{selectedEvaluation.cv.ageMethod}</span>
+                      </div>
+                      <p className="text-zinc-600">{selectedEvaluation.cv.ageEvidence}</p>
+                    </div>
+
+                    {/* Yetenek Kanıtları */}
+                    {selectedEvaluation.skillAssessments.map((sa) => (
+                      <div
+                        key={sa.skill}
+                        className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between font-semibold text-zinc-900">
+                          <span className="flex items-center gap-1.5">
+                            {sa.level === "Uzman / Proje Kanıtlı" ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                            ) : (
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                            )}
+                            {sa.skill}
+                          </span>
+                          <span
+                            className={
+                              sa.level === "Uzman / Proje Kanıtlı"
+                                ? "text-teal-700"
+                                : "text-amber-700"
+                            }
+                          >
+                            {sa.level}
+                          </span>
+                        </div>
+                        <p className="text-zinc-600 italic">&ldquo;{sa.evidenceSnippet}&rdquo;</p>
+                      </div>
+                    ))}
                   </div>
-                  <pre className="p-3.5 rounded-md bg-zinc-900 text-zinc-200 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                    {selectedEvaluation.cv.rawText}
-                  </pre>
+
+                  {/* CV Metni */}
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      Okunan CV Metni
+                    </div>
+                    <pre className="p-3.5 rounded-md bg-zinc-900 text-zinc-200 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                      {selectedEvaluation.cv.rawText}
+                    </pre>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-zinc-500 py-8 text-center">
+                  Detayları görmek için soldaki listeden bir adaya tıklayın.
                 </div>
-              </>
-            ) : (
-              <div className="text-sm text-zinc-500 py-8 text-center">
-                Detayları görmek için soldaki listeden bir adaya tıklayın.
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* =====================================================================
@@ -913,7 +985,7 @@ export default function CVReaderApp() {
                   PDF / Word CV Yükle
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Tek veya birden fazla PDF (.pdf) ve Word (.docx) CV yükleyebilirsiniz
+                  Tek veya birden fazla PDF (.pdf) ve Word (.docx) CV seçebilirsiniz
                 </p>
               </div>
               <button
@@ -937,7 +1009,7 @@ export default function CVReaderApp() {
                 type="file"
                 multiple
                 accept=".pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={handleFileUpload}
+                onChange={handleModalFileSelect}
                 className="hidden"
               />
             </label>
@@ -945,7 +1017,7 @@ export default function CVReaderApp() {
             {isParsingPdf && (
               <div className="flex items-center gap-2 text-xs text-teal-700 font-medium bg-teal-50 p-2.5 rounded">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>PDF içeriği okunuyor ve analiz ediliyor...</span>
+                <span>PDF içeriği okunuyor...</span>
               </div>
             )}
 
@@ -966,7 +1038,7 @@ export default function CVReaderApp() {
                     required
                     value={uploadName}
                     onChange={(e) => setUploadName(e.target.value)}
-                    placeholder="Örn: Ayşe Yılmaz"
+                    placeholder="PDF seçince otomatik dolar"
                     className="w-full border border-zinc-200 rounded px-3 py-1.5 text-sm"
                   />
                 </div>
@@ -984,69 +1056,23 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">Şehir</label>
-                  <input
-                    type="text"
-                    value={uploadCity}
-                    onChange={(e) => setUploadCity(e.target.value)}
-                    placeholder="İstanbul"
-                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">
-                    Deneyim (Yıl)
-                  </label>
-                  <input
-                    type="number"
-                    value={uploadExp}
-                    onChange={(e) => setUploadExp(Number(e.target.value))}
-                    placeholder="Deneyim Yılı"
-                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs"
-                  />
-                </div>
-              </div>
-
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-zinc-700">
-                    Okunan CV Metni *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUploadName("Ceren İpek Yalçın");
-                      setUploadUni("ODTÜ");
-                      setUploadCity("Ankara");
-                      setUploadExp(4);
-                      setUploadRawText(`AD SOYAD: Ceren İpek Yalçın
-EĞİTİM: ODTÜ - Bilgisayar Mühendisliği Lisans (2018 - 2022)
-DENEYİM (4 Yıl):
-• Savunma A.Ş. — C++ & Java Sistem Mühendisi:
-  Radar yazılımlarını Modern C++ (STL, Boost, CMake) ile geliştirdim.
-  Sunucu servislerini Java ve Spring Boot ile kodladım.
-TOPLULUKLAR: IEEE Women in Engineering (WIE) aktif üyesi.`);
-                    }}
-                    className="text-xs text-teal-600 underline cursor-pointer"
-                  >
-                    Örnek CV Doldur
-                  </button>
-                </div>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
+                  Okunan CV Metni *
+                </label>
                 <textarea
                   rows={5}
                   required
                   value={uploadRawText}
                   onChange={(e) => setUploadRawText(e.target.value)}
-                  placeholder="Yukarıdan PDF seçtiğinizde metin buraya otomatik çıkarılır veya elle yapıştırabilirsiniz..."
+                  placeholder="Yukarıdan PDF seçtiğinizde CV metni buraya otomatik çıkarılır..."
                   className="w-full border border-zinc-200 rounded p-2.5 text-xs font-mono"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] text-zinc-500 mb-1">
-                  Opsiyonel Gemini API Anahtarı (Girilirse Gemini LLM doğrulaması da aktif olur)
+                  Opsiyonel Gemini API Anahtarı
                 </label>
                 <input
                   type="password"
