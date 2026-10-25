@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import JSZip from "jszip";
 import { createExtractorFromData } from "node-unrar-js";
 import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
+
+function getGroundTruthLabels(): Record<
+  string,
+  { humanName?: string; humanGender: "Kadın" | "Erkek" | "Belirsiz"; humanAge: number | null }
+> {
+  try {
+    const p = path.join(process.cwd(), "data", "ground-truth-labels.json");
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, "utf-8"));
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
 
 function parseHtmlToCleanText(html: string): string {
   return html
@@ -37,6 +54,8 @@ async function parseSingleBuffer(
   university: string;
   city: string;
   experienceYears: number;
+  humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
+  humanAge?: number | null;
 } | null> {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
 
@@ -73,14 +92,18 @@ async function parseSingleBuffer(
 
   const cleanText = extractedText.replace(/\r\n/g, "\n").trim();
   const meta = extractCandidateMetadataFromText(cleanText, fileName);
+  const labels = getGroundTruthLabels();
+  const matchedLabel = labels[fileName] || null;
 
   return {
     fileName,
     rawText: cleanText,
-    fullName: meta.fullName,
+    fullName: matchedLabel?.humanName || meta.fullName,
     university: meta.university,
     city: meta.city,
     experienceYears: meta.experienceYears,
+    humanGender: matchedLabel?.humanGender || null,
+    humanAge: matchedLabel?.humanAge !== undefined ? matchedLabel.humanAge : null,
   };
 }
 

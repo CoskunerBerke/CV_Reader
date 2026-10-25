@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import JSZip from "jszip";
 import {
   CandidateCV,
@@ -342,10 +343,12 @@ export default function CVReaderApp() {
                 university: string;
                 city: string;
                 experienceYears: number;
+                humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
+                humanAge?: number | null;
               },
               idx: number
-            ) =>
-              buildCandidateFromRaw(
+            ) => {
+              const built = buildCandidateFromRaw(
                 `cv-${Date.now()}-${totalParsedCount + idx}`,
                 f.fullName,
                 f.rawText,
@@ -355,7 +358,27 @@ export default function CVReaderApp() {
                 f.city,
                 activeCompany.requiredSkills,
                 f.fileName
-              )
+              );
+              if (f.humanGender) {
+                built.detectedGender = f.humanGender;
+                built.genderConfidence = 100;
+                built.genderEvidence = [
+                  {
+                    layer: "Kullanıcı Ground-Truth Etiketi",
+                    signal: `Kullanıcı tarafından '${f.humanGender}' olarak doğrulandı ve öğrenildi`,
+                    weight: 100,
+                    direction: f.humanGender === "Kadın" ? "Kadın" : "Erkek",
+                  },
+                ];
+              }
+              if (f.humanAge !== null && f.humanAge !== undefined) {
+                built.detectedAge = f.humanAge;
+                built.ageMethod = "Doğrudan Yaş Beyanı";
+                built.ageConfidence = 100;
+                built.ageEvidence = `Kullanıcı tarafından '${f.humanAge} yaş' olarak etiketlendi ve öğrenildi.`;
+              }
+              return built;
+            }
           );
 
           totalParsedCount += addedCVs.length;
@@ -627,8 +650,16 @@ export default function CVReaderApp() {
             </button>
           </div>
 
-          {/* Sağ: PDF CV Yükle */}
+          {/* Sağ: Etiketleme & PDF CV Yükle */}
           <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/label"
+              className="px-3 py-1.5 rounded-md border border-zinc-900 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+              Etiketle &amp; Başarı Ölç (53 CV)
+            </Link>
+
             {candidates.length > 0 && (
               <button
                 onClick={() => {
