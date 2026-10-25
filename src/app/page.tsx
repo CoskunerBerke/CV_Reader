@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import JSZip from "jszip";
 import {
   CandidateCV,
   CompanyProfile,
@@ -178,76 +179,215 @@ export default function CVReaderApp() {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // ORTAK DOSYA İŞLEME MOTORU (Tıklama ve Sürükle-Bırak + ZIP + Çoklu PDF Destekli)
+  // Klasör sürükleme (FileSystemEntry) ve çoklu dosya okuma yardımcısı
+  const readEntryRecursively = async (entry: FileSystemEntry): Promise<File[]> => {
+    if (entry.isFile) {
+      const fileEntry = entry as FileSystemFileEntry;
+      return new Promise<File[]>((resolve) => {
+        fileEntry.file(
+          (f) => resolve([f]),
+          () => resolve([])
+        );
+      });
+    } else if (entry.isDirectory) {
+      const dirEntry = entry as FileSystemDirectoryEntry;
+      const reader = dirEntry.createReader();
+      const allEntries: FileSystemEntry[] = [];
+      const readBatch = (): Promise<void> =>
+        new Promise((resolve) => {
+          reader.readEntries(
+            async (entries) => {
+              if (entries.length === 0) {
+                resolve();
+              } else {
+                allEntries.push(...entries);
+                await readBatch();
+                resolve();
+              }
+            },
+            () => resolve()
+          );
+        });
+      await readBatch();
+      const nested = await Promise.all(allEntries.map(readEntryRecursively));
+      return nested.flat();
+    }
+    return [];
+  };
+
+  // Tarayıcıda doğrudan .ZIP arşivini açma (12 MB+ büyük ZIP'lerin Vercel 4.5MB limitine takılmasını %100 önler)
+  const expandClientFiles = async (inputFiles: File[]): Promise<File[]> => {
+    const expanded: File[] = [];
+    const allowedExts = new Set(["pdf", "docx", "doc", "html", "htm", "txt", "md", "rar"]);
+
+    for (const file of inputFiles) {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (ext === "zip") {
+        try {
+          setPdfParseStatus(`"${file.name}" arşivi tarayıcıda açılıyor...`);
+          const buf = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(buf);
+          const entries = Object.values(zip.files).filter((e) => !e.dir);
+          for (const entry of entries) {
+            const baseName = entry.name.split(/[\\/]/).pop() || entry.name;
+            if (!baseName || baseName.startsWith(".")) continue;
+            const lower = baseName.toLowerCase();
+            if (
+              lower.includes("readme") ||
+              lower.includes("sonuclar") ||
+              lower.includes("__macosx")
+            ) {
+              continue;
+            }
+            const entryExt = baseName.split(".").pop()?.toLowerCase() || "";
+            if (!allowedExts.has(entryExt)) continue;
+            const blob = await entry.async("blob");
+            expanded.push(new File([blob], baseName, { type: blob.type || "application/octet-stream" }));
+          }
+        } catch {
+          // Eğer ZIP istemcide açılamazsa sunucuya gönder
+          expanded.push(file);
+        }
+      } else if (allowedExts.has(ext)) {
+        expanded.push(file);
+      }
+    }
+    return expanded;
+  };
+
+  // ORTAK DOSYA İŞLEME MOTORU (Tıklama, Sürükle-Bırak, Klasör, Büyük ZIP ve Çoklu PDF Destekli)
   const processFiles = async (
     fileList: FileList | File[],
     autoAddSingleInModal = true
   ) => {
-    const filesArray = Array.from(fileList);
-    if (filesArray.length === 0) return;
+    const rawArray = Array.from(fileList);
+    if (rawArray.length === 0) {
+      setPdfParseStatus(
+        "⚠️ Dosya algılanamadı. Eğer WinRAR/ZIP penceresinin içinden sürüklediyseniz, lütfen doğrudan .zip dosyasının kendisini veya klasöre çıkartıp dosyaları sürükleyin."
+      );
+      return;
+    }
 
     setIsParsingPdf(true);
-    setPdfParseStatus("Dosyalar okunuyor ve analiz ediliyor...");
+    setPdfParseStatus("Dosyalar hazırlanıyor...");
 
     try {
-      const formData = new FormData();
-      for (const f of filesArray) {
-        formData.append("files", f);
-      }
-
-      const res = await fetch("/api/parse-cv", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.files || data.files.length === 0) {
-        setPdfParseStatus(data.error || "Dosya okunamadı.");
+      const expandedFiles = await expandClientFiles(rawArray);
+      if (expandedFiles.length === 0) {
+        setPdfParseStatus("⚠️ Desteklenen bir CV dosyası (.pdf, .docx, .html, .zip, .rar, .txt) bulunamadı.");
         setIsParsingPdf(false);
         return;
       }
 
-      // Birden fazla CV varsa (veya .zip açıldıysa) ya da doğrudan ekleme isteniyorsa hemen listeye ekle
-      if (data.files.length > 1 || autoAddSingleInModal) {
-        const addedCVs: CandidateCV[] = data.files.map(
-          (
-            f: {
-              fileName: string;
-              rawText: string;
-              fullName: string;
-              university: string;
-              city: string;
-              experienceYears: number;
-            },
-            idx: number
-          ) =>
-            buildCandidateFromRaw(
-              `cv-${Date.now()}-${idx}`,
-              f.fullName,
-              f.rawText,
-              f.experienceYears,
-              "Lisans",
-              f.university,
-              f.city,
-              activeCompany.requiredSkills,
-              f.fileName
-            )
+      // Dosyaları sunucu limitlerine (Vercel 4.5MB) asla takılmaması için küçük paketler (en fazla 3 dosya / ~2.5 MB) halinde gönder
+      const batches: File[][] = [];
+      let currentBatch: File[] = [];
+      let currentBytes = 0;
+      const MAX_FILES_PER_BATCH = 3;
+      const MAX_BYTES_PER_BATCH = 2.5 * 1024 * 1024;
+
+      for (const f of expandedFiles) {
+        if (
+          currentBatch.length >= MAX_FILES_PER_BATCH ||
+          (currentBatch.length > 0 && currentBytes + f.size > MAX_BYTES_PER_BATCH)
+        ) {
+          batches.push(currentBatch);
+          currentBatch = [];
+          currentBytes = 0;
+        }
+        currentBatch.push(f);
+        currentBytes += f.size;
+      }
+      if (currentBatch.length > 0) {
+        batches.push(currentBatch);
+      }
+
+      const isBulkOrAuto = expandedFiles.length > 1 || autoAddSingleInModal;
+      if (isBulkOrAuto) {
+        setIsUploadModalOpen(false);
+      }
+
+      let totalParsedCount = 0;
+      let processedFileCount = 0;
+      let firstAddedId = "";
+
+      for (const batch of batches) {
+        setPdfParseStatus(
+          `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya işlendi...`
         );
 
-        setCandidates((prev) => [...addedCVs, ...prev]);
-        setSelectedCandidateId(addedCVs[0].id);
-        setPdfParseStatus(`✓ ${addedCVs.length} adet CV başarıyla yüklendi ve analiz edildi.`);
-        setIsUploadModalOpen(false);
-      } else {
-        const first = data.files[0];
-        setUploadName(first.fullName);
-        setUploadUni(first.university);
-        setUploadCity(first.city);
-        setUploadExp(first.experienceYears);
-        setUploadRawText(first.rawText);
-        setPdfParseStatus(
-          `✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`
-        );
+        const formData = new FormData();
+        for (const f of batch) {
+          formData.append("files", f);
+        }
+
+        const res = await fetch("/api/parse-cv", {
+          method: "POST",
+          body: formData,
+        });
+
+        processedFileCount += batch.length;
+
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (!data.files || data.files.length === 0) continue;
+
+        if (isBulkOrAuto) {
+          const addedCVs: CandidateCV[] = data.files.map(
+            (
+              f: {
+                fileName: string;
+                rawText: string;
+                fullName: string;
+                university: string;
+                city: string;
+                experienceYears: number;
+              },
+              idx: number
+            ) =>
+              buildCandidateFromRaw(
+                `cv-${Date.now()}-${totalParsedCount + idx}`,
+                f.fullName,
+                f.rawText,
+                f.experienceYears,
+                "Lisans",
+                f.university,
+                f.city,
+                activeCompany.requiredSkills,
+                f.fileName
+              )
+          );
+
+          totalParsedCount += addedCVs.length;
+          if (!firstAddedId && addedCVs[0]) {
+            firstAddedId = addedCVs[0].id;
+            setSelectedCandidateId(firstAddedId);
+          }
+
+          setCandidates((prev) => [...prev, ...addedCVs]);
+          setPdfParseStatus(
+            `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya (${totalParsedCount} CV eklendi)...`
+          );
+        } else {
+          const first = data.files[0];
+          setUploadName(first.fullName);
+          setUploadUni(first.university);
+          setUploadCity(first.city);
+          setUploadExp(first.experienceYears);
+          setUploadRawText(first.rawText);
+          totalParsedCount = 1;
+          setPdfParseStatus(
+            `✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`
+          );
+        }
+      }
+
+      if (isBulkOrAuto) {
+        if (totalParsedCount > 0) {
+          setPdfParseStatus(`✓ Toplam ${totalParsedCount} adet CV başarıyla yüklendi ve analiz edildi.`);
+        } else {
+          setPdfParseStatus("⚠️ Seçilen dosyalardan CV metni çıkarılamadı.");
+        }
       }
     } catch {
       setPdfParseStatus("Dosya okunurken bir hata oluştu.");
@@ -259,27 +399,47 @@ export default function CVReaderApp() {
   // Input üzerinden seçildiğinde
   const handleDirectFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    await processFiles(e.target.files, true);
+    const selected = Array.from(e.target.files);
     e.target.value = "";
+    await processFiles(selected, true);
   };
 
   // Modal içinde dosya seçildiğinde
   const handleModalFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    await processFiles(e.target.files, e.target.files.length > 1);
+    const selected = Array.from(e.target.files);
     e.target.value = "";
+    await processFiles(selected, selected.length > 1);
   };
 
-  // Sürükle ve Bırak (Drag & Drop) Olay Yöneticileri
+  // Tarayıcının sürüklenen dosyayı yeni sekmede açmasını engelle
+  useEffect(() => {
+    const preventBrowserDefault = (ev: DragEvent) => {
+      ev.preventDefault();
+    };
+    window.addEventListener("dragover", preventBrowserDefault);
+    window.addEventListener("drop", preventBrowserDefault);
+    return () => {
+      window.removeEventListener("dragover", preventBrowserDefault);
+      window.removeEventListener("drop", preventBrowserDefault);
+    };
+  }, []);
+
+  // Sürükle ve Bırak (Drag & Drop) Olay Yöneticileri (Klasör + ZIP + Çoklu Dosya Destekli)
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
     if (!isDragging) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Sadece ana kapsayıcıdan çıkıldığında kapat
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDragging(false);
   };
 
@@ -288,8 +448,40 @@ export default function CVReaderApp() {
     e.stopPropagation();
     setIsDragging(false);
 
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-      await processFiles(e.dataTransfer.files, autoAdd);
+    const dt = e.dataTransfer;
+    if (!dt) return;
+
+    // 1. Önce klasör/dosya girişlerini (webkitGetAsEntry) senkron olarak yakala
+    const entries: FileSystemEntry[] = [];
+    if (dt.items && dt.items.length > 0) {
+      for (let i = 0; i < dt.items.length; i++) {
+        const item = dt.items[i];
+        if (item.kind === "file") {
+          const entry = item.webkitGetAsEntry?.();
+          if (entry) entries.push(entry);
+        }
+      }
+    }
+
+    // Yedek olarak standart dt.files listesini de senkron kopyala
+    const fallbackFiles = dt.files ? Array.from(dt.files) : [];
+
+    if (entries.length > 0 && entries.some((en) => en.isDirectory)) {
+      const nestedFiles = await Promise.all(entries.map(readEntryRecursively));
+      const flatFiles = nestedFiles.flat();
+      if (flatFiles.length > 0) {
+        await processFiles(flatFiles, autoAdd);
+        return;
+      }
+    }
+
+    if (fallbackFiles.length > 0) {
+      await processFiles(fallbackFiles, autoAdd);
+    } else if (entries.length > 0) {
+      const nestedFiles = await Promise.all(entries.map(readEntryRecursively));
+      await processFiles(nestedFiles.flat(), autoAdd);
+    } else {
+      await processFiles([], autoAdd);
     }
   };
 
@@ -626,6 +818,50 @@ export default function CVReaderApp() {
           </div>
         </section>
 
+        {/* Tam Ekran Sürükle-Bırak Katmanı (Sayfanın herhangi bir yerine sürüklenince açılır) */}
+        {isDragging && (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDropFiles(e, true)}
+            className="fixed inset-0 z-50 bg-teal-950/40 backdrop-blur-[2px] flex items-center justify-center p-6"
+          >
+            <div className="bg-white border-2 border-dashed border-teal-600 rounded-2xl p-10 max-w-lg w-full text-center shadow-2xl pointer-events-none">
+              <FileUp className="w-12 h-12 text-teal-600 mx-auto mb-3 animate-bounce" />
+              <h3 className="text-lg font-bold text-zinc-950">
+                CV Dosyalarını, Klasörü veya .ZIP / .RAR Arşivini Bırakın
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                Bıraktığınız tüm CV&apos;ler otomatik olarak ayrıştırılıp listeye eklenecektir.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Canlı Yükleme & Analiz Durum Çubuğu */}
+        {(isParsingPdf || pdfParseStatus) && (
+          <div
+            className={`rounded-lg border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium ${
+              pdfParseStatus.startsWith("⚠️")
+                ? "bg-amber-50 border-amber-200 text-amber-900"
+                : "bg-teal-50 border-teal-200 text-teal-900"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {isParsingPdf && <Loader2 className="w-4 h-4 text-teal-600 animate-spin shrink-0" />}
+              <span>{pdfParseStatus || "Dosyalar okunuyor..."}</span>
+            </div>
+            {!isParsingPdf && pdfParseStatus && (
+              <button
+                onClick={() => setPdfParseStatus("")}
+                className="text-zinc-400 hover:text-zinc-700 text-sm font-bold px-1 cursor-pointer"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
+
         {/* =====================================================================
             3. SONUÇLAR VEYA BOŞ DURUMDA DOĞRUDAN PDF YÜKLEME EKRANI
            ===================================================================== */}
@@ -645,7 +881,7 @@ export default function CVReaderApp() {
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
                   <span className="text-sm font-semibold text-zinc-900">
-                    CV dosyaları okunuyor ve analiz ediliyor...
+                    {pdfParseStatus || "CV dosyaları okunuyor ve analiz ediliyor..."}
                   </span>
                 </div>
               ) : (
@@ -654,12 +890,11 @@ export default function CVReaderApp() {
                   <h3 className="text-base font-bold text-zinc-950">
                     {isDragging
                       ? "Dosyaları Buraya Bırakın!"
-                      : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
+                      : "CV Dosyalarını, Klasörü veya .ZIP Arşivini Sürükleyin"}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     Tek veya birden fazla <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> dosyası
-                    sürükleyip bırakabilirsiniz. (Not: Arşiv içindeyseniz önce klasöre çıkartın veya
-                    doğrudan <strong>.zip / .rar</strong> dosyasının kendisini sürükleyin.)
+                    ya da doğrudan <strong>klasör</strong> sürükleyip bırakabilirsiniz.
                   </p>
                   <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
                     Bilgisayardan PDF / ZIP / RAR / HTML Seç

@@ -104,46 +104,58 @@ export async function POST(req: NextRequest) {
     const parsedResults = [];
 
     for (const file of files) {
-      const fileName = file.name || "cv.pdf";
-      const ext = fileName.split(".").pop()?.toLowerCase() || "";
-      const arrayBuffer = await file.arrayBuffer();
+      try {
+        const fileName = file.name || "cv.pdf";
+        const ext = fileName.split(".").pop()?.toLowerCase() || "";
+        const arrayBuffer = await file.arrayBuffer();
 
-      if (ext === "zip") {
-        // ZIP arşivinin içindeki tüm PDF / DOCX / HTML CV'leri otomatik çıkar!
-        const zip = await JSZip.loadAsync(arrayBuffer);
-        const entries = Object.values(zip.files).filter((e) => !e.dir);
-        for (const entry of entries) {
-          const cleanEntryName = entry.name.split("/").pop() || entry.name;
-          if (cleanEntryName.startsWith(".")) continue;
-          const entryBuf = await entry.async("arraybuffer");
-          const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+        if (ext === "zip") {
+          // ZIP arşivinin içindeki tüm PDF / DOCX / HTML CV'leri otomatik çıkar!
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          const entries = Object.values(zip.files).filter((e) => !e.dir);
+          for (const entry of entries) {
+            try {
+              const cleanEntryName = entry.name.split(/[\\/]/).pop() || entry.name;
+              if (cleanEntryName.startsWith(".")) continue;
+              const entryBuf = await entry.async("arraybuffer");
+              const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+              if (parsed) {
+                parsedResults.push(parsed);
+              }
+            } catch {
+              // Tekil arşiv dosyası okunamazsa diğerlerine devam et
+            }
+          }
+        } else if (ext === "rar") {
+          // RAR arşivinin içindeki tüm PDF / DOCX / HTML / TXT CV'leri otomatik çıkar!
+          const extractor = await createExtractorFromData({ data: arrayBuffer });
+          const extracted = extractor.extract();
+          for (const item of extracted.files) {
+            try {
+              if (item.fileHeader.flags.directory || !item.extraction) continue;
+              const cleanEntryName =
+                item.fileHeader.name.split(/[\\/]/).pop() || item.fileHeader.name;
+              if (cleanEntryName.startsWith(".")) continue;
+              const entryBuf = item.extraction.buffer.slice(
+                item.extraction.byteOffset,
+                item.extraction.byteOffset + item.extraction.byteLength
+              ) as ArrayBuffer;
+              const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+              if (parsed) {
+                parsedResults.push(parsed);
+              }
+            } catch {
+              // Tekil arşiv dosyası okunamazsa diğerlerine devam et
+            }
+          }
+        } else {
+          const parsed = await parseSingleBuffer(fileName, arrayBuffer);
           if (parsed) {
             parsedResults.push(parsed);
           }
         }
-      } else if (ext === "rar") {
-        // RAR arşivinin içindeki tüm PDF / DOCX / HTML / TXT CV'leri otomatik çıkar!
-        const extractor = await createExtractorFromData({ data: arrayBuffer });
-        const extracted = extractor.extract();
-        for (const item of extracted.files) {
-          if (item.fileHeader.flags.directory || !item.extraction) continue;
-          const cleanEntryName =
-            item.fileHeader.name.split(/[\\/]/).pop() || item.fileHeader.name;
-          if (cleanEntryName.startsWith(".")) continue;
-          const entryBuf = item.extraction.buffer.slice(
-            item.extraction.byteOffset,
-            item.extraction.byteOffset + item.extraction.byteLength
-          ) as ArrayBuffer;
-          const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
-          if (parsed) {
-            parsedResults.push(parsed);
-          }
-        }
-      } else {
-        const parsed = await parseSingleBuffer(fileName, arrayBuffer);
-        if (parsed) {
-          parsedResults.push(parsed);
-        }
+      } catch {
+        // Dosya okunamazsa diğer dosyalara devam et
       }
     }
 
