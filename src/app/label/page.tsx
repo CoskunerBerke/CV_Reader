@@ -90,6 +90,19 @@ export default function GroundTruthLabelerPage() {
     }
   }, []);
 
+  const jumpToFirstUnlabeledForRole = useCallback(
+    (list: BenchmarkCVItem[], role: RaterId) => {
+      const firstUnlabeledIdx = list.findIndex(
+        (it) => !it.humanLabel?.votes?.[role]
+      );
+      if (firstUnlabeledIdx !== -1) {
+        setFilterMode("all");
+        setCurrentIndex(firstUnlabeledIdx);
+      }
+    },
+    []
+  );
+
   const handleSelectRater = (role: RaterId) => {
     setActiveRater(role);
     try {
@@ -97,26 +110,48 @@ export default function GroundTruthLabelerPage() {
     } catch {
       // ignore
     }
+    jumpToFirstUnlabeledForRole(items, role);
   };
 
-  const fetchAll = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setSyncing(true);
-    try {
-      const res = await fetch(`/api/ground-truth?t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      const data = await res.json();
-      if (data.items) {
-        setItems(data.items);
+  const fetchAll = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      else setSyncing(true);
+      try {
+        const res = await fetch(`/api/ground-truth?t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (data.items) {
+          setItems(data.items);
+          // İlk açılışta (sayfa yenilendiğinde veya kapatıp açıldığında) doğrudan kullanıcının kaldığı (henüz etiketlemediği ilk) CV'ye atla!
+          if (!silent) {
+            let role: RaterId = "ben";
+            try {
+              const savedRole = localStorage.getItem(RATER_STORAGE_KEY);
+              if (savedRole === "ben" || savedRole === "arkadasim") {
+                role = savedRole;
+              }
+            } catch {
+              // ignore
+            }
+            const firstUnlabeledIdx = (data.items as BenchmarkCVItem[]).findIndex(
+              (it) => !it.humanLabel?.votes?.[role]
+            );
+            if (firstUnlabeledIdx !== -1) {
+              setCurrentIndex(firstUnlabeledIdx);
+            }
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!silent) setLoading(false);
+        else setSyncing(false);
       }
-    } catch {
-      // ignore
-    } finally {
-      if (!silent) setLoading(false);
-      else setSyncing(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchAll(false);
@@ -310,13 +345,13 @@ export default function GroundTruthLabelerPage() {
       });
       const data = await res.json();
       if (data.success && data.label) {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.fileName === currentItem.fileName
-              ? { ...it, humanLabel: data.label }
-              : it
-          )
+        const updatedList = items.map((it) =>
+          it.fileName === currentItem.fileName
+            ? { ...it, humanLabel: data.label }
+            : it
         );
+        setItems(updatedList);
+
         const statusMsg =
           data.label.consensusStatus === "agreed"
             ? "🔒 İkiniz de aynı cevabı verdiniz — Ortak Karar Kesinleşti!"
@@ -327,12 +362,26 @@ export default function GroundTruthLabelerPage() {
               }) cevabı ortak buluta kaydedildi.`;
         setSaveMessage(statusMsg);
 
-        if (autoNext && currentIndex < filteredItems.length - 1) {
+        if (autoNext) {
           setTimeout(() => {
-            setCurrentIndex((prev) =>
-              Math.min(filteredItems.length - 1, prev + 1)
-            );
-          }, 180);
+            if (filterMode === "all") {
+              // Doğrudan kullanıcının henüz etiketlemediği bir sonraki CV'ye atla (zaten yaptıklarını tekrar gösterme!)
+              const nextUnlabeledAfter = updatedList.findIndex(
+                (it, idx) => idx > currentIndex && !it.humanLabel?.votes?.[activeRater]
+              );
+              const anyUnlabeled =
+                nextUnlabeledAfter !== -1
+                  ? nextUnlabeledAfter
+                  : updatedList.findIndex((it) => !it.humanLabel?.votes?.[activeRater]);
+              if (anyUnlabeled !== -1) {
+                setCurrentIndex(anyUnlabeled);
+              } else {
+                setCurrentIndex((prev) => Math.min(filteredItems.length - 1, prev + 1));
+              }
+            } else {
+              setCurrentIndex((prev) => Math.min(filteredItems.length - 1, prev + 1));
+            }
+          }, 150);
         }
       }
     } catch {
@@ -679,13 +728,14 @@ export default function GroundTruthLabelerPage() {
                   >
                     {filteredItems.map((it, idx) => {
                       const cStatus = it.humanLabel?.consensusStatus;
-                      const icon = !it.humanLabel
-                        ? "⚪"
-                        : cStatus === "agreed"
+                      const iDidIt = !!it.humanLabel?.votes?.[activeRater];
+                      const icon = cStatus === "agreed"
                         ? "🔒"
                         : cStatus === "conflict"
                         ? "⚡"
-                        : "⏳";
+                        : iDidIt
+                        ? "✅"
+                        : "⚪";
                       return (
                         <option key={it.fileName} value={idx}>
                           {icon} #{it.index} - {it.aiName} ({it.fileName})
@@ -707,6 +757,18 @@ export default function GroundTruthLabelerPage() {
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Eğer şu anki CV zaten bu kullanıcı tarafından etiketlenmişse tek tıkla kaldığı yere atlama butonu */}
+                {currentItem.humanLabel?.votes?.[activeRater] &&
+                  stats.myLabeledCount < items.length && (
+                    <button
+                      type="button"
+                      onClick={() => jumpToFirstUnlabeledForRole(items, activeRater)}
+                      className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      ⏭️ Bu CV&apos;yi Zaten Yaptın — Kaldığım Yere (İlk Yapmadığım CV&apos;ye) Atla
+                    </button>
+                  )}
 
                 {/* Hızlı Filtre Sekmeleri */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">

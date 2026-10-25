@@ -1,1 +1,363 @@
-{}
+﻿{
+    "0_muratcan_unsal.pdf":  {
+                                 "fileName":  "0_muratcan_unsal.pdf",
+                                 "humanName":  "Muratcan Ãnsal",
+                                 "humanGender":  "Erkek",
+                                 "humanAge":  29,
+                                 "updatedAt":  "2026-10-25T22:07:46.461Z",
+                                 "votes":  {
+                                               "ben":  {
+                                                           "rater":  "ben",
+                                                           "humanName":  "Muratcan Ãnsal",
+                                                           "humanGender":  "Erkek",
+                                                           "humanAge":  29,
+                                                           "updatedAt":  "2026-10-25T22:07:46.461Z"
+                                                       }
+                                           },
+                                 "consensusStatus":  "single"
+                             },
+    "[CV-Ayta_ _amurlu]-_.pdf":  {
+                                     "fileName":  "[CV-Ayta_ _amurlu]-_.pdf",
+                                     "humanName":  "AytaÃ§ Ãamurlu",
+                                     "humanGender":  "Erkek",
+                                     "humanAge":  46,
+                                     "updatedAt":  "2026-10-25T22:05:27.656Z",
+                                     "votes":  {
+                                                   "ben":  {
+                                                               "rater":  "ben",
+                                                               "humanName":  "AytaÃ§ Ãamurlu",
+                                                               "humanGender":  "Erkek",
+                                                               "humanAge":  46,
+                                                               "updatedAt":  "2026-10-25T22:05:27.656Z"
+                                                           }
+                                               },
+                                     "consensusStatus":  "single"
+                                 },
+    "12.08 CV.pdf":  {
+                         "fileName":  "12.08 CV.pdf",
+                         "humanName":  "Ä°brahim BÄ±yÄ±klÄ±",
+                         "humanGender":  "Erkek",
+                         "humanAge":  27,
+                         "updatedAt":  "2026-10-25T22:10:16.484Z",
+                         "votes":  {
+                                       "ben":  {
+                                                   "rater":  "ben",
+                                                   "humanName":  "Ä°brahim BÄ±yÄ±klÄ±",
+                                                   "humanGender":  "Erkek",
+                                                   "humanAge":  27,
+                                                   "updatedAt":  "2026-10-25T22:10:16.484Z"
+                                               }
+                                   },
+                         "consensusStatus":  "single"
+                     },
+    "1587207348352_1583568638096_Sakthi.pdf":  {
+                                                   "fileName":  "1587207348352_1583568638096_Sakthi.pdf",
+                                                   "humanName":  "Sakthi Muthukrishnan Ulaganathan",
+                                                   "humanGender":  "Erkek",
+                                                   "humanAge":  42,
+                                                   "updatedAt":  "2026-10-25T22:19:19.179Z",
+                                                   "votes":  {
+                                                                 "ben":  {
+                                                                             "rater":  "ben",
+                                                                             "humanName":  "Sakthi Muthukrishnan Ulaganathan",
+                                                                             "humanGender":  "Erkek",
+                                                                             "humanAge":  42,
+                                                                             "updatedAt":  "2026-10-25T22:19:19.179Z"
+                                                                         }
+                                                             },
+                                                   "consensusStatus":  "single"
+                                               },
+    "_CV_son__Copy___Copy___Copy_ (5).pdf":  {
+                                                 "fileName":  "_CV_son__Copy___Copy___Copy_ (5).pdf",
+                                                 "humanName":  "Ali Vahid Ä°Åleker",
+                                                 "humanGender":  "Erkek",
+                                                 "humanAge":  29,
+                                                 "updatedAt":  "2026-10-25T22:13:22.646Z",
+                                                 "votes":  {
+                                                               "ben":  {
+                                                                           "rater":  "ben",
+                                                                           "humanName":  "Ali Vahid Ä°Åleker",
+                                                                           "humanGender":  "Erkek",
+                                                                           "humanAge":  29,
+                                                                           "updatedAt":  "2026-10-25T22:13:22.646Z"
+                                                                       },
+                                                               "arkadasim":  {
+                                                                                 "rater":  "arkadasim",
+                                                                                 "humanName":  "Ali Vahid Ä°Åleker",
+                                                                                 "humanGender":  "Erkek",
+                                                                                 "humanAge":  29,
+                                                                                 "updatedAt":  "2026-10-25T21:55:44.831Z"
+                                                                             }
+                                                           },
+                                                 "consensusStatus":  "agreed"
+                                             },
+    "_Bugrahan_CAN_CV.pdf":  {
+                                 "fileName":  "_Bugrahan_CAN_CV.pdf",
+                                 "humanName":  "BuÄrahan Can",
+                                 "humanGender":  "Erkek",
+                                 "humanAge":  29,
+                                 "updatedAt":  "2026-10-25T22:13:16.900Z",
+                                 "votes":  {
+                                               "ben":  {
+                                                           "rater":  "ben",
+                                                           "humanName":  "BuÄrahan Can",
+                                                           "humanGender":  "Erkek",
+                                                           "humanAge":  29,
+                                                           "updatedAt":  "2026-10-25T22:13:16.900Z"
+                                                       },
+                                               "arkadasim":  {
+                                                                 "rater":  "arkadasim",
+                                                                 "humanName":  "BuÄrahan Can",
+                                                                 "humanGender":  "Erkek",
+                                                                 "humanAge":  29,
+                                                                 "updatedAt":  "2026-10-25T21:55:27.528Z"
+                                                             }
+                                           },
+                                 "consensusStatus":  "agreed"
+                             },
+    "_. G_lnur __V_TC_  CV.pdf":  {
+                                      "fileName":  "_. G_lnur __V_TC_  CV.pdf",
+                                      "humanName":  "ÃmmÃ¼ GÃ¼lnur Ãivitci",
+                                      "humanGender":  "KadÄ±n",
+                                      "humanAge":  31,
+                                      "updatedAt":  "2026-10-25T22:13:07.076Z",
+                                      "votes":  {
+                                                    "ben":  {
+                                                                "rater":  "ben",
+                                                                "humanName":  "ÃmmÃ¼ GÃ¼lnur Ãivitci",
+                                                                "humanGender":  "KadÄ±n",
+                                                                "humanAge":  31,
+                                                                "updatedAt":  "2026-10-25T22:13:07.076Z"
+                                                            },
+                                                    "arkadasim":  {
+                                                                      "rater":  "arkadasim",
+                                                                      "humanName":  "ÃmmÃ¼ GÃ¼lnur Ãivitci",
+                                                                      "humanGender":  "KadÄ±n",
+                                                                      "humanAge":  31,
+                                                                      "updatedAt":  "2026-10-25T21:55:10.430Z"
+                                                                  }
+                                                },
+                                      "consensusStatus":  "agreed"
+                                  },
+    "02092020 YAVUZ GULLUOGLU CV - English.pdf":  {
+                                                      "fileName":  "02092020 YAVUZ GULLUOGLU CV - English.pdf",
+                                                      "humanName":  "Mahmut Yavuz GÃ¼llÃ¼oÄlu",
+                                                      "humanGender":  "Erkek",
+                                                      "humanAge":  58,
+                                                      "updatedAt":  "2026-10-25T22:08:02.112Z",
+                                                      "votes":  {
+                                                                    "ben":  {
+                                                                                "rater":  "ben",
+                                                                                "humanName":  "Mahmut Yavuz GÃ¼llÃ¼oÄlu",
+                                                                                "humanGender":  "Erkek",
+                                                                                "humanAge":  58,
+                                                                                "updatedAt":  "2026-10-25T22:08:02.112Z"
+                                                                            }
+                                                                },
+                                                      "consensusStatus":  "single"
+                                                  },
+    "10.06.2025_Portfolio.pdf":  {
+                                     "fileName":  "10.06.2025_Portfolio.pdf",
+                                     "humanName":  "Abdullah ErgÃ¼l",
+                                     "humanGender":  "Erkek",
+                                     "humanAge":  24,
+                                     "updatedAt":  "2026-10-25T22:10:07.166Z",
+                                     "votes":  {
+                                                   "ben":  {
+                                                               "rater":  "ben",
+                                                               "humanName":  "Abdullah ErgÃ¼l",
+                                                               "humanGender":  "Erkek",
+                                                               "humanAge":  24,
+                                                               "updatedAt":  "2026-10-25T22:10:07.166Z"
+                                                           }
+                                               },
+                                     "consensusStatus":  "single"
+                                 },
+    "_ngilizce.pdf":  {
+                          "fileName":  "_ngilizce.pdf",
+                          "humanName":  "Ahmet Zafer SaÄlÄ±k",
+                          "humanGender":  "Erkek",
+                          "humanAge":  30,
+                          "updatedAt":  "2026-10-25T22:05:15.055Z",
+                          "votes":  {
+                                        "ben":  {
+                                                    "rater":  "ben",
+                                                    "humanName":  "Ahmet Zafer SaÄlÄ±k",
+                                                    "humanGender":  "Erkek",
+                                                    "humanAge":  30,
+                                                    "updatedAt":  "2026-10-25T22:05:15.055Z"
+                                                }
+                                    },
+                          "consensusStatus":  "single"
+                      },
+    "_evval_Yurtekin_Curriculum_Vitae.pdf":  {
+                                                 "fileName":  "_evval_Yurtekin_Curriculum_Vitae.pdf",
+                                                 "humanName":  "Åevval AyÅe Yurtekin",
+                                                 "humanGender":  "KadÄ±n",
+                                                 "humanAge":  30,
+                                                 "updatedAt":  "2026-10-25T22:01:36.868Z",
+                                                 "votes":  {
+                                                               "ben":  {
+                                                                           "rater":  "ben",
+                                                                           "humanName":  "Åevval AyÅe Yurtekin",
+                                                                           "humanGender":  "KadÄ±n",
+                                                                           "humanAge":  30,
+                                                                           "updatedAt":  "2026-10-25T22:01:36.868Z"
+                                                                       }
+                                                           },
+                                                 "consensusStatus":  "single"
+                                             },
+    "_LKAY_KOYUNCUOGLU_CV_1.pdf":  {
+                                       "fileName":  "_LKAY_KOYUNCUOGLU_CV_1.pdf",
+                                       "humanName":  "Ä°lkay KoyuncuoÄlu",
+                                       "humanGender":  "KadÄ±n",
+                                       "humanAge":  32,
+                                       "updatedAt":  "2026-10-25T22:02:46.166Z",
+                                       "votes":  {
+                                                     "ben":  {
+                                                                 "rater":  "ben",
+                                                                 "humanName":  "Ä°lkay KoyuncuoÄlu",
+                                                                 "humanGender":  "KadÄ±n",
+                                                                 "humanAge":  32,
+                                                                 "updatedAt":  "2026-10-25T22:02:46.166Z"
+                                                             }
+                                                 },
+                                       "consensusStatus":  "single"
+                                   },
+    "18.08.2025 CV EN.pdf":  {
+                                 "fileName":  "18.08.2025 CV EN.pdf",
+                                 "humanName":  "Sinem GenÃ§er",
+                                 "humanGender":  "KadÄ±n",
+                                 "humanAge":  24,
+                                 "updatedAt":  "2026-10-25T22:19:35.243Z",
+                                 "votes":  {
+                                               "ben":  {
+                                                           "rater":  "ben",
+                                                           "humanName":  "Sinem GenÃ§er",
+                                                           "humanGender":  "KadÄ±n",
+                                                           "humanAge":  24,
+                                                           "updatedAt":  "2026-10-25T22:19:35.243Z"
+                                                       }
+                                           },
+                                 "consensusStatus":  "single"
+                             },
+    "0fa938bb-9237-42b1-b22a-856da869170d.pdf":  {
+                                                     "fileName":  "0fa938bb-9237-42b1-b22a-856da869170d.pdf",
+                                                     "humanName":  "Onur Tursun",
+                                                     "humanGender":  "Erkek",
+                                                     "humanAge":  23,
+                                                     "updatedAt":  "2026-10-25T22:09:54.536Z",
+                                                     "votes":  {
+                                                                   "ben":  {
+                                                                               "rater":  "ben",
+                                                                               "humanName":  "Onur Tursun",
+                                                                               "humanGender":  "Erkek",
+                                                                               "humanAge":  23,
+                                                                               "updatedAt":  "2026-10-25T22:09:54.536Z"
+                                                                           }
+                                                               },
+                                                     "consensusStatus":  "single"
+                                                 },
+    "09-2025.pdf":  {
+                        "fileName":  "09-2025.pdf",
+                        "humanName":  "Kaan TiftikÃ§i",
+                        "humanGender":  "Erkek",
+                        "humanAge":  28,
+                        "updatedAt":  "2026-10-25T22:08:20.721Z",
+                        "votes":  {
+                                      "ben":  {
+                                                  "rater":  "ben",
+                                                  "humanName":  "Kaan TiftikÃ§i",
+                                                  "humanGender":  "Erkek",
+                                                  "humanAge":  28,
+                                                  "updatedAt":  "2026-10-25T22:08:20.721Z"
+                                              }
+                                  },
+                        "consensusStatus":  "single"
+                    },
+    "_My_cv.pdf":  {
+                       "fileName":  "_My_cv.pdf",
+                       "humanName":  "Ata Egemen GÃ¼rel",
+                       "humanGender":  "Erkek",
+                       "humanAge":  25,
+                       "updatedAt":  "2026-10-25T22:05:05.222Z",
+                       "votes":  {
+                                     "ben":  {
+                                                 "rater":  "ben",
+                                                 "humanName":  "Ata Egemen GÃ¼rel",
+                                                 "humanGender":  "Erkek",
+                                                 "humanAge":  25,
+                                                 "updatedAt":  "2026-10-25T22:05:05.222Z"
+                                             }
+                                 },
+                       "consensusStatus":  "single"
+                   },
+    "_EVVAL_YO_URTCUO_LU_CV.pdf":  {
+                                       "fileName":  "_EVVAL_YO_URTCUO_LU_CV.pdf",
+                                       "humanName":  "Åevval YoÄurtcuoÄlu",
+                                       "humanGender":  "KadÄ±n",
+                                       "humanAge":  29,
+                                       "updatedAt":  "2026-10-25T22:01:31.630Z",
+                                       "votes":  {
+                                                     "ben":  {
+                                                                 "rater":  "ben",
+                                                                 "humanName":  "Åevval YoÄurtcuoÄlu",
+                                                                 "humanGender":  "KadÄ±n",
+                                                                 "humanAge":  29,
+                                                                 "updatedAt":  "2026-10-25T22:01:31.630Z"
+                                                             }
+                                                 },
+                                       "consensusStatus":  "single"
+                                   },
+    "_CV.pdf":  {
+                    "fileName":  "_CV.pdf",
+                    "humanName":  "Ali Emre GÃ¼lpÄ±nar",
+                    "humanGender":  "Erkek",
+                    "humanAge":  24,
+                    "updatedAt":  "2026-10-25T22:16:42.789Z",
+                    "votes":  {
+                                  "ben":  {
+                                              "rater":  "ben",
+                                              "humanName":  "Ali Emre GÃ¼lpÄ±nar",
+                                              "humanGender":  "Erkek",
+                                              "humanAge":  24,
+                                              "updatedAt":  "2026-10-25T22:16:42.789Z"
+                                          }
+                              },
+                    "consensusStatus":  "single"
+                },
+    "07102025-Emin_Can_IÅÄ±k_CV.pdf":  {
+                                            "fileName":  "07102025-Emin_Can_IÅÄ±k_CV.pdf",
+                                            "humanName":  "Emin Can IÅÄ±k",
+                                            "humanGender":  "Erkek",
+                                            "humanAge":  23,
+                                            "updatedAt":  "2026-10-25T22:08:09.306Z",
+                                            "votes":  {
+                                                          "ben":  {
+                                                                      "rater":  "ben",
+                                                                      "humanName":  "Emin Can IÅÄ±k",
+                                                                      "humanGender":  "Erkek",
+                                                                      "humanAge":  23,
+                                                                      "updatedAt":  "2026-10-25T22:08:09.306Z"
+                                                                  }
+                                                      },
+                                            "consensusStatus":  "single"
+                                        },
+    "_CVYCB.pdf":  {
+                       "fileName":  "_CVYCB.pdf",
+                       "humanName":  "YalcÄ±n Can Benal",
+                       "humanGender":  "Erkek",
+                       "humanAge":  29,
+                       "updatedAt":  "2026-10-25T21:59:01.376Z",
+                       "votes":  {
+                                     "ben":  {
+                                                 "rater":  "ben",
+                                                 "humanName":  "YalcÄ±n Can Benal",
+                                                 "humanGender":  "Erkek",
+                                                 "humanAge":  29,
+                                                 "updatedAt":  "2026-10-25T21:59:01.376Z"
+                                             }
+                                 },
+                       "consensusStatus":  "single"
+                   }
+}
