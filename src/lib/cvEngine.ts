@@ -103,7 +103,16 @@ const FEMALE_NAMES = new Set([
   "özden", "öznur", "perihan", "pervin", "rana", "raziye", "rukiye", "saadet", "sabiha", "safiye",
   "saliha", "saniye", "sebnem", "şebnem", "seda", "sedef", "sema", "semra", "senem", "serpil",
   "sevda", "sevim", "ulviye", "şeyda", "şirin", "şükran", "şükriye", "tuğçe", "tülin", "ülkü",
-  "ümran", "ümmühan", "yağmur", "yaprak", "yaren", "yonca", "zerrin", "ziynet", "zührenaz"
+  "ümran", "ümmühan", "yağmur", "yaprak", "yaren", "yonca", "zerrin", "ziynet", "zührenaz",
+  // International Female Names
+  "maya", "olivia", "emma", "amelia", "sophia", "isabella", "mia", "charlotte", "harper",
+  "evelyn", "abigail", "emily", "elizabeth", "sofia", "avery", "ella", "scarlett", "grace",
+  "chloe", "victoria", "riley", "aria", "lily", "aubrey", "zoey", "penelope", "lillian",
+  "addison", "layla", "natalie", "camila", "hannah", "brooklyn", "zoe", "nora", "leah",
+  "savannah", "audrey", "claire", "eleanor", "skylar", "ellie", "samantha", "stella",
+  "paisley", "violet", "mila", "allison", "alexa", "anna", "hazel", "aaLiyah", "ariana",
+  "lucy", "caroline", "sarah", "genesis", "kennedy", "sadie", "gabriella", "madelyn",
+  "adeline", "maya", "alice", "laura", "rachel", "jessica", "maria", "elena"
 ]);
 
 const MALE_NAMES = new Set([
@@ -142,7 +151,13 @@ const MALE_NAMES = new Set([
   "tevfik", "tolgahan", "toygar", "tufan", "tuğrul", "turan", "turgay", "turhan", "tümer", "türker",
   "ulvi", "ümit", "ünal", "vahap", "vahit", "veli", "veysel", "ural", "yahya", "yakup",
   "yalçın", "yaman", "yaşar", "yekta", "yener", "yıldıray", "yılmaz", "yüksel", "zekeriya", "ziya",
-  "berat", "berkay", "mirac", "miraç", "efehan", "emirhan", "batu", "kaan", "alp"
+  "berat", "berkay", "mirac", "miraç", "efehan", "emirhan", "batu", "kaan", "alp",
+  // International Male Names
+  "henry", "jack", "daniel", "james", "john", "robert", "michael", "william", "david",
+  "richard", "joseph", "thomas", "charles", "christopher", "matthew", "anthony", "mark",
+  "donald", "steven", "paul", "andrew", "joshua", "kenneth", "kevin", "brian", "george",
+  "edward", "ronald", "timothy", "jason", "jeffrey", "ryan", "jacob", "gary", "nicholas",
+  "eric", "jonathan", "stephen", "larry", "justin", "scott", "brandon", "benjamin", "samuel"
 ]);
 
 const UNISEX_NAMES = new Set([
@@ -250,10 +265,18 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
   }
 
   // KATMAN 3: İSİM VE İKİNCİ İSİM ANALİZİ (Üniseks Çözümleyici Dahil)
-  const nameParts = normalizeTr(fullName)
-    .replace(/[^a-zçğıöşü\s]/g, "")
-    .split(/\s+/)
-    .filter(Boolean);
+  const isUnnamedCandidate =
+    !fullName ||
+    normalizeTr(fullName).includes("isimsiz aday") ||
+    normalizeTr(fullName).includes("yeni aday") ||
+    normalizeTr(fullName).includes("belirtilmemiş");
+
+  const nameParts = isUnnamedCandidate
+    ? []
+    : normalizeTr(fullName)
+        .replace(/[^a-zçğıöşü\s]/g, "")
+        .split(/\s+/)
+        .filter(Boolean);
 
   // Soyadı hariç ilk ve ikinci isimler
   const givenNames = nameParts.length > 1 ? nameParts.slice(0, -1) : nameParts;
@@ -273,7 +296,7 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
       femaleScore += i === 0 ? 94 : 96; // İkinci isim üniseksliği bozduğu için çok güçlüdür
       evidence.push({
         layer: `Katman 3 (${label} Sözlüğü)`,
-        signal: `'${part.toUpperCase()}' Türkiye nüfus verisinde %99.4 Kadın ismidir`,
+        signal: `'${part.toUpperCase()}' isim veritabanında %99.4 Kadın ismidir`,
         weight: 95,
         direction: "Kadın",
       });
@@ -281,39 +304,10 @@ export function detectGenderFromCV(fullName: string, rawText: string): {
       maleScore += i === 0 ? 94 : 96;
       evidence.push({
         layer: `Katman 3 (${label} Sözlüğü)`,
-        signal: `'${part.toUpperCase()}' Türkiye nüfus verisinde %99.4 Erkek ismidir`,
+        signal: `'${part.toUpperCase()}' isim veritabanında %99.4 Erkek ismidir`,
         weight: 95,
         direction: "Erkek",
       });
-    }
-  }
-
-  // KATMAN 3B: EĞER BAŞLIKTA İSİM YOKSA, E-POSTA / LINKEDIN / İLK SATIRLARDAN İSİM YAKALA
-  if (femaleScore === 0 && maleScore === 0) {
-    const emailOrUrlTokens = normText.match(
-      /([a-zçğıöşü]{3,15})[._\-][a-zçğıöşü]{3,15}(?:@|\/)/g
-    );
-    if (emailOrUrlTokens) {
-      for (const tok of emailOrUrlTokens) {
-        const firstToken = tok.split(/[._\-@\/]/)[0];
-        if (FEMALE_NAMES.has(firstToken)) {
-          femaleScore += 86;
-          evidence.push({
-            layer: "Katman 3B (E-posta / Link Analizi)",
-            signal: `Başlıkta isim yok ancak iletişim adresinde '${firstToken.toUpperCase()}' kadın ismi yakalandı`,
-            weight: 86,
-            direction: "Kadın",
-          });
-        } else if (MALE_NAMES.has(firstToken)) {
-          maleScore += 86;
-          evidence.push({
-            layer: "Katman 3B (E-posta / Link Analizi)",
-            signal: `Başlıkta isim yok ancak iletişim adresinde '${firstToken.toUpperCase()}' erkek ismi yakalandı`,
-            weight: 86,
-            direction: "Erkek",
-          });
-        }
-      }
     }
   }
 
@@ -484,10 +478,10 @@ export function detectAgeFromCV(rawText: string): {
   let uniEndYear: number | null = null;
   const uniSectionMatch =
     normText.match(
-      /(?:üniversite|university|fakülte|faculty|b\.sc|mühendislik|engineering|lisans)[\s\S]{0,120}?\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)/i
+      /(?:eğitim|education|üniversite|university|fakülte|faculty|b\.sc|bsc|b\.a|\bba\b|\bmsc\b|m\.sc|mühendislik|engineering|lisans|institute|enstitü)[\s\S]{0,120}?\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)/i
     ) ||
     normText.match(
-      /\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)[\s\S]{0,100}?(?:üniversite|university|b\.sc|mühendislik|engineering|lisans)/i
+      /\b(19[8-9]\d|20[0-2]\d)\s*(?:->|\-|\–|—|to)\s*(19[8-9]\d|20[0-2]\d|present|devam|günümüz)[\s\S]{0,100}?(?:üniversite|university|b\.sc|bsc|\bba\b|\bmsc\b|mühendislik|engineering|lisans|institute|enstitü|school)/i
     );
 
   if (uniSectionMatch && uniSectionMatch[1]) {
@@ -948,19 +942,19 @@ function ageAgeScoreSafe(val: number): number {
 //    (Referans, Yönetici, Danışman ve Tuzak İsimleri Ayıklayan Akıllı Motor)
 // ============================================================================
 export function stripReferenceAndDecoyLines(rawText: string): string {
-  // Referanslar / References başlığından sonraki kısmı kes
-  const withoutRefSection = rawText.replace(
-    /\n\s*(?:referanslar|references|referans\s*bilgileri)\b[\s\S]*$/i,
+  // Referans / Ekip Katılımcıları bloklarını bir sonraki ana başlığa kadar temizle
+  const withoutRefBlocks = rawText.replace(
+    /\n\s*(?:referanslar|references|referans\s*kişisi|referans\s*iletişim\s*bilgileri|iş\s*referansları|referans|professional\s*contacts|detaylı\s*proje\s*katılımcıları)\b[\s\S]*?(?=\n\s*(?:tools|languages|professional\s*profile|experience|selected\s*projects|education|eğitim|iş\s*deneyimi|deneyim|beceriler|yetkinlikler|programlar|kişisel\s*açıklama|görev\s*tanımı)\b|$)/gi,
     "\n"
   );
 
-  // Yönetici, Danışman, Referans, Müdür, Supervisor satırlarını filtrele
-  return withoutRefSection
+  // Yönetici, Danışman, Referans, Müdür, Supervisor, Ekip arkadaşı satırlarını filtrele
+  return withoutRefBlocks
     .split(/\r?\n/)
     .filter((line) => {
       const l = normalizeTr(line);
       if (
-        /(?:referans|reference|yönetici|müdür|supervisor|manager|danışman|advisor|raporlanan|reported\s*to|prof\.\s*dr|doç\.\s*dr|dr\.\s*öğr)/i.test(
+        /(?:referans|reference|yönetici|müdür|direktör|başmimar|supervisor|manager|danışman|advisor|raporlanan|reported\s*to|worked\s*with|partnered\s*with|collaborated\s*with|prepared\s*by|reviewed\s*by|gözetiminde|ile\s*birlikte|tarafından|ekip\s*üyesi|takım\s*lideri|ürün\s*sahibi|prof\.\s*dr|doç\.\s*dr|dr\.\s*)/i.test(
           l
         )
       ) {
@@ -980,36 +974,57 @@ export function extractCandidateMetadataFromText(
   city: string;
   experienceYears: number;
 } {
+  if (!rawText || rawText.trim().length < 10) {
+    return {
+      fullName: "İsimsiz Aday (Taranmış Görüntü / OCR)",
+      university: "Belirtilmemiş",
+      city: "Belirtilmemiş",
+      experienceYears: 0,
+    };
+  }
+
   const cleanCandidateText = stripReferenceAndDecoyLines(rawText);
   const lines = cleanCandidateText
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 1);
 
-  // 1. AD SOYAD TESPİTİ (4 Aşamalı)
+  // 1. AD SOYAD TESPİTİ
   let fullName = "";
 
-  // Aşama A: Açık Etiket ("Ad Soyad:", "Aday:", "Applicant:", "Name:")
+  // Aşama A: Açık Etiket ("Ad Soyad:", "Aday:", "Applicant:", "Candidate:")
   const explicitNameMatch = cleanCandidateText.match(
-    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|aday\s*adı|aday|başvuran|applicant|candidate|name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
+    /(?:ad\s*soyad|adı\s*soyadı|isim\s*soyisim|aday\s*adı|başvuran\s*aday|applicant\s*name|candidate\s*name)\s*[:\-]\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{4,40})/i
   );
 
-  // Aşama B: Paragraf İçi Kendini Tanıtma ("Ben Zeynep Kaya", "Adım ...", "My name is ...", "I am ...")
-  const selfIntroMatch =
-    cleanCandidateText.match(
-      /\b(?:ben|adım|ismim)\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/
-    ) ||
-    cleanCandidateText.match(
-      /\b(?:my\s+name\s+is|i\s+am|i,)\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/i
-    );
+  // Aşama B: Paragraf İçi Birinci Tekil Şahıs Kendini Tanıtma ("Ben, Zeynep Aksoy," / "I, Maya Sullivan,")
+  const selfIntroTrMatch = rawText.match(
+    /\b(?:[Bb]en|[Aa]dım|[İi]smim)\s*,?\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\b/
+  );
+  const selfIntroEnMatch = rawText.match(
+    /(?:\b[Mm]y\s+name\s+is\s+|\bI\s+am\s+|\bI,\s*)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/
+  );
 
   if (explicitNameMatch && explicitNameMatch[1]) {
     fullName = explicitNameMatch[1].split(/[\n|•,]/)[0].trim();
-  } else if (selfIntroMatch && selfIntroMatch[1]) {
-    fullName = selfIntroMatch[1].trim();
+  } else if (selfIntroTrMatch && selfIntroTrMatch[1]) {
+    fullName = selfIntroTrMatch[1].trim();
+  } else if (selfIntroEnMatch && selfIntroEnMatch[1]) {
+    fullName = selfIntroEnMatch[1].trim();
   } else {
-    // Aşama C: İlk 12 satır içinde gerçek insan ismi (Sözlükte bulunan ilk isim + soyisim) ara
-    for (const line of lines.slice(0, 12)) {
+    // Aşama C: İlk 6 satırda (Bölüm başlıklarından önce) sözlükte kayıtlı gerçek insan ismi var mı?
+    const nonNameKeywords = [
+      "özgeçmiş", "curriculum", "vitae", "resume", "mühendis", "mühendisliği",
+      "engineer", "engineering", "uzman", "uzmanı", "analist", "analyst",
+      "developer", "designer", "mimar", "mimarlık", "finans", "finansal",
+      "kurumsal", "yazılım", "geliştirme", "geliştirici", "portfolio",
+      "overview", "business", "intelligence", "social", "science", "research",
+      "assistant", "proje", "koordinatörü", "veri", "data", "director",
+      "manager", "lead", "studio", "üniversite", "university", "fakülte",
+      "bölüm", "iletişim", "contacts", "eğitim", "education", "profil", "profile"
+    ];
+
+    for (const line of lines.slice(0, 6)) {
       const cleaned = line
         .replace(/\s*[\-–—|]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "")
         .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "")
@@ -1017,57 +1032,17 @@ export function extractCandidateMetadataFromText(
       const words = cleaned.split(/\s+/).filter(Boolean);
       const lower = normalizeTr(cleaned);
 
-      if (
-        words.length >= 2 &&
-        words.length <= 4 &&
-        cleaned.length <= 38 &&
-        !lower.includes("özgeçmiş") &&
-        !lower.includes("curriculum") &&
-        !lower.includes("resume") &&
-        !lower.includes("mühendis") &&
-        !lower.includes("engineer") &&
-        !lower.includes("uzman") &&
-        !lower.includes("üniversite") &&
-        !lower.includes("university") &&
-        !lower.includes("fakülte") &&
-        !lower.includes("bölüm") &&
-        !lower.includes("iletişim") &&
-        !lower.includes("eğitim")
-      ) {
+      const hasJobOrSectionWord = nonNameKeywords.some((kw) => lower.includes(kw));
+
+      if (!hasJobOrSectionWord && words.length >= 2 && words.length <= 4 && cleaned.length <= 38) {
         const firstWordNorm = normalizeTr(words[0]);
+        const secondWordNorm = words.length > 1 ? normalizeTr(words[1]) : "";
         if (
           FEMALE_NAMES.has(firstWordNorm) ||
           MALE_NAMES.has(firstWordNorm) ||
-          UNISEX_NAMES.has(firstWordNorm)
-        ) {
-          fullName = words
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-            .join(" ");
-          break;
-        }
-      }
-    }
-
-    // Sözlükte yoksa bile ilk 5 satırdaki temiz 2-3 kelimelik başlığı al
-    if (!fullName) {
-      for (const line of lines.slice(0, 5)) {
-        const cleaned = line
-          .replace(/\s*[\-–—|]\s*(?:curriculum\s*vitae|cv|özgeçmiş|resume).*$/i, "")
-          .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "")
-          .trim();
-        const words = cleaned.split(/\s+/).filter(Boolean);
-        const lower = normalizeTr(cleaned);
-        if (
-          words.length >= 2 &&
-          words.length <= 3 &&
-          cleaned.length <= 32 &&
-          !lower.includes("özgeçmiş") &&
-          !lower.includes("curriculum") &&
-          !lower.includes("resume") &&
-          !lower.includes("mühendis") &&
-          !lower.includes("engineer") &&
-          !lower.includes("üniversite") &&
-          !lower.includes("university")
+          UNISEX_NAMES.has(firstWordNorm) ||
+          FEMALE_NAMES.has(secondWordNorm) ||
+          MALE_NAMES.has(secondWordNorm)
         ) {
           fullName = words
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -1078,20 +1053,13 @@ export function extractCandidateMetadataFromText(
     }
   }
 
-  if (!fullName && fileName) {
-    fullName = fileName
-      .replace(/\.[^/.]+$/, "")
-      .replace(/\b(?:cv|ozgecmis|özgeçmiş|resume)\b/gi, "")
-      .replace(/[_-]+/g, " ")
-      .trim();
-  }
   if (!fullName) {
-    fullName = "Yeni Aday";
+    fullName = "İsimsiz Aday (Ad Belirtilmemiş)";
   }
 
-  // 2. ÜNİVERSİTE TESPİTİ (Türkçe & İngilizce)
+  // 2. ÜNİVERSİTE / ENSTİTÜ / OKUL TESPİTİ (Türkçe & İngilizce)
   let university = "Belirtilmemiş";
-  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}){0,3}\s+(?:Üniversitesi|University)|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bMETU\b)/i;
+  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}){0,4}\s+(?:Üniversitesi|University|Enstitüsü|Institute|School\s+of\s+Design|College)|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bMETU\b)/i;
   const uniMatch = rawText.match(uniRegex);
   if (uniMatch && uniMatch[1]) {
     university = uniMatch[1].replace(/\s+/g, " ").trim();
@@ -1101,9 +1069,10 @@ export function extractCandidateMetadataFromText(
   const cities = [
     "İstanbul", "Ankara", "İzmir", "Bursa", "Kocaeli", "Antalya", "Eskişehir",
     "Adana", "Konya", "Gaziantep", "Kayseri", "Mersin", "Samsun", "Trabzon",
-    "Sakarya", "Tekirdağ", "Manisa", "Denizli", "Muğla", "Diyarbakır", "Erzurum"
+    "Sakarya", "Tekirdağ", "Manisa", "Denizli", "Muğla", "Diyarbakır", "Erzurum",
+    "London", "Cambridge"
   ];
-  let city = "İstanbul";
+  let city = "Belirtilmemiş";
   const norm = normalizeTr(rawText);
   for (const c of cities) {
     if (norm.includes(normalizeTr(c))) {
@@ -1114,7 +1083,8 @@ export function extractCandidateMetadataFromText(
 
   // 4. DENEYİM YILI TESPİTİ
   let experienceYears = 2;
-  const expMatch = norm.match(/(\d{1,2})\s*(?:\+\s*)?(?:yıl|sene|yıllık)\s*(?:deneyim|tecrübe|iş)/i) ||
+  const expMatch =
+    norm.match(/(\d{1,2})\s*(?:\+\s*)?(?:yıl|sene|yıllık|years?)\s*(?:deneyim|tecrübe|iş|experience)/i) ||
     norm.match(/deneyim\s*\(\s*(\d{1,2})\s*yıl/i);
   if (expMatch && expMatch[1]) {
     experienceYears = Math.min(35, Math.max(0, parseInt(expMatch[1], 10)));
