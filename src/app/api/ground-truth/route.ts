@@ -11,6 +11,7 @@ import {
   extractEducationFromCV,
   isSameUniversity,
   isSameDepartment,
+  isSameDegree,
   GenderType,
 } from "@/lib/cvEngine";
 
@@ -23,6 +24,7 @@ export interface SingleRaterVote {
   humanAge: number | null;
   humanUniversity?: string | null;
   humanDepartment?: string | null;
+  humanDegree?: string | null;
   updatedAt: string;
 }
 
@@ -33,6 +35,7 @@ export interface GroundTruthLabel {
   humanAge: number | null;
   humanUniversity?: string | null;
   humanDepartment?: string | null;
+  humanDegree?: string | null;
   updatedAt: string;
   votes?: {
     ben?: SingleRaterVote;
@@ -56,6 +59,8 @@ export interface BenchmarkCVItem {
   aiAllUniversities: string[];
   aiDepartment: string;
   aiAllDepartments: string[];
+  aiDegree: string;
+  aiAllDegrees: string[];
   aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
@@ -96,7 +101,11 @@ function computeConsensusRecord(
       !vBen.humanDepartment ||
       !vArk.humanDepartment ||
       isSameDepartment(vBen.humanDepartment, vArk.humanDepartment);
-    const isAgreed = sameGender && sameAge && sameUni && sameDept;
+    const sameDeg =
+      !vBen.humanDegree ||
+      !vArk.humanDegree ||
+      isSameDegree(vBen.humanDegree, vArk.humanDegree);
+    const isAgreed = sameGender && sameAge && sameUni && sameDept && sameDeg;
 
     return {
       fileName,
@@ -105,6 +114,7 @@ function computeConsensusRecord(
       humanAge: vBen.humanAge,
       humanUniversity: vBen.humanUniversity || vArk.humanUniversity || null,
       humanDepartment: vBen.humanDepartment || vArk.humanDepartment || null,
+      humanDegree: vBen.humanDegree || vArk.humanDegree || null,
       updatedAt:
         vBen.updatedAt > vArk.updatedAt ? vBen.updatedAt : vArk.updatedAt,
       votes: { ben: vBen, arkadasim: vArk },
@@ -120,6 +130,7 @@ function computeConsensusRecord(
     humanAge: single.humanAge,
     humanUniversity: single.humanUniversity || null,
     humanDepartment: single.humanDepartment || null,
+    humanDegree: single.humanDegree || null,
     updatedAt: single.updatedAt,
     votes: { ben: vBen, arkadasim: vArk },
     consensusStatus: "single",
@@ -310,6 +321,8 @@ export async function GET() {
         aiAllUniversities: eduRes.allUniversities,
         aiDepartment: eduRes.department,
         aiAllDepartments: eduRes.allDepartments,
+        aiDegree: eduRes.degree,
+        aiAllDegrees: eduRes.allDegrees,
         aiEducationSummary: eduRes.educationSummary,
         humanLabel: savedLabels[item.fileName] || null,
       };
@@ -343,6 +356,7 @@ export async function POST(req: NextRequest) {
       humanAge,
       humanUniversity,
       humanDepartment,
+      humanDegree,
       rater = "ben",
       action,
     } = body as {
@@ -352,6 +366,7 @@ export async function POST(req: NextRequest) {
       humanAge?: number | string | null;
       humanUniversity?: string | null;
       humanDepartment?: string | null;
+      humanDegree?: string | null;
       rater?: RaterId;
       action?: string;
     };
@@ -399,6 +414,13 @@ export async function POST(req: NextRequest) {
           : null
         : prevRaterVote?.humanDepartment ?? null;
 
+    const cleanedDeg =
+      humanDegree !== undefined
+        ? humanDegree && humanDegree.trim().length > 0
+          ? humanDegree.trim()
+          : null
+        : prevRaterVote?.humanDegree ?? null;
+
     const updatedVotes = {
       ...existingVotes,
       [validRater]: {
@@ -408,6 +430,7 @@ export async function POST(req: NextRequest) {
         humanAge: parsedAge,
         humanUniversity: cleanedUni,
         humanDepartment: cleanedDept,
+        humanDegree: cleanedDeg,
         updatedAt: new Date().toISOString(),
       },
     };

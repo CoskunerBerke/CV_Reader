@@ -19,7 +19,11 @@ import {
   Lock,
   GraduationCap,
 } from "lucide-react";
-import { isSameUniversity, isSameDepartment } from "@/lib/cvEngine";
+import {
+  isSameUniversity,
+  isSameDepartment,
+  isSameDegree,
+} from "@/lib/cvEngine";
 
 type RaterId = "ben" | "arkadasim";
 
@@ -30,6 +34,7 @@ interface SingleRaterVote {
   humanAge: number | null;
   humanUniversity?: string | null;
   humanDepartment?: string | null;
+  humanDegree?: string | null;
   updatedAt: string;
 }
 
@@ -40,6 +45,7 @@ interface GroundTruthLabel {
   humanAge: number | null;
   humanUniversity?: string | null;
   humanDepartment?: string | null;
+  humanDegree?: string | null;
   updatedAt: string;
   votes?: {
     ben?: SingleRaterVote;
@@ -63,29 +69,54 @@ interface BenchmarkCVItem {
   aiAllUniversities: string[];
   aiDepartment: string;
   aiAllDepartments: string[];
+  aiDegree: string;
+  aiAllDegrees: string[];
   aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
 
+const DEGREE_OPTIONS = [
+  {
+    value: "Ön Lisans / Associate Degree",
+    shortTr: "Ön Lisans (MYO)",
+    shortEn: "Associate Degree",
+  },
+  {
+    value: "Lisans / Bachelor's Degree (B.Sc.)",
+    shortTr: "Lisans",
+    shortEn: "Bachelor's / B.Sc.",
+  },
+  {
+    value: "Yüksek Lisans / Master's Degree (M.Sc.)",
+    shortTr: "Yüksek Lisans",
+    shortEn: "Master's / M.Sc. / MBA",
+  },
+  {
+    value: "Doktora / Ph.D. (Doctorate)",
+    shortTr: "Doktora",
+    shortEn: "Ph.D. / Doctorate",
+  },
+];
+
 const QUICK_DEPARTMENTS = [
-  "Bilgisayar Mühendisliği",
-  "Yazılım Mühendisliği",
-  "Elektrik-Elektronik Mühendisliği",
-  "Elektronik ve Haberleşme Mühendisliği",
-  "Makine Mühendisliği",
-  "Endüstri Mühendisliği",
-  "Mekatronik Mühendisliği",
-  "Yönetim Bilişim Sistemleri (YBS)",
-  "Bilişim Sistemleri Mühendisliği",
-  "İstatistik",
-  "Matematik",
-  "Fizik",
-  "Kimya Mühendisliği",
-  "Kimya",
-  "Metalurji ve Malzeme Mühendisliği",
-  "Otomotiv Mühendisliği",
-  "Jeofizik Mühendisliği",
-  "İktisat (Ekonomi)",
+  "Bilgisayar Mühendisliği / Computer Engineering",
+  "Yazılım Mühendisliği / Software Engineering",
+  "Elektrik-Elektronik Mühendisliği / Electrical & Electronics Engineering",
+  "Elektronik ve Haberleşme Mühendisliği / Electronics & Communication Engineering",
+  "Makine Mühendisliği / Mechanical Engineering",
+  "Endüstri Mühendisliği / Industrial Engineering",
+  "Mekatronik Mühendisliği / Mechatronics Engineering",
+  "Yönetim Bilişim Sistemleri (YBS) / Management Information Systems (MIS)",
+  "Bilişim Sistemleri Mühendisliği / Information Systems Engineering",
+  "İstatistik / Statistics",
+  "Matematik / Mathematics",
+  "Fizik / Physics (Physics Engineering)",
+  "Kimya Mühendisliği / Chemical Engineering",
+  "Kimya / Chemistry",
+  "Metalurji ve Malzeme Mühendisliği / Metallurgical & Materials Engineering",
+  "Otomotiv Mühendisliği / Automotive Engineering",
+  "Jeofizik Mühendisliği / Geophysical Engineering",
+  "İktisat / Economics",
 ];
 
 export default function GroundTruthLabelerPage() {
@@ -108,12 +139,15 @@ export default function GroundTruthLabelerPage() {
   const [inputName, setInputName] = useState<string>("");
   const [inputUniversity, setInputUniversity] = useState<string>("");
   const [inputDepartment, setInputDepartment] = useState<string>("");
+  const [inputDegree, setInputDegree] = useState<string>(
+    "Lisans / Bachelor's Degree (B.Sc.)"
+  );
   const [saveMessage, setSaveMessage] = useState<string>("");
 
-  // Bir CV'nin bu kullanıcı tarafından tamamen (Üni & Bölüm dahil) etiketlenip etiketlenmediğini kontrol et
+  // Bir CV'nin bu kullanıcı tarafından tamamen (Üni, Bölüm ve Derece dahil) etiketlenip etiketlenmediğini kontrol et
   const isRaterFullyDone = useCallback((it: BenchmarkCVItem, role: RaterId) => {
     const v = it.humanLabel?.votes?.[role];
-    return !!(v && v.humanUniversity && v.humanDepartment);
+    return !!(v && v.humanUniversity && v.humanDepartment && v.humanDegree);
   }, []);
 
   // Cihazdaki seçili etiketleyici rolünü ("ben" veya "arkadasim") hatırla
@@ -164,7 +198,7 @@ export default function GroundTruthLabelerPage() {
         const data = await res.json();
         if (data.items) {
           setItems(data.items);
-          // İlk açılışta (sayfa yenilendiğinde veya kapatıp açıldığında) doğrudan kullanıcının kaldığı (henüz Üni & Bölüm etiketlemediği ilk) CV'ye atla!
+          // İlk açılışta (sayfa yenilendiğinde veya kapatıp açıldığında) doğrudan kullanıcının kaldığı (henüz Üni, Bölüm & Derece etiketlemediği ilk) CV'ye atla!
           if (!silent) {
             let role: RaterId = "ben";
             try {
@@ -178,7 +212,12 @@ export default function GroundTruthLabelerPage() {
             const firstUnlabeledIdx = (data.items as BenchmarkCVItem[]).findIndex(
               (it) => {
                 const v = it.humanLabel?.votes?.[role];
-                return !(v && v.humanUniversity && v.humanDepartment);
+                return !(
+                  v &&
+                  v.humanUniversity &&
+                  v.humanDepartment &&
+                  v.humanDegree
+                );
               }
             );
             if (firstUnlabeledIdx !== -1) {
@@ -228,7 +267,20 @@ export default function GroundTruthLabelerPage() {
         const deptMismatch =
           !!it.humanLabel.humanDepartment &&
           !isSameDepartment(it.aiDepartment, it.humanLabel.humanDepartment);
-        return genderMismatch || ageMismatch || uniMismatch || deptMismatch;
+        const degMismatch =
+          !!it.humanLabel.humanDegree &&
+          !isSameDegree(
+            it.aiDegree,
+            it.humanLabel.humanDegree,
+            it.aiAllDegrees || []
+          );
+        return (
+          genderMismatch ||
+          ageMismatch ||
+          uniMismatch ||
+          deptMismatch ||
+          degMismatch
+        );
       });
     }
     return items;
@@ -248,6 +300,8 @@ export default function GroundTruthLabelerPage() {
       currentItem.aiDepartment && currentItem.aiDepartment !== "Belirtilmemiş"
         ? currentItem.aiDepartment
         : "";
+    const defaultDeg =
+      currentItem.aiDegree || "Lisans / Bachelor's Degree (B.Sc.)";
 
     if (myVote) {
       setInputGender(myVote.humanGender === "Kadın" ? "Kadın" : "Erkek");
@@ -263,6 +317,11 @@ export default function GroundTruthLabelerPage() {
           currentItem.humanLabel?.humanDepartment ||
           defaultDept
       );
+      setInputDegree(
+        myVote.humanDegree ||
+          currentItem.humanLabel?.humanDegree ||
+          defaultDeg
+      );
     } else if (currentItem.humanLabel) {
       setInputGender(
         currentItem.humanLabel.humanGender === "Kadın" ? "Kadın" : "Erkek"
@@ -275,6 +334,7 @@ export default function GroundTruthLabelerPage() {
       setInputName(currentItem.humanLabel.humanName || currentItem.aiName);
       setInputUniversity(currentItem.humanLabel.humanUniversity || defaultUni);
       setInputDepartment(currentItem.humanLabel.humanDepartment || defaultDept);
+      setInputDegree(currentItem.humanLabel.humanDegree || defaultDeg);
     } else {
       setInputGender(currentItem.aiGender === "Kadın" ? "Kadın" : "Erkek");
       const isNoBirthOrEduDate =
@@ -285,6 +345,7 @@ export default function GroundTruthLabelerPage() {
       setInputName(currentItem.aiName);
       setInputUniversity(defaultUni);
       setInputDepartment(defaultDept);
+      setInputDegree(defaultDeg);
     }
     setSaveMessage("");
   }, [currentItem?.fileName, activeRater]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -332,6 +393,9 @@ export default function GroundTruthLabelerPage() {
         deptLabeledCount: 0,
         deptCorrect: 0,
         deptAccuracy: 0,
+        degLabeledCount: 0,
+        degCorrect: 0,
+        degAccuracy: 0,
         overallAccuracy: 0,
         mismatches: [] as BenchmarkCVItem[],
       };
@@ -345,6 +409,8 @@ export default function GroundTruthLabelerPage() {
     let uniCorrect = 0;
     let deptLabeledCount = 0;
     let deptCorrect = 0;
+    let degLabeledCount = 0;
+    let degCorrect = 0;
     const mismatches: BenchmarkCVItem[] = [];
 
     for (const it of validDecisionPool) {
@@ -379,7 +445,7 @@ export default function GroundTruthLabelerPage() {
       let isUniOk = true;
       if (lbl.humanUniversity && lbl.humanUniversity.trim().length > 0) {
         uniLabeledCount++;
-        if (isSameUniversity(it.aiUniversity, lbl.humanUniversity)) {
+        if (isSameUniversity(it.aiUniversity, lbl.humanUniversity, it.aiAllUniversities || [])) {
           uniCorrect++;
         } else {
           isUniOk = false;
@@ -389,14 +455,24 @@ export default function GroundTruthLabelerPage() {
       let isDeptOk = true;
       if (lbl.humanDepartment && lbl.humanDepartment.trim().length > 0) {
         deptLabeledCount++;
-        if (isSameDepartment(it.aiDepartment, lbl.humanDepartment)) {
+        if (isSameDepartment(it.aiDepartment, lbl.humanDepartment, it.aiAllDepartments || [])) {
           deptCorrect++;
         } else {
           isDeptOk = false;
         }
       }
 
-      if (!isGenderOk || !isAgeCloseOk || !isUniOk || !isDeptOk) {
+      let isDegOk = true;
+      if (lbl.humanDegree && lbl.humanDegree.trim().length > 0) {
+        degLabeledCount++;
+        if (isSameDegree(it.aiDegree, lbl.humanDegree, it.aiAllDegrees || [])) {
+          degCorrect++;
+        } else {
+          isDegOk = false;
+        }
+      }
+
+      if (!isGenderOk || !isAgeCloseOk || !isUniOk || !isDeptOk || !isDegOk) {
         mismatches.push(it);
       }
     }
@@ -420,10 +496,15 @@ export default function GroundTruthLabelerPage() {
       deptLabeledCount > 0
         ? Number(((deptCorrect / deptLabeledCount) * 100).toFixed(1))
         : 100;
+    const degAccuracy =
+      degLabeledCount > 0
+        ? Number(((degCorrect / degLabeledCount) * 100).toFixed(1))
+        : 100;
 
     const activeMetrics = [genderAccuracy, ageCloseAccuracy];
     if (uniLabeledCount > 0) activeMetrics.push(uniAccuracy);
     if (deptLabeledCount > 0) activeMetrics.push(deptAccuracy);
+    if (degLabeledCount > 0) activeMetrics.push(degAccuracy);
 
     const overallAccuracy = Number(
       (
@@ -451,6 +532,9 @@ export default function GroundTruthLabelerPage() {
       deptLabeledCount,
       deptCorrect,
       deptAccuracy,
+      degLabeledCount,
+      degCorrect,
+      degAccuracy,
       overallAccuracy,
       mismatches,
     };
@@ -477,6 +561,10 @@ export default function GroundTruthLabelerPage() {
       (currentItem.aiDepartment !== "Belirtilmemiş"
         ? currentItem.aiDepartment
         : "Belirtilmemiş");
+    const degToSave =
+      inputDegree.trim() ||
+      currentItem.aiDegree ||
+      "Lisans / Bachelor's Degree (B.Sc.)";
 
     try {
       const res = await fetch("/api/ground-truth", {
@@ -489,6 +577,7 @@ export default function GroundTruthLabelerPage() {
           humanAge: parsedAge,
           humanUniversity: uniToSave,
           humanDepartment: deptToSave,
+          humanDegree: degToSave,
           rater: activeRater,
         }),
       });
@@ -514,7 +603,7 @@ export default function GroundTruthLabelerPage() {
         if (autoNext) {
           setTimeout(() => {
             if (filterMode === "all") {
-              // Doğrudan kullanıcının henüz Üni & Bölüm etiketlemediği bir sonraki CV'ye atla (zaten yaptıklarını tekrar gösterme!)
+              // Doğrudan kullanıcının henüz Üni, Bölüm & Derece etiketlemediği bir sonraki CV'ye atla!
               const nextUnlabeledAfter = updatedList.findIndex(
                 (it, idx) => idx > currentIndex && !isRaterFullyDone(it, activeRater)
               );
@@ -591,6 +680,11 @@ export default function GroundTruthLabelerPage() {
       inputDepartment.trim() ||
       currentItem.humanLabel?.humanDepartment ||
       currentItem.aiDepartment;
+    const compareDeg =
+      inputDegree.trim() ||
+      currentItem.humanLabel?.humanDegree ||
+      currentItem.aiDegree ||
+      "Lisans / Bachelor's Degree (B.Sc.)";
 
     const genderMatch = currentItem.aiGender === compareGender;
     const isExtraCaseNoDate =
@@ -605,21 +699,43 @@ export default function GroundTruthLabelerPage() {
         ? 0
         : null;
 
-    const uniMatch = isSameUniversity(currentItem.aiUniversity, compareUni);
-    const deptMatch = isSameDepartment(currentItem.aiDepartment, compareDept);
+    const uniMatch = isSameUniversity(
+      currentItem.aiUniversity,
+      compareUni,
+      currentItem.aiAllUniversities || []
+    );
+    const deptMatch = isSameDepartment(
+      currentItem.aiDepartment,
+      compareDept,
+      currentItem.aiAllDepartments || []
+    );
+    const degMatch = isSameDegree(
+      currentItem.aiDegree,
+      compareDeg,
+      currentItem.aiAllDegrees || []
+    );
 
     return {
       compareGender,
       compareAge,
       compareUni,
       compareDept,
+      compareDeg,
       genderMatch,
       ageDiff,
       uniMatch,
       deptMatch,
+      degMatch,
       isExtraCaseNoDate,
     };
-  }, [currentItem, inputGender, inputAge, inputUniversity, inputDepartment]);
+  }, [
+    currentItem,
+    inputGender,
+    inputAge,
+    inputUniversity,
+    inputDepartment,
+    inputDegree,
+  ]);
 
   const benVote = currentItem?.humanLabel?.votes?.ben;
   const arkVote = currentItem?.humanLabel?.votes?.arkadasim;
@@ -731,6 +847,18 @@ export default function GroundTruthLabelerPage() {
                 {stats.deptLabeledCount === 0 ? "—" : `%${stats.deptAccuracy}`}
                 <span className="text-[11px] text-zinc-500 font-normal ml-1">
                   ({stats.deptCorrect}/{stats.deptLabeledCount})
+                </span>
+              </div>
+            </div>
+
+            <div className="px-2.5 py-1.5 rounded-lg border border-teal-300 bg-teal-50/50 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold">
+                Derece Başarısı
+              </div>
+              <div className="text-sm font-bold text-zinc-950">
+                {stats.degLabeledCount === 0 ? "—" : `%${stats.degAccuracy}`}
+                <span className="text-[11px] text-zinc-500 font-normal ml-1">
+                  ({stats.degCorrect}/{stats.degLabeledCount})
                 </span>
               </div>
             </div>
@@ -1064,6 +1192,7 @@ export default function GroundTruthLabelerPage() {
                     {benVote?.humanUniversity && (
                       <div className="text-[11px] opacity-85 mt-1 truncate">
                         🎓 {benVote.humanUniversity} — {benVote.humanDepartment || "—"}
+                        {benVote.humanDegree ? ` (${benVote.humanDegree})` : ""}
                       </div>
                     )}
                   </div>
@@ -1090,6 +1219,7 @@ export default function GroundTruthLabelerPage() {
                     {arkVote?.humanUniversity && (
                       <div className="text-[11px] opacity-85 mt-1 truncate">
                         🎓 {arkVote.humanUniversity} — {arkVote.humanDepartment || "—"}
+                        {arkVote.humanDegree ? ` (${arkVote.humanDegree})` : ""}
                       </div>
                     )}
                   </div>
@@ -1104,12 +1234,12 @@ export default function GroundTruthLabelerPage() {
                       1. {activeRater === "ben" ? "📱 Benim Cevabım" : "💻 Arkadaşımın Cevabı"}
                     </h2>
                     <p className="text-[11px] text-zinc-500">
-                      Soldaki CV&apos;ye bakarak Üniversite, Bölüm, Cinsiyet ve Yaşı onaylayın
+                      Soldaki CV&apos;ye bakarak Üniversite, Bölüm, Derece (TR/EN), Cinsiyet ve Yaşı onaylayın
                     </p>
                   </div>
                   {isRaterFullyDone(currentItem, activeRater) && (
                     <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[11px] font-bold">
-                      ✓ Üni &amp; Bölüm Dahil Tamam
+                      ✓ Üni, Bölüm &amp; Derece Tamam
                     </span>
                   )}
                 </div>
@@ -1127,12 +1257,90 @@ export default function GroundTruthLabelerPage() {
                   </div>
                 )}
 
-                {/* YENİ: GERÇEK ÜNİVERSİTE (LİSANS / ANA ÜNİVERSİTE) */}
-                <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-200 space-y-2.5">
+                {/* YENİ: GERÇEK ÜNİVERSİTE, BÖLÜM VE EĞİTİM DERECESİ (TR / EN) */}
+                <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-200 space-y-3">
+                  {/* EĞİTİM DERECESİ (ÖN LİSANS / LİSANS / MASTER / DOKTORA - TR & EN) */}
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1 flex items-center justify-between">
+                      <span>
+                        🎓 Eğitim Derecesi / Seviyesi (Türkçe &amp; İngilizce) *
+                      </span>
+                      <span className="text-[10px] font-normal text-teal-800">
+                        Ön Lisans • Lisans • Master • Doktora
+                      </span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2">
+                      {DEGREE_OPTIONS.map((deg) => {
+                        const active = isSameDegree(inputDegree, deg.value);
+                        const detectedInCv = (
+                          currentItem.aiAllDegrees || []
+                        ).some((d) => isSameDegree(d, deg.value));
+                        return (
+                          <button
+                            key={deg.value}
+                            type="button"
+                            onClick={() => setInputDegree(deg.value)}
+                            className={`px-2.5 py-2 rounded-lg text-left border transition-all cursor-pointer flex items-center justify-between gap-1 ${
+                              active
+                                ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                                : detectedInCv
+                                ? "bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100"
+                                : "bg-white text-zinc-800 border-teal-200 hover:bg-teal-100/60"
+                            }`}
+                          >
+                            <div>
+                              <div className="text-[11px] font-bold leading-tight">
+                                {deg.shortTr} / {deg.shortEn}
+                              </div>
+                              <div
+                                className={`text-[10px] leading-tight mt-0.5 ${
+                                  active ? "text-teal-100" : "text-zinc-500"
+                                }`}
+                              >
+                                {deg.value}
+                              </div>
+                            </div>
+                            {detectedInCv && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 ${
+                                  active
+                                    ? "bg-white/20 text-white"
+                                    : "bg-amber-200/80 text-amber-950"
+                                }`}
+                              >
+                                CV&apos;de Var
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input
+                      type="text"
+                      value={inputDegree}
+                      onChange={(e) => setInputDegree(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveLabel();
+                        }
+                      }}
+                      placeholder="Örn: Lisans / Bachelor's Degree (B.Sc.) veya Yüksek Lisans / Master's Degree (M.Sc.)"
+                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
+                    />
+                    {currentItem.aiAllDegrees &&
+                      currentItem.aiAllDegrees.length > 1 && (
+                        <div className="mt-1 text-[11px] text-teal-900 font-medium">
+                          💡 CV&apos;de birden fazla eğitim kademesi tespit edildi:{" "}
+                          <strong>{currentItem.aiAllDegrees.join(" + ")}</strong>
+                        </div>
+                      )}
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-teal-950 mb-1 flex items-center gap-1.5">
                       <GraduationCap className="w-4 h-4 text-teal-700" />
-                      Gerçek Üniversite (Lisans / Ana Üniversite) *
+                      Gerçek Üniversite (TR / EN Eşleşir — Örn: ODTÜ / METU) *
                     </label>
                     <input
                       type="text"
@@ -1144,7 +1352,7 @@ export default function GroundTruthLabelerPage() {
                           handleSaveLabel();
                         }
                       }}
-                      placeholder="Örn: Orta Doğu Teknik Üniversitesi (ODTÜ)"
+                      placeholder="Örn: Orta Doğu Teknik Üniversitesi (ODTÜ) / Middle East Technical University"
                       className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
                     />
                     {/* CV içinde geçen üniversite adayları (1-tıkla seçim) */}
@@ -1172,10 +1380,10 @@ export default function GroundTruthLabelerPage() {
                       )}
                   </div>
 
-                  {/* YENİ: GERÇEK BÖLÜM (LİSANS / ANA BÖLÜM) */}
+                  {/* YENİ: GERÇEK BÖLÜM (LİSANS / ANA BÖLÜM - TR & EN) */}
                   <div>
                     <label className="block text-xs font-bold text-teal-950 mb-1">
-                      Gerçek Bölüm (Lisans / Ana Bölüm) *
+                      Gerçek Bölüm (Türkçe / İngilizce İkisi de Kabul Edilir) *
                     </label>
                     <input
                       type="text"
@@ -1187,7 +1395,7 @@ export default function GroundTruthLabelerPage() {
                           handleSaveLabel();
                         }
                       }}
-                      placeholder="Örn: Bilgisayar Mühendisliği"
+                      placeholder="Örn: Bilgisayar Mühendisliği / Computer Engineering"
                       className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
                     />
                     {/* CV içinde tespit edilen bölümler + hızlı bölüm butonları */}
@@ -1331,7 +1539,7 @@ export default function GroundTruthLabelerPage() {
                     <Check className="w-4 h-4" />
                     {saving
                       ? "Ortak Buluta Kaydediliyor..."
-                      : `Üni & Bölüm Dahil Kaydet (${
+                      : `Üni, Bölüm & Derece Dahil Kaydet (${
                           activeRater === "ben" ? "Ben" : "Arkadaşım"
                         }) ve Sonrakine Geç`}
                   </button>
@@ -1349,6 +1557,45 @@ export default function GroundTruthLabelerPage() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                   2. Bu CV İçin AI Cevabı vs. Sizin Cevabınız
                 </h3>
+
+                {/* Eğitim Derecesi (Ön Lisans / Lisans / Master / Doktora) Karşılaştırma Satırı */}
+                <div
+                  className={`p-3 rounded-lg border ${
+                    activeComparison?.degMatch
+                      ? "bg-teal-50/60 border-teal-200"
+                      : "bg-red-50/70 border-red-200"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
+                    <span>
+                      AI Derece:{" "}
+                      <strong className="underline">
+                        {currentItem.aiDegree}
+                      </strong>
+                    </span>
+                    <span>
+                      Sizin Kararınız:{" "}
+                      <strong className="underline">
+                        {activeComparison?.compareDeg}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-600">
+                      Tespit edilen tüm dereceler:{" "}
+                      {(currentItem.aiAllDegrees || []).join(" + ") || "—"}
+                    </span>
+                    {activeComparison?.degMatch ? (
+                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
+                      </span>
+                    ) : (
+                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {/* Üniversite Karşılaştırma Satırı */}
                 <div
@@ -1529,7 +1776,7 @@ export default function GroundTruthLabelerPage() {
                 <Brain className="w-4 h-4 text-teal-600" />
                 <h3 className="text-sm font-bold text-zinc-950">
                   Canlı Ortak Etiketleme Tablosu ({stats.totalAnyLabeled} CV Etiketlendi •{" "}
-                  {stats.uniLabeledCount} Üni/Bölüm Etiketlendi)
+                  {stats.uniLabeledCount} Üni/Bölüm/Derece Etiketlendi)
                 </h3>
               </div>
               <span className="text-xs text-zinc-500">
@@ -1543,9 +1790,9 @@ export default function GroundTruthLabelerPage() {
                   <tr>
                     <th className="py-2.5 px-3 font-semibold">#</th>
                     <th className="py-2.5 px-3 font-semibold">Dosya / Aday</th>
-                    <th className="py-2.5 px-3 font-semibold">📱 Ben (Cinsiyet/Yaş/Üni/Bölüm)</th>
+                    <th className="py-2.5 px-3 font-semibold">📱 Ben (Cinsiyet/Yaş/Üni/Bölüm/Derece)</th>
                     <th className="py-2.5 px-3 font-semibold">💻 Arkadaşım</th>
-                    <th className="py-2.5 px-3 font-semibold">AI Tahmini (Üni / Bölüm / Yaş)</th>
+                    <th className="py-2.5 px-3 font-semibold">AI Tahmini (Üni / Bölüm / Derece / Yaş)</th>
                     <th className="py-2.5 px-3 font-semibold">AI Sonucu</th>
                   </tr>
                 </thead>
@@ -1568,6 +1815,12 @@ export default function GroundTruthLabelerPage() {
                       const dOk =
                         !lbl.humanDepartment ||
                         isSameDepartment(it.aiDepartment, lbl.humanDepartment);
+                      const degOk =
+                        !lbl.humanDegree ||
+                        isSameDegree(lbl.humanDegree, it.aiDegree) ||
+                        (it.aiAllDegrees || []).some((d) =>
+                          isSameDegree(lbl.humanDegree || "", d)
+                        );
                       return (
                         <tr
                           key={it.fileName}
@@ -1590,7 +1843,9 @@ export default function GroundTruthLabelerPage() {
                             {vB
                               ? `${vB.humanGender}, ${vB.humanAge ?? "—"}${
                                   vB.humanUniversity
-                                    ? ` • ${vB.humanUniversity} (${vB.humanDepartment || "—"})`
+                                    ? ` • ${vB.humanUniversity} (${vB.humanDepartment || "—"}${
+                                        vB.humanDegree ? ` • ${vB.humanDegree}` : ""
+                                      })`
                                     : ""
                                 }`
                               : "—"}
@@ -1599,7 +1854,9 @@ export default function GroundTruthLabelerPage() {
                             {vA
                               ? `${vA.humanGender}, ${vA.humanAge ?? "—"}${
                                   vA.humanUniversity
-                                    ? ` • ${vA.humanUniversity} (${vA.humanDepartment || "—"})`
+                                    ? ` • ${vA.humanUniversity} (${vA.humanDepartment || "—"}${
+                                        vA.humanDegree ? ` • ${vA.humanDegree}` : ""
+                                      })`
                                     : ""
                                 }`
                               : "—"}
@@ -1608,14 +1865,18 @@ export default function GroundTruthLabelerPage() {
                             <span className="font-semibold text-zinc-900">
                               {it.aiUniversity}
                             </span>{" "}
-                            — {it.aiDepartment} ({it.aiGender}, {it.aiAge ?? "—"})
+                            — {it.aiDepartment} •{" "}
+                            <span className="text-teal-800 font-semibold">
+                              {it.aiDegree}
+                            </span>{" "}
+                            ({it.aiGender}, {it.aiAge ?? "—"})
                           </td>
                           <td className="py-2 px-3">
                             {lbl.consensusStatus === "conflict" ? (
                               <span className="text-amber-700 font-semibold">
                                 Uzlaşma Bekleniyor
                               </span>
-                            ) : gOk && aOk && uOk && dOk ? (
+                            ) : gOk && aOk && uOk && dOk && degOk ? (
                               <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold">
                                 ✓ AI Doğru
                               </span>

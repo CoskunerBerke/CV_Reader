@@ -1770,39 +1770,126 @@ const UNIVERSITY_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
   },
 ];
 
+const DEGREE_DICTIONARY: {
+  canonical: string;
+  shortLabel: string;
+  aliases: string[];
+}[] = [
+  {
+    canonical: "Ön Lisans / Associate Degree",
+    shortLabel: "Ön Lisans / Associate",
+    aliases: [
+      "ön lisans",
+      "önlisans",
+      "on lisans",
+      "onlisans",
+      "associate",
+      "associate degree",
+      "associates degree",
+      "associate of science",
+      "associate of arts",
+      "meslek yüksekokulu",
+      "meslek yüksek okulu",
+      "myo",
+    ],
+  },
+  {
+    canonical: "Lisans / Bachelor's Degree (B.Sc.)",
+    shortLabel: "Lisans / Bachelor's (B.Sc.)",
+    aliases: [
+      "lisans",
+      "lisans derecesi",
+      "lisans eğitimi",
+      "bachelor",
+      "bachelors",
+      "bachelor degree",
+      "bachelors degree",
+      "bachelor of science",
+      "bachelor of engineering",
+      "bachelor of arts",
+      "bsc",
+      "b sc",
+      "bs",
+      "b s",
+      "ba",
+      "be",
+      "b e",
+      "undergraduate",
+    ],
+  },
+  {
+    canonical: "Yüksek Lisans / Master's Degree (M.Sc.)",
+    shortLabel: "Yüksek Lisans / Master (M.Sc.)",
+    aliases: [
+      "yüksek lisans",
+      "yuksek lisans",
+      "yl",
+      "master",
+      "masters",
+      "master degree",
+      "masters degree",
+      "master of science",
+      "master of engineering",
+      "master of arts",
+      "msc",
+      "m sc",
+      "ms",
+      "m s",
+      "ma",
+      "mba",
+      "graduate",
+      "postgraduate",
+    ],
+  },
+  {
+    canonical: "Doktora / Ph.D. (Doctorate)",
+    shortLabel: "Doktora / Ph.D.",
+    aliases: [
+      "doktora",
+      "phd",
+      "ph d",
+      "doctorate",
+      "doctorate degree",
+      "doctoral",
+      "doctor of philosophy",
+    ],
+  },
+];
+
 const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegExp }[] = [
   {
-    canonical: "Bilgisayar Mühendisliği",
+    canonical: "Bilgisayar Mühendisliği / Computer Engineering",
     aliases: [
       "bilgisayar mühendisliği", "bilgisayar müh", "computer engineering",
       "computer science and engineering", "computers science and engineering",
       "bilgisayar bilimi ve mühendisliği", "computer science", "bilgisayar bilimleri",
-      "ceng", "cs"
+      "informatic and computer engineering", "ceng", "cs"
     ],
     regex:
       /(?:bilgisayar\s*(?:bilimi\s*ve\s*)?mühendisli[ğg]i|computers?\s*science\s*and\s*engineering|computer\s*engineering|co\s*m\s*p\s*u\s*te\s*r\s*en\s*g\s*ine\s*e\s*r\s*in\s*g|computer\s*engineer\s*\(\s*scholarship\s*\)|informatic\s*and\s*computer\s*engineering|bachelor[’']?s?\s*(?:degree\s*)?(?:of\s*science\s*)?,?\s*(?:in\s*)?computer\s*science|computer\s*science\s*graduate)/gi,
   },
   {
-    canonical: "Yazılım Mühendisliği",
+    canonical: "Yazılım Mühendisliği / Software Engineering",
     aliases: [
       "yazılım mühendisliği", "yazılım müh", "software engineering",
-      "software development", "yazılım geliştirme"
+      "software development", "yazılım geliştirme", "bachelor of science in software"
     ],
     regex:
       /(?:yaz[ıi]l[ıi]m\s*(?:mühendisli[ğg]i|geli[şs]tirme)|bachelor\s*of\s*science\s*in\s*software(?:\s*development|\s*engineering)?|software\s*development\s*-\s*third\s*year|(?:do[ğg]u[şs]\s*university)\s*\r?\n\s*software\s*engineer)/gi,
   },
   {
-    canonical: "Elektrik-Elektronik Mühendisliği",
+    canonical: "Elektrik-Elektronik Mühendisliği / Electrical & Electronics Engineering",
     aliases: [
       "elektrik-elektronik mühendisliği", "elektrik elektronik mühendisliği",
       "elektrik elektronik", "electrical and electronics engineering",
-      "electrical & electronic engineering", "eee", "eem"
+      "electrical & electronic engineering", "electrical electronics engineering",
+      "electronics engineering", "elektronik mühendisliği", "eee", "eem"
     ],
     regex:
-      /(?:elektrik[\s\-]*elektronik\s*mühendis(?:li[ğg]i|-)?|electrical\s*(?:and|&)\s*electronics?\s*engineering)/gi,
+      /(?:elektrik[\s\-]*elektronik\s*mühendis(?:li[ğg]i|-)?|electrical\s*(?:and|&|-)\s*electronics?\s*engineering)/gi,
   },
   {
-    canonical: "Elektronik ve Haberleşme Mühendisliği",
+    canonical: "Elektronik ve Haberleşme Mühendisliği / Electronics & Communication Engineering",
     aliases: [
       "elektronik ve haberleşme mühendisliği", "elektronik haberleşme",
       "electronics and communication engineering", "ehb", "ehm"
@@ -1811,31 +1898,31 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:elektronik\s*ve\s*haberle[şs]me\s*mühendisli[ğg]i|electronics?\s*(?:and|&)\s*communications?\s*engineering)/gi,
   },
   {
-    canonical: "Endüstri Mühendisliği",
+    canonical: "Endüstri Mühendisliği / Industrial Engineering",
     aliases: ["endüstri mühendisliği", "endüstri müh", "industrial engineering", "ie"],
     regex:
       /(?:end[üu]stri\s*mühendisli[ğg]i|industrial\s*engineering|bachelor's\s*degre[e]?\s*-\s*industrial\s*engineer)/gi,
   },
   {
-    canonical: "Makine Mühendisliği",
+    canonical: "Makine Mühendisliği / Mechanical Engineering",
     aliases: ["makine mühendisliği", "makina mühendisliği", "mechanical engineering", "me"],
     regex:
       /(?:makin[ea]\s*mühendisli[ğg]i|mechanical\s*engineering)/gi,
   },
   {
-    canonical: "Mekatronik Mühendisliği",
+    canonical: "Mekatronik Mühendisliği / Mechatronics Engineering",
     aliases: ["mekatronik mühendisliği", "mechatronics engineering", "mechatronic engineering"],
     regex:
       /(?:mekatronik\s*mühendisli[ğg]i|mechatronics?\s*engineering|mechatron\s*i?cs\s*eng\s*i?neer\s*i?ng)/gi,
   },
   {
-    canonical: "Otomotiv Mühendisliği",
+    canonical: "Otomotiv Mühendisliği / Automotive Engineering",
     aliases: ["otomotiv mühendisliği", "automotive engineering", "makine / otomotiv mühendisliği"],
     regex:
       /(?:otomotiv\s*mühendisli[ğg]i|automotive\s*engineering)/gi,
   },
   {
-    canonical: "Metalurji ve Malzeme Mühendisliği",
+    canonical: "Metalurji ve Malzeme Mühendisliği / Metallurgical & Materials Engineering",
     aliases: [
       "metalurji ve malzeme mühendisliği", "metalurji mühendisliği",
       "metallurgical engineering", "metallurgical and materials engineering"
@@ -1844,55 +1931,55 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:metalurji\s*(?:ve\s*malzeme\s*)?mühendisli[ğg]i|metallurgical\s*(?:and\s*materials?\s*)?engineering)/gi,
   },
   {
-    canonical: "Kimya Mühendisliği",
+    canonical: "Kimya Mühendisliği / Chemical Engineering",
     aliases: ["kimya mühendisliği", "chemical engineering"],
     regex:
       /(?:kimya\s*mühendisli[ğg]i|chemical\s*engineering)/gi,
   },
   {
-    canonical: "Kimya",
-    aliases: ["kimya", "kimya bölümü", "chemistry"],
+    canonical: "Kimya / Chemistry",
+    aliases: ["kimya", "kimya bölümü", "chemistry", "department of chemistry"],
     regex:
       /(?:kimya\s*bölümü|department\s*of\s*chemistry|bachelor\s*(?:of\s*science\s*)?in\s*chemistry)/gi,
   },
   {
-    canonical: "Jeofizik Mühendisliği",
+    canonical: "Jeofizik Mühendisliği / Geophysical Engineering",
     aliases: ["jeofizik mühendisliği", "geophysical engineering"],
     regex:
       /(?:jeofizik\s*mühendisli[ğg]i|geophysical\s*engineering)/gi,
   },
   {
-    canonical: "Bilişim Sistemleri Mühendisliği",
+    canonical: "Bilişim Sistemleri Mühendisliği / Information Systems Engineering",
     aliases: ["bilişim sistemleri mühendisliği", "information systems engineering", "ise"],
     regex:
       /(?:bili[şs]im\s*sistemleri\s*mühendisli[ğg]i|information\s*systems\s*engineering)/gi,
   },
   {
-    canonical: "Yönetim Bilişim Sistemleri (YBS)",
+    canonical: "Yönetim Bilişim Sistemleri (YBS) / Management Information Systems (MIS)",
     aliases: ["yönetim bilişim sistemleri", "ybs", "management information systems", "mis"],
     regex:
       /(?:yönetim\s*bili[şs]im\s*sistemleri|management\s*information\s*systems)/gi,
   },
   {
-    canonical: "İstatistik",
-    aliases: ["istatistik", "statistics", "istatistik ve bilgisayar bilimleri"],
+    canonical: "İstatistik / Statistics",
+    aliases: ["istatistik", "statistics", "istatistik ve bilgisayar bilimleri", "istatistik veri bilimi"],
     regex:
       /(?:departm[ae]nt\s*of\s*statistics|istatistik\s*\(\s*lisans\s*\)|undergraduate\s*degree\s*in\s*statistics|\bstatistics\s*\r?\n\s*mugla)/gi,
   },
   {
-    canonical: "Matematik",
-    aliases: ["matematik", "mathematics", "matematik bölümü"],
+    canonical: "Matematik / Mathematics",
+    aliases: ["matematik", "mathematics", "matematik bölümü", "department of mathematics"],
     regex:
       /(?:bachelor\s*in\s*mathematics|matematik\s*bölümü|department\s*of\s*mathematics)/gi,
   },
   {
-    canonical: "Fizik",
-    aliases: ["fizik", "physics", "fizik mühendisliği", "engineering of physics"],
+    canonical: "Fizik / Physics (Physics Engineering)",
+    aliases: ["fizik", "physics", "fizik mühendisliği", "engineering of physics", "physics engineering"],
     regex:
       /(?:physics\s*b\.?sc|engineering\s*of\s*physics|fizik\s*mühendisli[ğg]i|fizik\s*bölümü)/gi,
   },
   {
-    canonical: "İktisat (Ekonomi)",
+    canonical: "İktisat / Economics",
     aliases: ["iktisat", "ekonomi", "economics", "department of economics"],
     regex:
       /(?:department\s*of\s*economics|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*economics|iktisat\s*bölümü|ekonomi\s*bölümü)/gi,
@@ -1904,6 +1991,8 @@ export function extractEducationFromCV(rawText: string): {
   allUniversities: string[];
   department: string;
   allDepartments: string[];
+  degree: string;
+  allDegrees: string[];
   educationSummary: string;
 } {
   if (!rawText || rawText.trim().length < 10) {
@@ -1912,6 +2001,8 @@ export function extractEducationFromCV(rawText: string): {
       allUniversities: [],
       department: "Belirtilmemiş",
       allDepartments: [],
+      degree: "Lisans / Bachelor's Degree (B.Sc.)",
+      allDegrees: ["Lisans / Bachelor's Degree (B.Sc.)"],
       educationSummary: "Eğitim bilgisi okunamadı.",
     };
   }
@@ -2093,9 +2184,52 @@ export function extractEducationFromCV(rawText: string): {
     }
   }
 
+  // 3. EĞİTİM DERECESİ TESPİTİ (Ön Lisans / Associate, Lisans / Bachelor's, Yüksek Lisans / Master's, Doktora / Ph.D.)
+  const degreeCheckText = normText.replace(
+    /(?:phd[\s\-]*level\s*academic\s*advisor|pursu\s*i?ng\s*master[’']?s\s*and\s*doctorate\s*degrees)/gi,
+    " "
+  );
+
+  const hasAssociate =
+    /(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’']?s?\s*(?:degree|of\s*science|of\s*arts)|\bmeslek\s*yüksek\s*okulu\b|\bmyo\b)/i.test(
+      degreeCheckText
+    );
+  const hasMaster =
+    /(?:\bmaster[’'´]?s?\s*(?:degre[e]?|of\s*science|of\s*engineering|of\s*arts|in\b|thesis|course\s*project)|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans(?:\s*eğitimi|\s*derecesi|\s*öğrencisi|\s*tez[i]?|\s*projeleri)?|\(\s*yüksek\s*lisans\s*\)|\bgraduate\s*student\s*pursuing\s*a\s*master|\bpursuing\s*a\s*msc\b)/i.test(
+      degreeCheckText
+    );
+  const hasPhd =
+    /(?:\bph\.?\s*d\.?(?:\s*in\b|\s*candidate|\s*research|\s*degree|\s*student)\b|\bdoktora(?:\s*eğitimi|\s*öğrencisi|\s*aday[i]|\s*derecesi)\b|\bdoctorate\s*degree\b|\bdoctoral\s*education\b|\bdoing\s*a\s*doctorate\b)/i.test(
+      degreeCheckText
+    );
+
+  const allDegrees: string[] = [];
+  if (hasAssociate) {
+    allDegrees.push("Ön Lisans / Associate Degree");
+  }
+  // Üniversite/fakülte/mühendislik/bölüm eğitimi olan her adayda Lisans (Bachelor's) mevcuttur (sadece Ön Lisans değilse)
+  if (!hasAssociate || /\b(?:bachelor|b\.?sc|lisans\s*eğitimi|\(\s*lisans\s*\))\b/i.test(degreeCheckText)) {
+    allDegrees.push("Lisans / Bachelor's Degree (B.Sc.)");
+  }
+  if (hasMaster) {
+    allDegrees.push("Yüksek Lisans / Master's Degree (M.Sc.)");
+  }
+  if (hasPhd) {
+    allDegrees.push("Doktora / Ph.D. (Doctorate)");
+  }
+
+  // Ana / En Yüksek Eğitim Derecesi (Ön Lisans mı, Lisans mı, Master mı, Doktora mı)
+  const primaryDegree = hasPhd
+    ? "Doktora / Ph.D. (Doctorate)"
+    : hasMaster
+    ? "Yüksek Lisans / Master's Degree (M.Sc.)"
+    : hasAssociate
+    ? "Ön Lisans / Associate Degree"
+    : "Lisans / Bachelor's Degree (B.Sc.)";
+
   const otherUnis = allFoundUnis.filter((u) => u !== bestUni);
   const otherDepts = allFoundDepts.filter((d) => d !== bestDept);
-  let educationSummary = `Ana Üniversite/Bölüm: ${bestUni} — ${bestDept}`;
+  let educationSummary = `[${allDegrees.join(" + ")}] ${bestUni} — ${bestDept}`;
   if (otherUnis.length > 0 || otherDepts.length > 0) {
     educationSummary += ` (Diğer: ${[...otherUnis, ...otherDepts].join(", ")})`;
   }
@@ -2105,61 +2239,134 @@ export function extractEducationFromCV(rawText: string): {
     allUniversities: allFoundUnis.length > 0 ? allFoundUnis : [bestUni],
     department: bestDept,
     allDepartments: allFoundDepts.length > 0 ? allFoundDepts : [bestDept],
+    degree: primaryDegree,
+    allDegrees,
     educationSummary,
   };
 }
 
+function resolveUniversityCanonical(val: string): string {
+  const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!vNorm) return "";
+  for (const entry of UNIVERSITY_DICTIONARY) {
+    const cNorm = toAsciiTr(entry.canonical).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (vNorm === cNorm || (vNorm.length >= 4 && (cNorm.includes(vNorm) || vNorm.includes(cNorm)))) {
+      return entry.canonical;
+    }
+    for (const alias of entry.aliases) {
+      const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+      if (vNorm === aNorm || (vNorm.length >= 3 && (vNorm.includes(aNorm) || aNorm.includes(vNorm)))) {
+        return entry.canonical;
+      }
+    }
+  }
+  return vNorm;
+}
+
 export function isSameUniversity(
-  humanInput: string,
-  aiPrimary: string,
+  uniA: string,
+  uniB: string,
   aiAll: string[] = []
 ): boolean {
-  const hNorm = toAsciiTr(humanInput).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  if (!hNorm) return false;
+  const normA = toAsciiTr(uniA || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const normB = toAsciiTr(uniB || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
 
-  const candidates = [aiPrimary, ...aiAll].filter(Boolean);
+  const canA = resolveUniversityCanonical(uniA);
+  const candidates = [uniB, ...aiAll].filter(Boolean);
   for (const cand of candidates) {
+    const canB = resolveUniversityCanonical(cand);
+    if (canA && canB && canA === canB) return true;
     const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    if (hNorm === cNorm || cNorm.includes(hNorm) || hNorm.includes(cNorm)) {
-      if (hNorm.length >= 3) return true;
-    }
-    const dictEntry = UNIVERSITY_DICTIONARY.find((d) => d.canonical === cand);
-    if (dictEntry) {
-      for (const alias of dictEntry.aliases) {
-        const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-        if (hNorm === aNorm || hNorm.includes(aNorm) || aNorm.includes(hNorm)) {
-          if (hNorm.length >= 3) return true;
-        }
-      }
+    if (normA.length >= 3 && cNorm.length >= 3 && (normA.includes(cNorm) || cNorm.includes(normA))) {
+      return true;
     }
   }
   return false;
 }
 
-export function isSameDepartment(
-  humanInput: string,
-  aiPrimary: string,
-  aiAll: string[] = []
-): boolean {
-  const hNorm = toAsciiTr(humanInput).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  if (!hNorm) return false;
-
-  const candidates = [aiPrimary, ...aiAll].filter(Boolean);
-  for (const cand of candidates) {
-    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    if (hNorm === cNorm || cNorm.includes(hNorm) || hNorm.includes(cNorm)) {
-      if (hNorm.length >= 2) return true;
+function resolveDepartmentCanonical(val: string): string {
+  const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!vNorm) return "";
+  for (const entry of DEPARTMENT_DICTIONARY) {
+    const cNorm = toAsciiTr(entry.canonical).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (vNorm === cNorm || (vNorm.length >= 3 && (cNorm.includes(vNorm) || vNorm.includes(cNorm)))) {
+      return entry.canonical;
     }
-    const dictEntry = DEPARTMENT_DICTIONARY.find((d) => d.canonical === cand);
-    if (dictEntry) {
-      for (const alias of dictEntry.aliases) {
-        const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-        if (hNorm === aNorm || hNorm.includes(aNorm) || aNorm.includes(hNorm)) {
-          if (hNorm.length >= 2) return true;
-        }
+    for (const alias of entry.aliases) {
+      const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+      if (vNorm === aNorm || (vNorm.length >= 3 && aNorm.length >= 3 && (vNorm.includes(aNorm) || aNorm.includes(vNorm)))) {
+        return entry.canonical;
       }
     }
   }
-  // Bilgisayar Mühendisliği <-> Yazılım Mühendisliği / Bilgisayar Bilimleri yakınlığı veya Makine <-> Otomotiv yakınlığı
+  return vNorm;
+}
+
+export function isSameDepartment(
+  deptA: string,
+  deptB: string,
+  aiAll: string[] = []
+): boolean {
+  const normA = toAsciiTr(deptA || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const normB = toAsciiTr(deptB || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+
+  const canA = resolveDepartmentCanonical(deptA);
+  const candidates = [deptB, ...aiAll].filter(Boolean);
+  for (const cand of candidates) {
+    const canB = resolveDepartmentCanonical(cand);
+    if (canA && canB && canA === canB) return true;
+    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (normA.length >= 3 && cNorm.length >= 3 && (normA.includes(cNorm) || cNorm.includes(normA))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function resolveDegreeCanonical(val: string): string {
+  const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!vNorm) return "";
+  // Önce Yüksek Lisans ve Ön Lisans'ı kontrol et ki "lisans" alt dizgesi karışmasın
+  const ordered = [
+    DEGREE_DICTIONARY[3], // Doktora / Ph.D.
+    DEGREE_DICTIONARY[2], // Yüksek Lisans / Master
+    DEGREE_DICTIONARY[0], // Ön Lisans / Associate
+    DEGREE_DICTIONARY[1], // Lisans / Bachelor
+  ];
+  for (const entry of ordered) {
+    const cNorm = toAsciiTr(entry.canonical).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (vNorm === cNorm) return entry.canonical;
+    for (const alias of entry.aliases) {
+      const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+      const regex = new RegExp(`(?:^|\\s)${aNorm}(?:$|\\s)`, "i");
+      if (vNorm === aNorm || regex.test(vNorm)) {
+        return entry.canonical;
+      }
+    }
+  }
+  return vNorm;
+}
+
+export function isSameDegree(
+  degA: string,
+  degB: string,
+  aiAllDegrees: string[] = []
+): boolean {
+  const canA = resolveDegreeCanonical(degA || "");
+  const canB = resolveDegreeCanonical(degB || "");
+  if (!canA || !canB) return false;
+  if (canA === canB) return true;
+  for (const d of aiAllDegrees) {
+    if (resolveDegreeCanonical(d) === canA || resolveDegreeCanonical(d) === canB) {
+      // Eğer CV'de hem Lisans hem Yüksek Lisans varsa ve kullanıcı bunlardan birini seçtiyse
+      if (canA === resolveDegreeCanonical(d) && canB === resolveDegreeCanonical(degB)) {
+        return true;
+      }
+    }
+  }
   return false;
 }
