@@ -1261,6 +1261,7 @@ export function extractCandidateMetadataFromText(
 ): {
   fullName: string;
   university: string;
+  department: string;
   city: string;
   experienceYears: number;
 } {
@@ -1268,6 +1269,7 @@ export function extractCandidateMetadataFromText(
     return {
       fullName: "İsimsiz Aday (Taranmış Görüntü / OCR)",
       university: "Belirtilmemiş",
+      department: "Belirtilmemiş",
       city: "Belirtilmemiş",
       experienceYears: 0,
     };
@@ -1494,13 +1496,10 @@ export function extractCandidateMetadataFromText(
     fullName = "İsimsiz Aday (Ad Belirtilmemiş)";
   }
 
-  // 2. ÜNİVERSİTE / ENSTİTÜ / OKUL TESPİTİ (Türkçe & İngilizce)
-  let university = "Belirtilmemiş";
-  const uniRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,20}){0,4}\s+(?:Üniversitesi|University|Enstitüsü|Institute|School\s+of\s+Design|College)|\bODTÜ\b|\bİTÜ\b|\bYTÜ\b|\bMETU\b)/i;
-  const uniMatch = rawText.match(uniRegex);
-  if (uniMatch && uniMatch[1]) {
-    university = uniMatch[1].replace(/\s+/g, " ").trim();
-  }
+  // 2. ÜNİVERSİTE VE BÖLÜM TESPİTİ (Lisans Öncelikli, Türkçe & İngilizce Kanonikleştirilmiş)
+  const eduInfo = extractEducationFromCV(rawText);
+  const university = eduInfo.university;
+  const department = eduInfo.department;
 
   // 3. ŞEHİR TESPİTİ
   const cities = [
@@ -1527,5 +1526,640 @@ export function extractCandidateMetadataFromText(
     experienceYears = Math.min(35, Math.max(0, parseInt(expMatch[1], 10)));
   }
 
-  return { fullName, university, city, experienceYears };
+  return { fullName, university, department, city, experienceYears };
+}
+
+// ============================================================================
+// 9. AKILLI ÜNİVERSİTE VE BÖLÜM (LİSANS / YÜKSEK LİSANS) ÇIKARICI & EŞLEŞTİRİCİ
+// ============================================================================
+const UNIVERSITY_DICTIONARY: { canonical: string; aliases: string[]; regex: RegExp }[] = [
+  {
+    canonical: "Orta Doğu Teknik Üniversitesi (ODTÜ)",
+    aliases: ["odtü", "odtu", "metu", "orta doğu teknik", "middle east technical", "middle east tecnichal"],
+    regex: /\b(?:orta\s*doğu\s*teknik\s*üniversitesi|middle\s*east\s*tec(?:hnic|nich|hni)al\s*university|odtü|metu)\b/gi,
+  },
+  {
+    canonical: "İstanbul Teknik Üniversitesi (İTÜ)",
+    aliases: ["itü", "itu", "istanbul teknik", "istanbul technical"],
+    regex: /\b(?:istanbul\s*teknik\s*üniversitesi|istanbul\s*technical\s*university|itü|\bitu\b)\b/gi,
+  },
+  {
+    canonical: "Yıldız Teknik Üniversitesi (YTÜ)",
+    aliases: ["ytü", "ytu", "yıldız teknik", "yildiz technical"],
+    regex: /\b(?:y[ıi]ld[ıi]z\s*teknik\s*üniversitesi|y[ıi]ld[ıi]z\s*technical\s*university|ytü|\bytu\b)\b/gi,
+  },
+  {
+    canonical: "Dokuz Eylül Üniversitesi",
+    aliases: ["dokuz eylül", "dokuz eylul", "deü", "deu"],
+    regex: /\b(?:dokuz\s*eyl[üu]l\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Marmara Üniversitesi",
+    aliases: ["marmara üniversitesi", "marmara university", "marmara"],
+    regex: /\b(?:marmara\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Hacettepe Üniversitesi",
+    aliases: ["hacettepe", "hacettepe üniversitesi", "hacettepe university"],
+    regex: /\b(?:hacettepe\s*(?:üniversitesi|university|unversty))\b/gi,
+  },
+  {
+    canonical: "İzmir Ekonomi Üniversitesi",
+    aliases: ["izmir ekonomi", "izmir university of economics", "ieu"],
+    regex: /\b(?:izmir\s*ekonomi\s*üniversitesi|izmir\s*university\s*of\s*economics)\b/gi,
+  },
+  {
+    canonical: "KTO Karatay Üniversitesi",
+    aliases: ["kto karatay", "karatay üniversitesi", "karatay university"],
+    regex: /\b(?:(?:kto\s*)?karatay\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Bahçeşehir Üniversitesi",
+    aliases: ["bahçeşehir", "bahcesehir", "bau"],
+    regex: /\b(?:bah[çc]e[şs]ehir\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Ticaret Üniversitesi",
+    aliases: ["istanbul ticaret", "ticaret üniversitesi", "istanbul commerce university"],
+    regex: /\b(?:istanbul\s*ticaret\s*üniversitesi|istanbul\s*commerce\s*university)\b/gi,
+  },
+  {
+    canonical: "Kadir Has Üniversitesi",
+    aliases: ["kadir has", "khas"],
+    regex: /\b(?:kadir\s*has\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Sabancı Üniversitesi",
+    aliases: ["sabancı", "sabanci"],
+    regex: /\b(?:sabanc[ıi]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Kocaeli Üniversitesi",
+    aliases: ["kocaeli üniversitesi", "kocaeli university", "koü"],
+    regex: /\b(?:kocaeli\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Beykent Üniversitesi",
+    aliases: ["beykent"],
+    regex: /\b(?:beykent\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Muğla Sıtkı Koçman Üniversitesi",
+    aliases: ["muğla sıtkı koçman", "mugla sitki kocman", "mskÜ"],
+    regex: /\b(?:mu[ğg]la\s*s[ıi]tk[ıi]\s*ko[çc]man\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Anadolu Üniversitesi",
+    aliases: ["anadolu üniversitesi", "anadolu university"],
+    regex: /\b(?:anadolu\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Cumhuriyet Üniversitesi",
+    aliases: ["cumhuriyet üniversitesi", "cumhuriyet university", "sivas cumhuriyet"],
+    regex: /\b(?:(?:sivas\s*)?cumhuriyet\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Karabük Üniversitesi",
+    aliases: ["karabük üniversitesi", "karabuk university", "karabük"],
+    regex: /(?:karab[üu]k\s*(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "Anna University",
+    aliases: ["anna university", "anna üniversitesi"],
+    regex: /\b(?:anna\s*university)\b/gi,
+  },
+  {
+    canonical: "Manisa Celal Bayar Üniversitesi",
+    aliases: ["celal bayar", "manisa celal bayar", "mcbü"],
+    regex: /(?:(?:manisa\s*)?celal\s*bayar\s*(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "İstanbul Aydın Üniversitesi",
+    aliases: ["istanbul aydın", "istanbul aydin", "aydın üniversitesi"],
+    regex: /(?:istanbul\s*ayd[ıi]n\s*(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "İstanbul Bilgi Üniversitesi",
+    aliases: ["bilgi üniversitesi", "istanbul bilgi", "bilgi university"],
+    regex: /(?:(?:istanbul\s*)?bilgi\s*(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "Ondokuz Mayıs Üniversitesi",
+    aliases: ["ondokuz mayıs", "ondokuz mayis", "omü", "19 mayıs"],
+    regex: /(?:samsun)?\s*(?:ondokuz\s*may[ıi]s|19\s*may[ıi]s)\s*(?:üniversitesi|university)/gi,
+  },
+  {
+    canonical: "Harran Üniversitesi",
+    aliases: ["harran", "harran üniversitesi"],
+    regex: /(?:[şs]anl[ıi]urfa)?\s*(?:harran\s*(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "Gaziantep Üniversitesi",
+    aliases: ["gaziantep üniversitesi", "gaziantep university"],
+    regex: /(?:gaziante[p]?\s*(?:i\s*just\s*started\s*my\s*doctoral\s*education\s*on\s*data\s*mining\.\s*)?(?:üniversitesi|university))/gi,
+  },
+  {
+    canonical: "Gazi Üniversitesi",
+    aliases: ["gazi üniversitesi", "gazi university"],
+    regex: /\b(?:gazi\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İzmir Yüksek Teknoloji Enstitüsü (İYTE)",
+    aliases: ["iyte", "iztech", "izmir yüksek teknoloji", "izmir technology institute"],
+    regex: /\b(?:izmir\s*(?:yüksek\s*teknoloji\s*enstitüsü|institute\s*of\s*technology|technology\s*institute)|iyte|iztech)\b/gi,
+  },
+  {
+    canonical: "Kütahya Dumlupınar Üniversitesi",
+    aliases: ["dumlupınar", "dumlupinar", "kütahya dumlupınar", "dpü"],
+    regex: /\b(?:(?:k[üu]tahya\s*)?dumlup[ıi]nar\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İzmir Demokrasi Üniversitesi",
+    aliases: ["izmir demokrasi", "izmir democracy university"],
+    regex: /\b(?:izmir\s*(?:demokrasi\s*üniversitesi|democracy\s*university))\b/gi,
+  },
+  {
+    canonical: "Yalova Üniversitesi",
+    aliases: ["yalova üniversitesi", "yalova university"],
+    regex: /\b(?:yalova\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Yeditepe Üniversitesi",
+    aliases: ["yeditepe", "yeditepe üniversitesi", "yeditepe university"],
+    regex: /\b(?:yeditepe\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Koç Üniversitesi",
+    aliases: ["koç üniversitesi", "koc university"],
+    regex: /\b(?:ko[çc]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Maltepe Üniversitesi",
+    aliases: ["maltepe üniversitesi", "maltepe university"],
+    regex: /\b(?:maltepe\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Ankara Üniversitesi",
+    aliases: ["ankara üniversitesi", "ankara university"],
+    regex: /\b(?:ankara\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Eskişehir Osmangazi Üniversitesi",
+    aliases: ["osmangazi", "eskişehir osmangazi", "eskisehir osmangazi", "esogü"],
+    regex: /\b(?:(?:eski[şs]ehir\s*)?osmangazi\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Ege Üniversitesi",
+    aliases: ["ege üniversitesi", "ege university"],
+    regex: /\b(?:ege\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Üniversitesi",
+    aliases: ["istanbul üniversitesi", "istanbul university"],
+    regex: /\b(?:istanbul\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Okan Üniversitesi",
+    aliases: ["okan üniversitesi", "istanbul okan", "okan university"],
+    regex: /\b(?:(?:istanbul\s*)?okan\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İnönü Üniversitesi",
+    aliases: ["inönü üniversitesi", "inonu university", "inönü"],
+    regex: /\b(?:in[öo]n[üu]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Trakya Üniversitesi",
+    aliases: ["trakya üniversitesi", "trakya university"],
+    regex: /\b(?:trakya\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Biruni Üniversitesi",
+    aliases: ["biruni üniversitesi", "biruni university"],
+    regex: /\b(?:biruni\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "FMV Işık Üniversitesi",
+    aliases: ["ışık üniversitesi", "isik university", "fmv ışık"],
+    regex: /\b(?:(?:fmv\s*)?[ıi][şs][ıi]k\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Doğuş Üniversitesi",
+    aliases: ["doğuş üniversitesi", "dogus university", "doğuş"],
+    regex: /\b(?:do[ğg]u[şs]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Boğaziçi Üniversitesi",
+    aliases: ["boğaziçi", "bogazici", "boun"],
+    regex: /\b(?:bo[ğg]azi[çc]i\s*(?:üniversitesi|university)|boun)\b/gi,
+  },
+  {
+    canonical: "Bilkent Üniversitesi",
+    aliases: ["bilkent"],
+    regex: /\b(?:bilkent\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "University of Surrey",
+    aliases: ["surrey", "university of surrey"],
+    regex: /\b(?:university\s*of\s*surrey)\b/gi,
+  },
+  {
+    canonical: "University West",
+    aliases: ["university west"],
+    regex: /\b(?:university\s*west)\b/gi,
+  },
+];
+
+const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegExp }[] = [
+  {
+    canonical: "Bilgisayar Mühendisliği",
+    aliases: [
+      "bilgisayar mühendisliği", "bilgisayar müh", "computer engineering",
+      "computer science and engineering", "computers science and engineering",
+      "bilgisayar bilimi ve mühendisliği", "computer science", "bilgisayar bilimleri",
+      "ceng", "cs"
+    ],
+    regex:
+      /(?:bilgisayar\s*(?:bilimi\s*ve\s*)?mühendisli[ğg]i|computers?\s*science\s*and\s*engineering|computer\s*engineering|co\s*m\s*p\s*u\s*te\s*r\s*en\s*g\s*ine\s*e\s*r\s*in\s*g|computer\s*engineer\s*\(\s*scholarship\s*\)|informatic\s*and\s*computer\s*engineering|bachelor[’']?s?\s*(?:degree\s*)?(?:of\s*science\s*)?,?\s*(?:in\s*)?computer\s*science|computer\s*science\s*graduate)/gi,
+  },
+  {
+    canonical: "Yazılım Mühendisliği",
+    aliases: [
+      "yazılım mühendisliği", "yazılım müh", "software engineering",
+      "software development", "yazılım geliştirme"
+    ],
+    regex:
+      /(?:yaz[ıi]l[ıi]m\s*(?:mühendisli[ğg]i|geli[şs]tirme)|bachelor\s*of\s*science\s*in\s*software(?:\s*development|\s*engineering)?|software\s*development\s*-\s*third\s*year|(?:do[ğg]u[şs]\s*university)\s*\r?\n\s*software\s*engineer)/gi,
+  },
+  {
+    canonical: "Elektrik-Elektronik Mühendisliği",
+    aliases: [
+      "elektrik-elektronik mühendisliği", "elektrik elektronik mühendisliği",
+      "elektrik elektronik", "electrical and electronics engineering",
+      "electrical & electronic engineering", "eee", "eem"
+    ],
+    regex:
+      /(?:elektrik[\s\-]*elektronik\s*mühendis(?:li[ğg]i|-)?|electrical\s*(?:and|&)\s*electronics?\s*engineering)/gi,
+  },
+  {
+    canonical: "Elektronik ve Haberleşme Mühendisliği",
+    aliases: [
+      "elektronik ve haberleşme mühendisliği", "elektronik haberleşme",
+      "electronics and communication engineering", "ehb", "ehm"
+    ],
+    regex:
+      /(?:elektronik\s*ve\s*haberle[şs]me\s*mühendisli[ğg]i|electronics?\s*(?:and|&)\s*communications?\s*engineering)/gi,
+  },
+  {
+    canonical: "Endüstri Mühendisliği",
+    aliases: ["endüstri mühendisliği", "endüstri müh", "industrial engineering", "ie"],
+    regex:
+      /(?:end[üu]stri\s*mühendisli[ğg]i|industrial\s*engineering|bachelor's\s*degre[e]?\s*-\s*industrial\s*engineer)/gi,
+  },
+  {
+    canonical: "Makine Mühendisliği",
+    aliases: ["makine mühendisliği", "makina mühendisliği", "mechanical engineering", "me"],
+    regex:
+      /(?:makin[ea]\s*mühendisli[ğg]i|mechanical\s*engineering)/gi,
+  },
+  {
+    canonical: "Mekatronik Mühendisliği",
+    aliases: ["mekatronik mühendisliği", "mechatronics engineering", "mechatronic engineering"],
+    regex:
+      /(?:mekatronik\s*mühendisli[ğg]i|mechatronics?\s*engineering|mechatron\s*i?cs\s*eng\s*i?neer\s*i?ng)/gi,
+  },
+  {
+    canonical: "Otomotiv Mühendisliği",
+    aliases: ["otomotiv mühendisliği", "automotive engineering", "makine / otomotiv mühendisliği"],
+    regex:
+      /(?:otomotiv\s*mühendisli[ğg]i|automotive\s*engineering)/gi,
+  },
+  {
+    canonical: "Metalurji ve Malzeme Mühendisliği",
+    aliases: [
+      "metalurji ve malzeme mühendisliği", "metalurji mühendisliği",
+      "metallurgical engineering", "metallurgical and materials engineering"
+    ],
+    regex:
+      /(?:metalurji\s*(?:ve\s*malzeme\s*)?mühendisli[ğg]i|metallurgical\s*(?:and\s*materials?\s*)?engineering)/gi,
+  },
+  {
+    canonical: "Kimya Mühendisliği",
+    aliases: ["kimya mühendisliği", "chemical engineering"],
+    regex:
+      /(?:kimya\s*mühendisli[ğg]i|chemical\s*engineering)/gi,
+  },
+  {
+    canonical: "Kimya",
+    aliases: ["kimya", "kimya bölümü", "chemistry"],
+    regex:
+      /(?:kimya\s*bölümü|department\s*of\s*chemistry|bachelor\s*(?:of\s*science\s*)?in\s*chemistry)/gi,
+  },
+  {
+    canonical: "Jeofizik Mühendisliği",
+    aliases: ["jeofizik mühendisliği", "geophysical engineering"],
+    regex:
+      /(?:jeofizik\s*mühendisli[ğg]i|geophysical\s*engineering)/gi,
+  },
+  {
+    canonical: "Bilişim Sistemleri Mühendisliği",
+    aliases: ["bilişim sistemleri mühendisliği", "information systems engineering", "ise"],
+    regex:
+      /(?:bili[şs]im\s*sistemleri\s*mühendisli[ğg]i|information\s*systems\s*engineering)/gi,
+  },
+  {
+    canonical: "Yönetim Bilişim Sistemleri (YBS)",
+    aliases: ["yönetim bilişim sistemleri", "ybs", "management information systems", "mis"],
+    regex:
+      /(?:yönetim\s*bili[şs]im\s*sistemleri|management\s*information\s*systems)/gi,
+  },
+  {
+    canonical: "İstatistik",
+    aliases: ["istatistik", "statistics", "istatistik ve bilgisayar bilimleri"],
+    regex:
+      /(?:departm[ae]nt\s*of\s*statistics|istatistik\s*\(\s*lisans\s*\)|undergraduate\s*degree\s*in\s*statistics|\bstatistics\s*\r?\n\s*mugla)/gi,
+  },
+  {
+    canonical: "Matematik",
+    aliases: ["matematik", "mathematics", "matematik bölümü"],
+    regex:
+      /(?:bachelor\s*in\s*mathematics|matematik\s*bölümü|department\s*of\s*mathematics)/gi,
+  },
+  {
+    canonical: "Fizik",
+    aliases: ["fizik", "physics", "fizik mühendisliği", "engineering of physics"],
+    regex:
+      /(?:physics\s*b\.?sc|engineering\s*of\s*physics|fizik\s*mühendisli[ğg]i|fizik\s*bölümü)/gi,
+  },
+  {
+    canonical: "İktisat (Ekonomi)",
+    aliases: ["iktisat", "ekonomi", "economics", "department of economics"],
+    regex:
+      /(?:department\s*of\s*economics|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*economics|iktisat\s*bölümü|ekonomi\s*bölümü)/gi,
+  },
+];
+
+export function extractEducationFromCV(rawText: string): {
+  university: string;
+  allUniversities: string[];
+  department: string;
+  allDepartments: string[];
+  educationSummary: string;
+} {
+  if (!rawText || rawText.trim().length < 10) {
+    return {
+      university: "Belirtilmemiş",
+      allUniversities: [],
+      department: "Belirtilmemiş",
+      allDepartments: [],
+      educationSummary: "Eğitim bilgisi okunamadı.",
+    };
+  }
+
+  const preCleaned = cleanPdfTextQuirks(rawText).replace(/\r\n/g, "\n");
+  // Sadece akademik referans/hoca satırlarını çıkar; References bloğu silme işlemi Europass formatında (#31) eğitimi yutabildiği için satır bazlı filtre uygula
+  const nonEmptyLines = preCleaned
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => {
+      if (l.length === 0) return false;
+      const nl = normalizeTr(l);
+      if (/(?:prof\.\s*dr|doç\.\s*dr|assist\.\s*prof|associate\s*professor|dr\.\s*lecturer)/i.test(nl)) {
+        return false;
+      }
+      return true;
+    });
+  const normText = normalizeTr(nonEmptyLines.join("\n")).replace(/ı/g, "i");
+
+  // EDUCATION / EĞİTİM başlığının konumunu bul (aralıklı E D U C A T I O N ve bitişik EĞİTİM2011 dahil)
+  const eduHeaderMatch = normText.match(
+    /(?:^|\n)\s*(?:education(?:\s*and\s*training|\s*history|\s*background)?|educations|e\s*d\s*u\s*c\s*a\s*t\s*i\s*o\s*n|eğitim(?:\s*bilgileri|\s*geçmişi)?)/i
+  );
+  const eduStartIdx = eduHeaderMatch?.index ?? -1;
+
+  // 1. ÜNİVERSİTE ADAYLARINI PUANLA (Lisans / Ana Üniversite Öncelikli)
+  const uniScores = new Map<string, number>();
+  const allFoundUnis: string[] = [];
+
+  for (const entry of UNIVERSITY_DICTIONARY) {
+    entry.regex.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = entry.regex.exec(normText)) !== null) {
+      const idx = m.index;
+      const winBefore = normText.slice(Math.max(0, idx - 110), idx);
+      const winAfter = normText.slice(idx, Math.min(normText.length, idx + m[0].length + 110));
+      const localCtx = winBefore + " " + winAfter;
+
+      const lineStart = normText.lastIndexOf("\n", Math.max(0, idx - 1));
+      const lineEnd = normText.indexOf("\n", idx + m[0].length);
+      const sameLine = normText.slice(lineStart === -1 ? 0 : lineStart + 1, lineEnd === -1 ? normText.length : lineEnd);
+      const prevLineStart = lineStart > 0 ? normText.lastIndexOf("\n", lineStart - 1) : -1;
+      const prevLine = lineStart > 0 ? normText.slice(prevLineStart === -1 ? 0 : prevLineStart + 1, lineStart) : "";
+      const nextLineEnd = lineEnd !== -1 ? normText.indexOf("\n", lineEnd + 1) : -1;
+      const nextLine = lineEnd !== -1 ? normText.slice(lineEnd + 1, nextLineEnd === -1 ? normText.length : nextLineEnd) : "";
+      const nearLines = prevLine + "\n" + sameLine + "\n" + nextLine;
+
+      // Teknokent, Dergi, Sertifika, Kış Okulu, Erasmus, Research Fellow, Hobiler, Zirve/Summit veya Açıköğretim satırıysa atla/düşür
+      if (
+        /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|kış\s*okulu|winter\s*school|certificate\s*program|educational\s*training\s*certificate|erasmus|exchange\s*program|research\s*fellow|research\s*project|open-distance|açiköğretim|hobiler|capoeira|online\s*wind\s*energy|fundamentals\s*of\s*wind|technology\s*summits|attended\s*the)/i.test(
+          sameLine
+        ) ||
+        /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|kış\s*okulu|winter\s*school|certificate\s*program|educational\s*training\s*certificate|research\s*fellow|online\s*wind\s*energy|fundamentals\s*of\s*wind|technology\s*summits|attended\s*the)/i.test(
+          prevLine
+        )
+      ) {
+        continue;
+      }
+
+      if (!allFoundUnis.includes(entry.canonical)) {
+        allFoundUnis.push(entry.canonical);
+      }
+
+      let score = 40;
+      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
+        score += 65;
+      }
+
+      // Lisans (Bachelor / BSc / Lisans / Graduate from) sinyali
+      const hasBsc =
+        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans\s*eğitimi|\(lisans\)|graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(
+          nearLines
+        );
+      const hasPostGrad =
+        /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
+          sameLine + " " + (/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|doktora|doctorate)/i.test(prevLine) && !hasBsc ? prevLine : "") + " " + (/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|doktora|doctorate)/i.test(nextLine) && !/(?:bachelor|b\.sc|\bbsc\b|lisans)/i.test(sameLine + " " + prevLine) ? nextLine : "")
+        );
+
+      if (hasBsc && !hasPostGrad) {
+        score += 110;
+      } else if (hasPostGrad && !hasBsc) {
+        score -= 45;
+      }
+
+      // Özet kısmında kendini tanıtma ("graduate from Dokuz Eylül University" / "student at Istanbul Technical University")
+      if (
+        /(?:graduate\s*from|graduated\s*(?:from|of)|student\s*at|in\s*itu\s*we)/i.test(localCtx)
+      ) {
+        score += 75;
+      }
+
+      const prevBest = uniScores.get(entry.canonical) ?? -999;
+      if (score > prevBest) {
+        uniScores.set(entry.canonical, score);
+      }
+    }
+  }
+
+  let bestUni = "Belirtilmemiş";
+  let bestUniScore = -999;
+  for (const [u, sc] of uniScores.entries()) {
+    if (sc > bestUniScore) {
+      bestUniScore = sc;
+      bestUni = u;
+    }
+  }
+
+  // 2. BÖLÜM (DEPARTMENT) ADAYLARINI PUANLA (Lisans Bölümü Öncelikli)
+  const deptScores = new Map<string, number>();
+  const deptFirstIdx = new Map<string, number>();
+  const allFoundDepts: string[] = [];
+
+  for (const entry of DEPARTMENT_DICTIONARY) {
+    entry.regex.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = entry.regex.exec(normText)) !== null) {
+      const idx = m.index;
+      const lineStart = normText.lastIndexOf("\n", Math.max(0, idx - 1));
+      const lineEnd = normText.indexOf("\n", idx + m[0].length);
+      const sameLine = normText.slice(lineStart === -1 ? 0 : lineStart + 1, lineEnd === -1 ? normText.length : lineEnd);
+      const prevLineStart = lineStart > 0 ? normText.lastIndexOf("\n", lineStart - 1) : -1;
+      const prevLine = lineStart > 0 ? normText.slice(prevLineStart === -1 ? 0 : prevLineStart + 1, lineStart) : "";
+      const nextLineEnd = lineEnd !== -1 ? normText.indexOf("\n", lineEnd + 1) : -1;
+      const nextLine = lineEnd !== -1 ? normText.slice(lineEnd + 1, nextLineEnd === -1 ? normText.length : nextLineEnd) : "";
+      const nearLines = prevLine + "\n" + sameLine + "\n" + nextLine;
+
+      // Topluluk (Society/Club), Dergi (Journal), Konferans veya Hobi satırıysa atla
+      if (
+        /(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|hobiler|capoeira|erasmus|organizing\s*workshops|organizing\s*social\s*events)/i.test(
+          nearLines
+        )
+      ) {
+        continue;
+      }
+
+      if (!allFoundDepts.includes(entry.canonical)) {
+        allFoundDepts.push(entry.canonical);
+      }
+      if (!deptFirstIdx.has(entry.canonical)) {
+        deptFirstIdx.set(entry.canonical, idx);
+      }
+
+      let score = 40;
+      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
+        score += 65;
+      }
+
+      const hasBsc =
+        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans|graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(
+          nearLines
+        );
+      const hasPostGrad =
+        /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
+          sameLine
+        );
+
+      if (hasBsc && !hasPostGrad) {
+        score += 110;
+      } else if (hasPostGrad) {
+        score -= 45;
+      }
+
+      const prevBest = deptScores.get(entry.canonical) ?? -999;
+      if (score > prevBest) {
+        deptScores.set(entry.canonical, score);
+      }
+    }
+  }
+
+  let bestDept = "Belirtilmemiş";
+  let bestDeptScore = -999;
+  let bestDeptPos = 999999;
+  for (const [d, sc] of deptScores.entries()) {
+    const pos = deptFirstIdx.get(d) ?? 999999;
+    if (sc > bestDeptScore || (sc === bestDeptScore && pos < bestDeptPos)) {
+      bestDeptScore = sc;
+      bestDept = d;
+      bestDeptPos = pos;
+    }
+  }
+
+  const otherUnis = allFoundUnis.filter((u) => u !== bestUni);
+  const otherDepts = allFoundDepts.filter((d) => d !== bestDept);
+  let educationSummary = `Ana Üniversite/Bölüm: ${bestUni} — ${bestDept}`;
+  if (otherUnis.length > 0 || otherDepts.length > 0) {
+    educationSummary += ` (Diğer: ${[...otherUnis, ...otherDepts].join(", ")})`;
+  }
+
+  return {
+    university: bestUni,
+    allUniversities: allFoundUnis.length > 0 ? allFoundUnis : [bestUni],
+    department: bestDept,
+    allDepartments: allFoundDepts.length > 0 ? allFoundDepts : [bestDept],
+    educationSummary,
+  };
+}
+
+export function isSameUniversity(
+  humanInput: string,
+  aiPrimary: string,
+  aiAll: string[] = []
+): boolean {
+  const hNorm = toAsciiTr(humanInput).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!hNorm) return false;
+
+  const candidates = [aiPrimary, ...aiAll].filter(Boolean);
+  for (const cand of candidates) {
+    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (hNorm === cNorm || cNorm.includes(hNorm) || hNorm.includes(cNorm)) {
+      if (hNorm.length >= 3) return true;
+    }
+    const dictEntry = UNIVERSITY_DICTIONARY.find((d) => d.canonical === cand);
+    if (dictEntry) {
+      for (const alias of dictEntry.aliases) {
+        const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+        if (hNorm === aNorm || hNorm.includes(aNorm) || aNorm.includes(hNorm)) {
+          if (hNorm.length >= 3) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+export function isSameDepartment(
+  humanInput: string,
+  aiPrimary: string,
+  aiAll: string[] = []
+): boolean {
+  const hNorm = toAsciiTr(humanInput).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!hNorm) return false;
+
+  const candidates = [aiPrimary, ...aiAll].filter(Boolean);
+  for (const cand of candidates) {
+    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (hNorm === cNorm || cNorm.includes(hNorm) || hNorm.includes(cNorm)) {
+      if (hNorm.length >= 2) return true;
+    }
+    const dictEntry = DEPARTMENT_DICTIONARY.find((d) => d.canonical === cand);
+    if (dictEntry) {
+      for (const alias of dictEntry.aliases) {
+        const aNorm = toAsciiTr(alias).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+        if (hNorm === aNorm || hNorm.includes(aNorm) || aNorm.includes(hNorm)) {
+          if (hNorm.length >= 2) return true;
+        }
+      }
+    }
+  }
+  // Bilgisayar Mühendisliği <-> Yazılım Mühendisliği / Bilgisayar Bilimleri yakınlığı veya Makine <-> Otomotiv yakınlığı
+  return false;
 }

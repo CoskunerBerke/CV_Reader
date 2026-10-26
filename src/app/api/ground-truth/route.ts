@@ -8,6 +8,9 @@ import {
   extractCandidateMetadataFromText,
   detectGenderFromCV,
   detectAgeFromCV,
+  extractEducationFromCV,
+  isSameUniversity,
+  isSameDepartment,
   GenderType,
 } from "@/lib/cvEngine";
 
@@ -18,6 +21,8 @@ export interface SingleRaterVote {
   humanName?: string;
   humanGender: "Kadın" | "Erkek" | "Belirsiz";
   humanAge: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
   updatedAt: string;
 }
 
@@ -26,6 +31,8 @@ export interface GroundTruthLabel {
   humanName?: string;
   humanGender: "Kadın" | "Erkek" | "Belirsiz";
   humanAge: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
   updatedAt: string;
   votes?: {
     ben?: SingleRaterVote;
@@ -45,6 +52,11 @@ export interface BenchmarkCVItem {
   aiAge: number | null;
   aiAgeMethod: string;
   aiAgeReason: string;
+  aiUniversity: string;
+  aiAllUniversities: string[];
+  aiDepartment: string;
+  aiAllDepartments: string[];
+  aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
 
@@ -76,13 +88,23 @@ function computeConsensusRecord(
   if (vBen && vArk) {
     const sameGender = vBen.humanGender === vArk.humanGender;
     const sameAge = vBen.humanAge === vArk.humanAge;
-    const isAgreed = sameGender && sameAge;
+    const sameUni =
+      !vBen.humanUniversity ||
+      !vArk.humanUniversity ||
+      isSameUniversity(vBen.humanUniversity, vArk.humanUniversity);
+    const sameDept =
+      !vBen.humanDepartment ||
+      !vArk.humanDepartment ||
+      isSameDepartment(vBen.humanDepartment, vArk.humanDepartment);
+    const isAgreed = sameGender && sameAge && sameUni && sameDept;
 
     return {
       fileName,
       humanName: vBen.humanName || vArk.humanName || "",
       humanGender: vBen.humanGender,
       humanAge: vBen.humanAge,
+      humanUniversity: vBen.humanUniversity || vArk.humanUniversity || null,
+      humanDepartment: vBen.humanDepartment || vArk.humanDepartment || null,
       updatedAt:
         vBen.updatedAt > vArk.updatedAt ? vBen.updatedAt : vArk.updatedAt,
       votes: { ben: vBen, arkadasim: vArk },
@@ -96,6 +118,8 @@ function computeConsensusRecord(
     humanName: single.humanName || "",
     humanGender: single.humanGender,
     humanAge: single.humanAge,
+    humanUniversity: single.humanUniversity || null,
+    humanDepartment: single.humanDepartment || null,
     updatedAt: single.updatedAt,
     votes: { ben: vBen, arkadasim: vArk },
     consensusStatus: "single",
@@ -269,6 +293,7 @@ export async function GET() {
       const meta = extractCandidateMetadataFromText(item.rawText, item.fileName);
       const genderRes = detectGenderFromCV(meta.fullName, item.rawText);
       const ageRes = detectAgeFromCV(item.rawText);
+      const eduRes = extractEducationFromCV(item.rawText);
 
       return {
         index: idx + 1,
@@ -281,6 +306,11 @@ export async function GET() {
         aiAge: ageRes.age,
         aiAgeMethod: ageRes.method,
         aiAgeReason: ageRes.evidence,
+        aiUniversity: eduRes.university,
+        aiAllUniversities: eduRes.allUniversities,
+        aiDepartment: eduRes.department,
+        aiAllDepartments: eduRes.allDepartments,
+        aiEducationSummary: eduRes.educationSummary,
         humanLabel: savedLabels[item.fileName] || null,
       };
     });
@@ -311,6 +341,8 @@ export async function POST(req: NextRequest) {
       humanName,
       humanGender,
       humanAge,
+      humanUniversity,
+      humanDepartment,
       rater = "ben",
       action,
     } = body as {
@@ -318,6 +350,8 @@ export async function POST(req: NextRequest) {
       humanName?: string;
       humanGender?: "Kadın" | "Erkek" | "Belirsiz";
       humanAge?: number | string | null;
+      humanUniversity?: string | null;
+      humanDepartment?: string | null;
       rater?: RaterId;
       action?: string;
     };
@@ -349,14 +383,31 @@ export async function POST(req: NextRequest) {
 
     const existingVotes = saved[fileName]?.votes || {};
     const validRater: RaterId = rater === "arkadasim" ? "arkadasim" : "ben";
+    const prevRaterVote = existingVotes[validRater];
+
+    const cleanedUni =
+      humanUniversity !== undefined
+        ? humanUniversity && humanUniversity.trim().length > 0
+          ? humanUniversity.trim()
+          : null
+        : prevRaterVote?.humanUniversity ?? null;
+
+    const cleanedDept =
+      humanDepartment !== undefined
+        ? humanDepartment && humanDepartment.trim().length > 0
+          ? humanDepartment.trim()
+          : null
+        : prevRaterVote?.humanDepartment ?? null;
 
     const updatedVotes = {
       ...existingVotes,
       [validRater]: {
         rater: validRater,
-        humanName: humanName || "",
+        humanName: humanName || prevRaterVote?.humanName || "",
         humanGender,
         humanAge: parsedAge,
+        humanUniversity: cleanedUni,
+        humanDepartment: cleanedDept,
         updatedAt: new Date().toISOString(),
       },
     };

@@ -17,7 +17,9 @@ import {
   Users,
   RefreshCw,
   Lock,
+  GraduationCap,
 } from "lucide-react";
+import { isSameUniversity, isSameDepartment } from "@/lib/cvEngine";
 
 type RaterId = "ben" | "arkadasim";
 
@@ -26,6 +28,8 @@ interface SingleRaterVote {
   humanName?: string;
   humanGender: "Kadın" | "Erkek" | "Belirsiz";
   humanAge: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
   updatedAt: string;
 }
 
@@ -34,6 +38,8 @@ interface GroundTruthLabel {
   humanName?: string;
   humanGender: "Kadın" | "Erkek" | "Belirsiz";
   humanAge: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
   updatedAt: string;
   votes?: {
     ben?: SingleRaterVote;
@@ -53,8 +59,34 @@ interface BenchmarkCVItem {
   aiAge: number | null;
   aiAgeMethod: string;
   aiAgeReason: string;
+  aiUniversity: string;
+  aiAllUniversities: string[];
+  aiDepartment: string;
+  aiAllDepartments: string[];
+  aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
+
+const QUICK_DEPARTMENTS = [
+  "Bilgisayar Mühendisliği",
+  "Yazılım Mühendisliği",
+  "Elektrik-Elektronik Mühendisliği",
+  "Elektronik ve Haberleşme Mühendisliği",
+  "Makine Mühendisliği",
+  "Endüstri Mühendisliği",
+  "Mekatronik Mühendisliği",
+  "Yönetim Bilişim Sistemleri (YBS)",
+  "Bilişim Sistemleri Mühendisliği",
+  "İstatistik",
+  "Matematik",
+  "Fizik",
+  "Kimya Mühendisliği",
+  "Kimya",
+  "Metalurji ve Malzeme Mühendisliği",
+  "Otomotiv Mühendisliği",
+  "Jeofizik Mühendisliği",
+  "İktisat (Ekonomi)",
+];
 
 export default function GroundTruthLabelerPage() {
   const RATER_STORAGE_KEY = "cv_active_rater_role_v2";
@@ -74,7 +106,15 @@ export default function GroundTruthLabelerPage() {
   const [inputGender, setInputGender] = useState<"Erkek" | "Kadın">("Erkek");
   const [inputAge, setInputAge] = useState<string>("");
   const [inputName, setInputName] = useState<string>("");
+  const [inputUniversity, setInputUniversity] = useState<string>("");
+  const [inputDepartment, setInputDepartment] = useState<string>("");
   const [saveMessage, setSaveMessage] = useState<string>("");
+
+  // Bir CV'nin bu kullanıcı tarafından tamamen (Üni & Bölüm dahil) etiketlenip etiketlenmediğini kontrol et
+  const isRaterFullyDone = useCallback((it: BenchmarkCVItem, role: RaterId) => {
+    const v = it.humanLabel?.votes?.[role];
+    return !!(v && v.humanUniversity && v.humanDepartment);
+  }, []);
 
   // Cihazdaki seçili etiketleyici rolünü ("ben" veya "arkadasim") hatırla
   useEffect(() => {
@@ -93,14 +133,14 @@ export default function GroundTruthLabelerPage() {
   const jumpToFirstUnlabeledForRole = useCallback(
     (list: BenchmarkCVItem[], role: RaterId) => {
       const firstUnlabeledIdx = list.findIndex(
-        (it) => !it.humanLabel?.votes?.[role]
+        (it) => !isRaterFullyDone(it, role)
       );
       if (firstUnlabeledIdx !== -1) {
         setFilterMode("all");
         setCurrentIndex(firstUnlabeledIdx);
       }
     },
-    []
+    [isRaterFullyDone]
   );
 
   const handleSelectRater = (role: RaterId) => {
@@ -124,7 +164,7 @@ export default function GroundTruthLabelerPage() {
         const data = await res.json();
         if (data.items) {
           setItems(data.items);
-          // İlk açılışta (sayfa yenilendiğinde veya kapatıp açıldığında) doğrudan kullanıcının kaldığı (henüz etiketlemediği ilk) CV'ye atla!
+          // İlk açılışta (sayfa yenilendiğinde veya kapatıp açıldığında) doğrudan kullanıcının kaldığı (henüz Üni & Bölüm etiketlemediği ilk) CV'ye atla!
           if (!silent) {
             let role: RaterId = "ben";
             try {
@@ -136,7 +176,10 @@ export default function GroundTruthLabelerPage() {
               // ignore
             }
             const firstUnlabeledIdx = (data.items as BenchmarkCVItem[]).findIndex(
-              (it) => !it.humanLabel?.votes?.[role]
+              (it) => {
+                const v = it.humanLabel?.votes?.[role];
+                return !(v && v.humanUniversity && v.humanDepartment);
+              }
             );
             if (firstUnlabeledIdx !== -1) {
               setCurrentIndex(firstUnlabeledIdx);
@@ -164,7 +207,7 @@ export default function GroundTruthLabelerPage() {
 
   const filteredItems = useMemo(() => {
     if (filterMode === "my_unlabeled") {
-      return items.filter((it) => !it.humanLabel?.votes?.[activeRater]);
+      return items.filter((it) => !isRaterFullyDone(it, activeRater));
     }
     if (filterMode === "agreed") {
       return items.filter((it) => it.humanLabel?.consensusStatus === "agreed");
@@ -179,11 +222,17 @@ export default function GroundTruthLabelerPage() {
         const ageMismatch =
           it.humanLabel.humanAge !== null &&
           (it.aiAge === null || Math.abs(it.aiAge - it.humanLabel.humanAge) > 1);
-        return genderMismatch || ageMismatch;
+        const uniMismatch =
+          !!it.humanLabel.humanUniversity &&
+          !isSameUniversity(it.aiUniversity, it.humanLabel.humanUniversity);
+        const deptMismatch =
+          !!it.humanLabel.humanDepartment &&
+          !isSameDepartment(it.aiDepartment, it.humanLabel.humanDepartment);
+        return genderMismatch || ageMismatch || uniMismatch || deptMismatch;
       });
     }
     return items;
-  }, [items, filterMode, activeRater]);
+  }, [items, filterMode, activeRater, isRaterFullyDone]);
 
   const currentItem = filteredItems[currentIndex] || filteredItems[0] || null;
 
@@ -191,10 +240,29 @@ export default function GroundTruthLabelerPage() {
   useEffect(() => {
     if (!currentItem) return;
     const myVote = currentItem.humanLabel?.votes?.[activeRater];
+    const defaultUni =
+      currentItem.aiUniversity && currentItem.aiUniversity !== "Belirtilmemiş"
+        ? currentItem.aiUniversity
+        : "";
+    const defaultDept =
+      currentItem.aiDepartment && currentItem.aiDepartment !== "Belirtilmemiş"
+        ? currentItem.aiDepartment
+        : "";
+
     if (myVote) {
       setInputGender(myVote.humanGender === "Kadın" ? "Kadın" : "Erkek");
       setInputAge(myVote.humanAge !== null ? String(myVote.humanAge) : "");
       setInputName(myVote.humanName || currentItem.aiName);
+      setInputUniversity(
+        myVote.humanUniversity ||
+          currentItem.humanLabel?.humanUniversity ||
+          defaultUni
+      );
+      setInputDepartment(
+        myVote.humanDepartment ||
+          currentItem.humanLabel?.humanDepartment ||
+          defaultDept
+      );
     } else if (currentItem.humanLabel) {
       setInputGender(
         currentItem.humanLabel.humanGender === "Kadın" ? "Kadın" : "Erkek"
@@ -205,6 +273,8 @@ export default function GroundTruthLabelerPage() {
           : ""
       );
       setInputName(currentItem.humanLabel.humanName || currentItem.aiName);
+      setInputUniversity(currentItem.humanLabel.humanUniversity || defaultUni);
+      setInputDepartment(currentItem.humanLabel.humanDepartment || defaultDept);
     } else {
       setInputGender(currentItem.aiGender === "Kadın" ? "Kadın" : "Erkek");
       const isNoBirthOrEduDate =
@@ -213,6 +283,8 @@ export default function GroundTruthLabelerPage() {
         currentItem.aiAgeMethod === "Bilinmiyor";
       setInputAge(isNoBirthOrEduDate ? "" : String(currentItem.aiAge));
       setInputName(currentItem.aiName);
+      setInputUniversity(defaultUni);
+      setInputDepartment(defaultDept);
     }
     setSaveMessage("");
   }, [currentItem?.fileName, activeRater]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -226,12 +298,11 @@ export default function GroundTruthLabelerPage() {
     const conflictList = items.filter(
       (it) => it.humanLabel?.consensusStatus === "conflict"
     );
-    const myLabeledCount = items.filter(
-      (it) => !!it.humanLabel?.votes?.[activeRater]
+    const myLabeledCount = items.filter((it) =>
+      isRaterFullyDone(it, activeRater)
     ).length;
-    const friendLabeledCount = items.filter(
-      (it) =>
-        !!it.humanLabel?.votes?.[activeRater === "ben" ? "arkadasim" : "ben"]
+    const friendLabeledCount = items.filter((it) =>
+      isRaterFullyDone(it, activeRater === "ben" ? "arkadasim" : "ben")
     ).length;
 
     // Karar Mekanizması: İkinizin aynı girdiği ("agreed") CV'ler + henüz tek kişinin girdiği ("single") CV'ler (Uyuşmazlık olanlar çözülene kadar hariç tutulur)
@@ -255,6 +326,12 @@ export default function GroundTruthLabelerPage() {
         ageExactAccuracy: 0,
         ageCloseCorrect: 0,
         ageCloseAccuracy: 0,
+        uniLabeledCount: 0,
+        uniCorrect: 0,
+        uniAccuracy: 0,
+        deptLabeledCount: 0,
+        deptCorrect: 0,
+        deptAccuracy: 0,
         overallAccuracy: 0,
         mismatches: [] as BenchmarkCVItem[],
       };
@@ -264,6 +341,10 @@ export default function GroundTruthLabelerPage() {
     let ageLabeledCount = 0;
     let ageExactCorrect = 0;
     let ageCloseCorrect = 0;
+    let uniLabeledCount = 0;
+    let uniCorrect = 0;
+    let deptLabeledCount = 0;
+    let deptCorrect = 0;
     const mismatches: BenchmarkCVItem[] = [];
 
     for (const it of validDecisionPool) {
@@ -295,7 +376,27 @@ export default function GroundTruthLabelerPage() {
         }
       }
 
-      if (!isGenderOk || !isAgeCloseOk) {
+      let isUniOk = true;
+      if (lbl.humanUniversity && lbl.humanUniversity.trim().length > 0) {
+        uniLabeledCount++;
+        if (isSameUniversity(it.aiUniversity, lbl.humanUniversity)) {
+          uniCorrect++;
+        } else {
+          isUniOk = false;
+        }
+      }
+
+      let isDeptOk = true;
+      if (lbl.humanDepartment && lbl.humanDepartment.trim().length > 0) {
+        deptLabeledCount++;
+        if (isSameDepartment(it.aiDepartment, lbl.humanDepartment)) {
+          deptCorrect++;
+        } else {
+          isDeptOk = false;
+        }
+      }
+
+      if (!isGenderOk || !isAgeCloseOk || !isUniOk || !isDeptOk) {
         mismatches.push(it);
       }
     }
@@ -311,9 +412,23 @@ export default function GroundTruthLabelerPage() {
       ageLabeledCount > 0
         ? Number(((ageCloseCorrect / ageLabeledCount) * 100).toFixed(1))
         : 100;
+    const uniAccuracy =
+      uniLabeledCount > 0
+        ? Number(((uniCorrect / uniLabeledCount) * 100).toFixed(1))
+        : 100;
+    const deptAccuracy =
+      deptLabeledCount > 0
+        ? Number(((deptCorrect / deptLabeledCount) * 100).toFixed(1))
+        : 100;
+
+    const activeMetrics = [genderAccuracy, ageCloseAccuracy];
+    if (uniLabeledCount > 0) activeMetrics.push(uniAccuracy);
+    if (deptLabeledCount > 0) activeMetrics.push(deptAccuracy);
 
     const overallAccuracy = Number(
-      ((genderAccuracy + ageCloseAccuracy) / 2).toFixed(1)
+      (
+        activeMetrics.reduce((acc, v) => acc + v, 0) / activeMetrics.length
+      ).toFixed(1)
     );
 
     return {
@@ -330,10 +445,16 @@ export default function GroundTruthLabelerPage() {
       ageExactAccuracy,
       ageCloseCorrect,
       ageCloseAccuracy,
+      uniLabeledCount,
+      uniCorrect,
+      uniAccuracy,
+      deptLabeledCount,
+      deptCorrect,
+      deptAccuracy,
       overallAccuracy,
       mismatches,
     };
-  }, [items, activeRater]);
+  }, [items, activeRater, isRaterFullyDone]);
 
   const handleSaveLabel = async (
     customGender?: "Erkek" | "Kadın",
@@ -346,6 +467,16 @@ export default function GroundTruthLabelerPage() {
     const aToSave = customAge !== undefined ? customAge : inputAge;
     const parsedAge =
       aToSave.trim() === "" ? null : parseInt(aToSave.trim(), 10);
+    const uniToSave =
+      inputUniversity.trim() ||
+      (currentItem.aiUniversity !== "Belirtilmemiş"
+        ? currentItem.aiUniversity
+        : "Belirtilmemiş");
+    const deptToSave =
+      inputDepartment.trim() ||
+      (currentItem.aiDepartment !== "Belirtilmemiş"
+        ? currentItem.aiDepartment
+        : "Belirtilmemiş");
 
     try {
       const res = await fetch("/api/ground-truth", {
@@ -356,6 +487,8 @@ export default function GroundTruthLabelerPage() {
           humanName: inputName.trim() || currentItem.aiName,
           humanGender: gToSave,
           humanAge: parsedAge,
+          humanUniversity: uniToSave,
+          humanDepartment: deptToSave,
           rater: activeRater,
         }),
       });
@@ -381,14 +514,14 @@ export default function GroundTruthLabelerPage() {
         if (autoNext) {
           setTimeout(() => {
             if (filterMode === "all") {
-              // Doğrudan kullanıcının henüz etiketlemediği bir sonraki CV'ye atla (zaten yaptıklarını tekrar gösterme!)
+              // Doğrudan kullanıcının henüz Üni & Bölüm etiketlemediği bir sonraki CV'ye atla (zaten yaptıklarını tekrar gösterme!)
               const nextUnlabeledAfter = updatedList.findIndex(
-                (it, idx) => idx > currentIndex && !it.humanLabel?.votes?.[activeRater]
+                (it, idx) => idx > currentIndex && !isRaterFullyDone(it, activeRater)
               );
               const anyUnlabeled =
                 nextUnlabeledAfter !== -1
                   ? nextUnlabeledAfter
-                  : updatedList.findIndex((it) => !it.humanLabel?.votes?.[activeRater]);
+                  : updatedList.findIndex((it) => !isRaterFullyDone(it, activeRater));
               if (anyUnlabeled !== -1) {
                 setCurrentIndex(anyUnlabeled);
               } else {
@@ -450,6 +583,14 @@ export default function GroundTruthLabelerPage() {
       : inputAge.trim() !== ""
       ? parseInt(inputAge, 10)
       : null;
+    const compareUni =
+      inputUniversity.trim() ||
+      currentItem.humanLabel?.humanUniversity ||
+      currentItem.aiUniversity;
+    const compareDept =
+      inputDepartment.trim() ||
+      currentItem.humanLabel?.humanDepartment ||
+      currentItem.aiDepartment;
 
     const genderMatch = currentItem.aiGender === compareGender;
     const isExtraCaseNoDate =
@@ -464,14 +605,21 @@ export default function GroundTruthLabelerPage() {
         ? 0
         : null;
 
+    const uniMatch = isSameUniversity(currentItem.aiUniversity, compareUni);
+    const deptMatch = isSameDepartment(currentItem.aiDepartment, compareDept);
+
     return {
       compareGender,
       compareAge,
+      compareUni,
+      compareDept,
       genderMatch,
       ageDiff,
+      uniMatch,
+      deptMatch,
       isExtraCaseNoDate,
     };
-  }, [currentItem, inputGender, inputAge]);
+  }, [currentItem, inputGender, inputAge, inputUniversity, inputDepartment]);
 
   const benVote = currentItem?.humanLabel?.votes?.ben;
   const arkVote = currentItem?.humanLabel?.votes?.arkadasim;
@@ -503,7 +651,7 @@ export default function GroundTruthLabelerPage() {
                     : "text-zinc-600 hover:text-zinc-900"
                 }`}
               >
-                📱 Ben ({items.filter((i) => !!i.humanLabel?.votes?.ben).length}/
+                📱 Ben ({items.filter((i) => isRaterFullyDone(i, "ben")).length}/
                 {items.length})
               </button>
               <button
@@ -515,7 +663,7 @@ export default function GroundTruthLabelerPage() {
                 }`}
               >
                 💻 Arkadaşım (
-                {items.filter((i) => !!i.humanLabel?.votes?.arkadasim).length}/
+                {items.filter((i) => isRaterFullyDone(i, "arkadasim")).length}/
                 {items.length})
               </button>
             </div>
@@ -523,7 +671,7 @@ export default function GroundTruthLabelerPage() {
 
           {/* CANLI GERÇEK BAŞARI KARTLARI */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50/60 text-center">
+            <div className="px-2.5 py-1.5 rounded-lg border border-teal-200 bg-teal-50/60 text-center">
               <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold flex items-center justify-center gap-1">
                 <Lock className="w-3 h-3" /> Ortak Kesinleşen
               </div>
@@ -537,9 +685,9 @@ export default function GroundTruthLabelerPage() {
               </div>
             </div>
 
-            <div className="px-3 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-center">
+            <div className="px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-center">
               <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                Cinsiyet Başarısı
+                Cinsiyet
               </div>
               <div className="text-sm font-bold text-zinc-950">
                 {stats.totalLabeled === 0 ? "—" : `%${stats.genderAccuracy}`}
@@ -549,9 +697,9 @@ export default function GroundTruthLabelerPage() {
               </div>
             </div>
 
-            <div className="px-3 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-center">
+            <div className="px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-center">
               <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                Yaş Başarısı (Tam / ±1)
+                Yaş (Tam / ±1)
               </div>
               <div className="text-sm font-bold text-zinc-950">
                 {stats.ageLabeledCount === 0
@@ -559,6 +707,30 @@ export default function GroundTruthLabelerPage() {
                   : `%${stats.ageExactAccuracy} / %${stats.ageCloseAccuracy}`}
                 <span className="text-[11px] text-zinc-500 font-normal ml-1">
                   ({stats.ageExactCorrect}/{stats.ageLabeledCount})
+                </span>
+              </div>
+            </div>
+
+            <div className="px-2.5 py-1.5 rounded-lg border border-teal-300 bg-teal-50/50 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold">
+                Üniversite Başarısı
+              </div>
+              <div className="text-sm font-bold text-zinc-950">
+                {stats.uniLabeledCount === 0 ? "—" : `%${stats.uniAccuracy}`}
+                <span className="text-[11px] text-zinc-500 font-normal ml-1">
+                  ({stats.uniCorrect}/{stats.uniLabeledCount})
+                </span>
+              </div>
+            </div>
+
+            <div className="px-2.5 py-1.5 rounded-lg border border-teal-300 bg-teal-50/50 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold">
+                Bölüm Başarısı
+              </div>
+              <div className="text-sm font-bold text-zinc-950">
+                {stats.deptLabeledCount === 0 ? "—" : `%${stats.deptAccuracy}`}
+                <span className="text-[11px] text-zinc-500 font-normal ml-1">
+                  ({stats.deptCorrect}/{stats.deptLabeledCount})
                 </span>
               </div>
             </div>
@@ -752,8 +924,8 @@ export default function GroundTruthLabelerPage() {
                   >
                     {filteredItems.map((it, idx) => {
                       const cStatus = it.humanLabel?.consensusStatus;
-                      const iDidIt = !!it.humanLabel?.votes?.[activeRater];
-                      const icon = cStatus === "agreed"
+                      const iDidIt = isRaterFullyDone(it, activeRater);
+                      const icon = cStatus === "agreed" && iDidIt
                         ? "🔒"
                         : cStatus === "conflict"
                         ? "⚡"
@@ -783,7 +955,7 @@ export default function GroundTruthLabelerPage() {
                 </div>
 
                 {/* Eğer şu anki CV zaten bu kullanıcı tarafından etiketlenmişse tek tıkla kaldığı yere atlama butonu */}
-                {currentItem.humanLabel?.votes?.[activeRater] &&
+                {isRaterFullyDone(currentItem, activeRater) &&
                   stats.myLabeledCount < items.length && (
                     <button
                       type="button"
@@ -889,6 +1061,11 @@ export default function GroundTruthLabelerPage() {
                           }`
                         : "Henüz girilmedi"}
                     </div>
+                    {benVote?.humanUniversity && (
+                      <div className="text-[11px] opacity-85 mt-1 truncate">
+                        🎓 {benVote.humanUniversity} — {benVote.humanDepartment || "—"}
+                      </div>
+                    )}
                   </div>
 
                   <div
@@ -910,6 +1087,11 @@ export default function GroundTruthLabelerPage() {
                           }`
                         : "Henüz girilmedi"}
                     </div>
+                    {arkVote?.humanUniversity && (
+                      <div className="text-[11px] opacity-85 mt-1 truncate">
+                        🎓 {arkVote.humanUniversity} — {arkVote.humanDepartment || "—"}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -922,12 +1104,12 @@ export default function GroundTruthLabelerPage() {
                       1. {activeRater === "ben" ? "📱 Benim Cevabım" : "💻 Arkadaşımın Cevabı"}
                     </h2>
                     <p className="text-[11px] text-zinc-500">
-                      Soldaki CV&apos;ye bakarak gerçek cinsiyet ve yaşı girip kaydedin
+                      Soldaki CV&apos;ye bakarak Üniversite, Bölüm, Cinsiyet ve Yaşı onaylayın
                     </p>
                   </div>
-                  {currentItem.humanLabel?.votes?.[activeRater] && (
+                  {isRaterFullyDone(currentItem, activeRater) && (
                     <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[11px] font-bold">
-                      ✓ Sen Girdin
+                      ✓ Üni &amp; Bölüm Dahil Tamam
                     </span>
                   )}
                 </div>
@@ -940,11 +1122,106 @@ export default function GroundTruthLabelerPage() {
                       📌 EKSTRA CASE: CV&apos;de Yaş ve Üniversite Giriş Tarihi Yok!
                     </div>
                     <p className="text-[11px] leading-relaxed text-amber-800">
-                      Bu aday CV&apos;sinde ne doğum tarihini ne de üniversite giriş/mezuniyet yılını belirtmiş. Aşağıdaki{" "}
-                      <strong>&quot;🚫 Yaş &amp; Üni Tarihi Yok (Ekstra Case)&quot;</strong> butonuna basabilir veya AI&apos;ın ilk staj/iş yılından tahmin ettiği yaşı (~{currentItem.aiAge ?? 25}) onaylayabilirsiniz.
+                      Bu aday CV&apos;sinde ne doğum tarihini ne de üniversite giriş/mezuniyet yılını belirtmiş.
                     </p>
                   </div>
                 )}
+
+                {/* YENİ: GERÇEK ÜNİVERSİTE (LİSANS / ANA ÜNİVERSİTE) */}
+                <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-200 space-y-2.5">
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-teal-700" />
+                      Gerçek Üniversite (Lisans / Ana Üniversite) *
+                    </label>
+                    <input
+                      type="text"
+                      value={inputUniversity}
+                      onChange={(e) => setInputUniversity(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveLabel();
+                        }
+                      }}
+                      placeholder="Örn: Orta Doğu Teknik Üniversitesi (ODTÜ)"
+                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
+                    />
+                    {/* CV içinde geçen üniversite adayları (1-tıkla seçim) */}
+                    {currentItem.aiAllUniversities &&
+                      currentItem.aiAllUniversities.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {currentItem.aiAllUniversities.map((uni) => {
+                            const active = isSameUniversity(inputUniversity, uni);
+                            return (
+                              <button
+                                key={uni}
+                                type="button"
+                                onClick={() => setInputUniversity(uni)}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                                  active
+                                    ? "bg-teal-700 text-white border-teal-700"
+                                    : "bg-white text-teal-900 border-teal-300 hover:bg-teal-100"
+                                }`}
+                              >
+                                🎓 {uni}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                  </div>
+
+                  {/* YENİ: GERÇEK BÖLÜM (LİSANS / ANA BÖLÜM) */}
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1">
+                      Gerçek Bölüm (Lisans / Ana Bölüm) *
+                    </label>
+                    <input
+                      type="text"
+                      value={inputDepartment}
+                      onChange={(e) => setInputDepartment(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveLabel();
+                        }
+                      }}
+                      placeholder="Örn: Bilgisayar Mühendisliği"
+                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
+                    />
+                    {/* CV içinde tespit edilen bölümler + hızlı bölüm butonları */}
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {Array.from(
+                        new Set([
+                          ...(currentItem.aiAllDepartments || []),
+                          ...QUICK_DEPARTMENTS.slice(0, 7),
+                        ])
+                      ).map((dept) => {
+                        const active = isSameDepartment(inputDepartment, dept);
+                        const isFromCv = (
+                          currentItem.aiAllDepartments || []
+                        ).includes(dept);
+                        return (
+                          <button
+                            key={dept}
+                            type="button"
+                            onClick={() => setInputDepartment(dept)}
+                            className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                              active
+                                ? "bg-zinc-900 text-white border-zinc-900"
+                                : isFromCv
+                                ? "bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100 font-bold"
+                                : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100"
+                            }`}
+                          >
+                            {isFromCv ? `⭐ ${dept}` : dept}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Ad Soyad */}
                 <div>
@@ -968,7 +1245,7 @@ export default function GroundTruthLabelerPage() {
                     <button
                       type="button"
                       onClick={() => setInputGender("Erkek")}
-                      className={`py-2.5 px-4 rounded-lg border text-sm font-bold transition-all cursor-pointer ${
+                      className={`py-2 px-4 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         inputGender === "Erkek"
                           ? "bg-zinc-900 border-zinc-900 text-white shadow-xs"
                           : "bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-zinc-400"
@@ -979,7 +1256,7 @@ export default function GroundTruthLabelerPage() {
                     <button
                       type="button"
                       onClick={() => setInputGender("Kadın")}
-                      className={`py-2.5 px-4 rounded-lg border text-sm font-bold transition-all cursor-pointer ${
+                      className={`py-2 px-4 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         inputGender === "Kadın"
                           ? "bg-zinc-900 border-zinc-900 text-white shadow-xs"
                           : "bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-zinc-400"
@@ -1010,7 +1287,7 @@ export default function GroundTruthLabelerPage() {
                           String(Math.max(17, (parseInt(prev, 10) || 24) - 1))
                         )
                       }
-                      className="px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 hover:bg-zinc-100 font-bold text-sm cursor-pointer"
+                      className="px-3 py-1.5 border border-zinc-300 rounded-lg bg-zinc-50 hover:bg-zinc-100 font-bold text-xs cursor-pointer"
                     >
                       -1
                     </button>
@@ -1027,7 +1304,7 @@ export default function GroundTruthLabelerPage() {
                         }
                       }}
                       placeholder="🚫 Yaş & Üni Tarihi Yok"
-                      className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-center text-base font-bold focus:outline-none focus:border-teal-600 placeholder:text-xs placeholder:font-semibold placeholder:text-amber-700"
+                      className="flex-1 border border-zinc-300 rounded-lg px-3 py-1.5 text-center text-sm font-bold focus:outline-none focus:border-teal-600 placeholder:text-xs placeholder:font-semibold placeholder:text-amber-700"
                     />
                     <button
                       type="button"
@@ -1036,35 +1313,9 @@ export default function GroundTruthLabelerPage() {
                           String(Math.min(75, (parseInt(prev, 10) || 24) + 1))
                         )
                       }
-                      className="px-3 py-2 border border-zinc-300 rounded-lg bg-zinc-50 hover:bg-zinc-100 font-bold text-sm cursor-pointer"
+                      className="px-3 py-1.5 border border-zinc-300 rounded-lg bg-zinc-50 hover:bg-zinc-100 font-bold text-xs cursor-pointer"
                     >
                       +1
-                    </button>
-                  </div>
-
-                  {/* EKSTRA CASE BUTONLARI: Yaş & Üni Tarihi Yok */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setInputAge("")}
-                      className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                        inputAge.trim() === ""
-                          ? "bg-amber-600 border-amber-600 text-white shadow-2xs"
-                          : "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100"
-                      }`}
-                    >
-                      🚫 Yaş &amp; Üni Tarihi Yok Seç
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => {
-                        setInputAge("");
-                        handleSaveLabel(inputGender, "", true);
-                      }}
-                      className="py-2 px-3 rounded-lg border border-zinc-900 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-all cursor-pointer"
-                    >
-                      ⚡ Yaş/Üni Yok Olarak Kaydet &amp; Geç
                     </button>
                   </div>
                 </div>
@@ -1080,7 +1331,7 @@ export default function GroundTruthLabelerPage() {
                     <Check className="w-4 h-4" />
                     {saving
                       ? "Ortak Buluta Kaydediliyor..."
-                      : `Kaydet (${
+                      : `Üni & Bölüm Dahil Kaydet (${
                           activeRater === "ben" ? "Ben" : "Arkadaşım"
                         }) ve Sonrakine Geç`}
                   </button>
@@ -1094,10 +1345,87 @@ export default function GroundTruthLabelerPage() {
               </div>
 
               {/* 4. AI CEVABI İLE SİZİN CEVABINIZIN KARŞILAŞTIRMASI */}
-              <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-3 shadow-xs">
+              <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-2.5 shadow-xs">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                   2. Bu CV İçin AI Cevabı vs. Sizin Cevabınız
                 </h3>
+
+                {/* Üniversite Karşılaştırma Satırı */}
+                <div
+                  className={`p-3 rounded-lg border ${
+                    activeComparison?.uniMatch
+                      ? "bg-teal-50/60 border-teal-200"
+                      : "bg-red-50/70 border-red-200"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
+                    <span>
+                      AI Üniversite:{" "}
+                      <strong className="underline">
+                        {currentItem.aiUniversity}
+                      </strong>
+                    </span>
+                    <span>
+                      Sizin Kararınız:{" "}
+                      <strong className="underline">
+                        {activeComparison?.compareUni}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-600">
+                      {currentItem.aiEducationSummary}
+                    </span>
+                    {activeComparison?.uniMatch ? (
+                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
+                      </span>
+                    ) : (
+                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bölüm Karşılaştırma Satırı */}
+                <div
+                  className={`p-3 rounded-lg border ${
+                    activeComparison?.deptMatch
+                      ? "bg-teal-50/60 border-teal-200"
+                      : "bg-red-50/70 border-red-200"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
+                    <span>
+                      AI Bölüm:{" "}
+                      <strong className="underline">
+                        {currentItem.aiDepartment}
+                      </strong>
+                    </span>
+                    <span>
+                      Sizin Kararınız:{" "}
+                      <strong className="underline">
+                        {activeComparison?.compareDept}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-600">
+                      Tespit edilen bölümler:{" "}
+                      {(currentItem.aiAllDepartments || []).join(", ") || "—"}
+                    </span>
+                    {activeComparison?.deptMatch ? (
+                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
+                      </span>
+                    ) : (
+                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
+                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {/* Cinsiyet Karşılaştırma Satırı */}
                 <div
@@ -1201,7 +1529,7 @@ export default function GroundTruthLabelerPage() {
                 <Brain className="w-4 h-4 text-teal-600" />
                 <h3 className="text-sm font-bold text-zinc-950">
                   Canlı Ortak Etiketleme Tablosu ({stats.totalAnyLabeled} CV Etiketlendi •{" "}
-                  {stats.agreedCount} Ortak Kesinleşti)
+                  {stats.uniLabeledCount} Üni/Bölüm Etiketlendi)
                 </h3>
               </div>
               <span className="text-xs text-zinc-500">
@@ -1215,10 +1543,9 @@ export default function GroundTruthLabelerPage() {
                   <tr>
                     <th className="py-2.5 px-3 font-semibold">#</th>
                     <th className="py-2.5 px-3 font-semibold">Dosya / Aday</th>
-                    <th className="py-2.5 px-3 font-semibold">📱 Ben</th>
+                    <th className="py-2.5 px-3 font-semibold">📱 Ben (Cinsiyet/Yaş/Üni/Bölüm)</th>
                     <th className="py-2.5 px-3 font-semibold">💻 Arkadaşım</th>
-                    <th className="py-2.5 px-3 font-semibold">Ortak Durum</th>
-                    <th className="py-2.5 px-3 font-semibold">AI Tahmini</th>
+                    <th className="py-2.5 px-3 font-semibold">AI Tahmini (Üni / Bölüm / Yaş)</th>
                     <th className="py-2.5 px-3 font-semibold">AI Sonucu</th>
                   </tr>
                 </thead>
@@ -1235,6 +1562,12 @@ export default function GroundTruthLabelerPage() {
                           ? Math.abs(it.aiAge - lbl.humanAge)
                           : 0;
                       const aOk = lbl.humanAge === null || aDiff <= 1;
+                      const uOk =
+                        !lbl.humanUniversity ||
+                        isSameUniversity(it.aiUniversity, lbl.humanUniversity);
+                      const dOk =
+                        !lbl.humanDepartment ||
+                        isSameDepartment(it.aiDepartment, lbl.humanDepartment);
                       return (
                         <tr
                           key={it.fileName}
@@ -1255,40 +1588,36 @@ export default function GroundTruthLabelerPage() {
                           </td>
                           <td className="py-2 px-3 font-semibold">
                             {vB
-                              ? `${vB.humanGender}, ${vB.humanAge ?? "—"}`
+                              ? `${vB.humanGender}, ${vB.humanAge ?? "—"}${
+                                  vB.humanUniversity
+                                    ? ` • ${vB.humanUniversity} (${vB.humanDepartment || "—"})`
+                                    : ""
+                                }`
                               : "—"}
                           </td>
                           <td className="py-2 px-3 font-semibold text-teal-800">
                             {vA
-                              ? `${vA.humanGender}, ${vA.humanAge ?? "—"}`
+                              ? `${vA.humanGender}, ${vA.humanAge ?? "—"}${
+                                  vA.humanUniversity
+                                    ? ` • ${vA.humanUniversity} (${vA.humanDepartment || "—"})`
+                                    : ""
+                                }`
                               : "—"}
                           </td>
                           <td className="py-2 px-3">
-                            {lbl.consensusStatus === "agreed" ? (
-                              <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold">
-                                🔒 İkisi Aynı (Kesin)
-                              </span>
-                            ) : lbl.consensusStatus === "conflict" ? (
-                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
-                                ⚡ Farklı Girildi
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 font-medium">
-                                ⏳ Tek Kişi Girdi
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3">
-                            {it.aiGender}, {it.aiAge ?? "—"}
+                            <span className="font-semibold text-zinc-900">
+                              {it.aiUniversity}
+                            </span>{" "}
+                            — {it.aiDepartment} ({it.aiGender}, {it.aiAge ?? "—"})
                           </td>
                           <td className="py-2 px-3">
                             {lbl.consensusStatus === "conflict" ? (
                               <span className="text-amber-700 font-semibold">
                                 Uzlaşma Bekleniyor
                               </span>
-                            ) : gOk && aOk ? (
+                            ) : gOk && aOk && uOk && dOk ? (
                               <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold">
-                                ✓ AI Doğru {aDiff === 1 ? "(±1)" : ""}
+                                ✓ AI Doğru
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold">
