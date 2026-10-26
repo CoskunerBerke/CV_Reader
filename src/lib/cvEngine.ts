@@ -858,14 +858,14 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // KATMAN 6: E-posta Adresindeki Doğum Yılı (Örn: adsoyad2002@gmail.com veya afaruk96@hotmail.com)
+  // KATMAN 6 (EKSTRA CASE): CV'de Doğum Tarihi ve Üniversite Tarihi Yok, Sadece E-posta İzi Var (Örn: A. Faruk Topkaya - afaruk96@hotmail.com)
   if (emailBirthYear) {
     const estimatedAge = refYear - emailBirthYear;
     return {
       age: estimatedAge,
-      method: "Eğitim Kronolojisi Tahmini",
-      confidence: 88,
-      evidence: `E-posta adresindeki '${emailBirthYear}' doğum yılı bilgisinden ~${estimatedAge} yaş hesaplandı.`,
+      method: "İlk İş Deneyimi Tahmini",
+      confidence: 82,
+      evidence: `[EKSTRA CASE: Yaş & Üni Tarihi Yok] CV'de doğum tarihi ve üniversite giriş yılı belirtilmemiş; yalnızca e-posta/deneyim izinden ('${emailBirthYear}') ~${estimatedAge} yaş tahmin edildi.`,
     };
   }
 
