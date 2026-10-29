@@ -2218,18 +2218,15 @@ export function extractEducationFromCV(rawText: string): {
     allDegrees.push("Doktora / Ph.D. (Doctorate)");
   }
 
-  // Ana / En Yüksek Eğitim Derecesi (Ön Lisans mı, Lisans mı, Master mı, Doktora mı)
-  const primaryDegree = hasPhd
-    ? "Doktora / Ph.D. (Doctorate)"
-    : hasMaster
-    ? "Yüksek Lisans / Master's Degree (M.Sc.)"
-    : hasAssociate
-    ? "Ön Lisans / Associate Degree"
-    : "Lisans / Bachelor's Degree (B.Sc.)";
+  // CV'de tespit edilen tüm eğitim kademelerini (Örn: Lisans + Yüksek Lisans) birleştir
+  const combinedDegrees =
+    allDegrees.length > 0
+      ? allDegrees.join(" + ")
+      : "Lisans / Bachelor's Degree (B.Sc.)";
 
   const otherUnis = allFoundUnis.filter((u) => u !== bestUni);
   const otherDepts = allFoundDepts.filter((d) => d !== bestDept);
-  let educationSummary = `[${allDegrees.join(" + ")}] ${bestUni} — ${bestDept}`;
+  let educationSummary = `[${combinedDegrees}] ${bestUni} — ${bestDept}`;
   if (otherUnis.length > 0 || otherDepts.length > 0) {
     educationSummary += ` (Diğer: ${[...otherUnis, ...otherDepts].join(", ")})`;
   }
@@ -2239,8 +2236,8 @@ export function extractEducationFromCV(rawText: string): {
     allUniversities: allFoundUnis.length > 0 ? allFoundUnis : [bestUni],
     department: bestDept,
     allDepartments: allFoundDepts.length > 0 ? allFoundDepts : [bestDept],
-    degree: primaryDegree,
-    allDegrees,
+    degree: combinedDegrees,
+    allDegrees: allDegrees.length > 0 ? allDegrees : ["Lisans / Bachelor's Degree (B.Sc.)"],
     educationSummary,
   };
 }
@@ -2268,22 +2265,59 @@ export function isSameUniversity(
   uniB: string,
   aiAll: string[] = []
 ): boolean {
-  const normA = toAsciiTr(uniA || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  const normB = toAsciiTr(uniB || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  if (!normA || !normB) return false;
-  if (normA === normB) return true;
+  const partsA = (uniA || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const partsB = (uniB || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (partsA.length === 0 || partsB.length === 0) return false;
 
-  const canA = resolveUniversityCanonical(uniA);
-  const candidates = [uniB, ...aiAll].filter(Boolean);
-  for (const cand of candidates) {
-    const canB = resolveUniversityCanonical(cand);
+  const poolB = [...partsB, ...aiAll].filter(Boolean);
+  const singleMatch = (a: string, b: string): boolean => {
+    const normA = toAsciiTr(a).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normB = toAsciiTr(b).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (!normA || !normB) return false;
+    if (normA === normB) return true;
+    const canA = resolveUniversityCanonical(a);
+    const canB = resolveUniversityCanonical(b);
     if (canA && canB && canA === canB) return true;
-    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    if (normA.length >= 3 && cNorm.length >= 3 && (normA.includes(cNorm) || cNorm.includes(normA))) {
+    if (normA.length >= 3 && normB.length >= 3 && (normA.includes(normB) || normB.includes(normA))) {
       return true;
     }
+    return false;
+  };
+
+  return partsA.every((pA) => poolB.some((pB) => singleMatch(pA, pB)));
+}
+
+export function hasUniversitySelected(
+  selectionStr: string,
+  targetUni: string
+): boolean {
+  const parts = (selectionStr || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.some((p) => isSameUniversity(p, targetUni));
+}
+
+export function toggleUniversityInSelection(
+  selectionStr: string,
+  targetUni: string
+): string {
+  const parts = (selectionStr || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const exists = parts.some((p) => isSameUniversity(p, targetUni));
+  if (exists) {
+    if (parts.length <= 1) return selectionStr;
+    return parts.filter((p) => !isSameUniversity(p, targetUni)).join(" + ");
   }
-  return false;
+  return [...parts, targetUni].join(" + ");
 }
 
 function resolveDepartmentCanonical(val: string): string {
@@ -2309,28 +2343,65 @@ export function isSameDepartment(
   deptB: string,
   aiAll: string[] = []
 ): boolean {
-  const normA = toAsciiTr(deptA || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  const normB = toAsciiTr(deptB || "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  if (!normA || !normB) return false;
-  if (normA === normB) return true;
+  const partsA = (deptA || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const partsB = (deptB || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (partsA.length === 0 || partsB.length === 0) return false;
 
-  const canA = resolveDepartmentCanonical(deptA);
-  const candidates = [deptB, ...aiAll].filter(Boolean);
-  for (const cand of candidates) {
-    const canB = resolveDepartmentCanonical(cand);
+  const poolB = [...partsB, ...aiAll].filter(Boolean);
+  const singleMatch = (a: string, b: string): boolean => {
+    const normA = toAsciiTr(a).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normB = toAsciiTr(b).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (!normA || !normB) return false;
+    if (normA === normB) return true;
+    const canA = resolveDepartmentCanonical(a);
+    const canB = resolveDepartmentCanonical(b);
     if (canA && canB && canA === canB) return true;
-    const cNorm = toAsciiTr(cand).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    if (normA.length >= 3 && cNorm.length >= 3 && (normA.includes(cNorm) || cNorm.includes(normA))) {
+    if (normA.length >= 3 && normB.length >= 3 && (normA.includes(normB) || normB.includes(normA))) {
       return true;
     }
-  }
-  return false;
+    return false;
+  };
+
+  return partsA.every((pA) => poolB.some((pB) => singleMatch(pA, pB)));
 }
 
-function resolveDegreeCanonical(val: string): string {
+export function hasDepartmentSelected(
+  selectionStr: string,
+  targetDept: string
+): boolean {
+  const parts = (selectionStr || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.some((p) => isSameDepartment(p, targetDept));
+}
+
+export function toggleDepartmentInSelection(
+  selectionStr: string,
+  targetDept: string
+): string {
+  const parts = (selectionStr || "")
+    .split(/\s*\+\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const exists = parts.some((p) => isSameDepartment(p, targetDept));
+  if (exists) {
+    if (parts.length <= 1) return selectionStr;
+    return parts.filter((p) => !isSameDepartment(p, targetDept)).join(" + ");
+  }
+  return [...parts, targetDept].join(" + ");
+}
+
+function resolveSingleDegreeCanonical(val: string): string {
   const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   if (!vNorm) return "";
-  // Önce Yüksek Lisans ve Ön Lisans'ı kontrol et ki "lisans" alt dizgesi karışmasın
+  // Önce Doktora, Yüksek Lisans ve Ön Lisans'ı kontrol et ki "lisans" alt dizgesi karışmasın
   const ordered = [
     DEGREE_DICTIONARY[3], // Doktora / Ph.D.
     DEGREE_DICTIONARY[2], // Yüksek Lisans / Master
@@ -2351,22 +2422,79 @@ function resolveDegreeCanonical(val: string): string {
   return vNorm;
 }
 
+/**
+ * Bir metin içindeki tüm eğitim kademelerini (Örn: "Lisans / Bachelor's Degree (B.Sc.) + Yüksek Lisans / Master's Degree (M.Sc.)")
+ * akademik sırayla (Ön Lisans -> Lisans -> Yüksek Lisans -> Doktora) ayrıştırır.
+ */
+export function parseCanonicalDegrees(val: string): string[] {
+  if (!val || !val.trim()) return [];
+  const rawParts = val
+    .split(/\s*(?:\+|;|,|\bve\b|\band\b|&)\s*/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const foundSet = new Set<string>();
+  for (const part of rawParts) {
+    const can = resolveSingleDegreeCanonical(part);
+    if (can) foundSet.add(can);
+  }
+
+  // Akademik sıraya göre diz: Ön Lisans -> Lisans -> Yüksek Lisans -> Doktora
+  const orderedCanonicals = DEGREE_DICTIONARY.map((d) => d.canonical);
+  const result = orderedCanonicals.filter((c) => foundSet.has(c));
+  for (const item of foundSet) {
+    if (!result.includes(item)) result.push(item);
+  }
+  return result;
+}
+
+export function hasDegreeSelected(
+  selectionStr: string,
+  targetDegree: string
+): boolean {
+  const selectedList = parseCanonicalDegrees(selectionStr);
+  const targetCan = resolveSingleDegreeCanonical(targetDegree);
+  return !!targetCan && selectedList.includes(targetCan);
+}
+
+export function toggleDegreeInSelection(
+  selectionStr: string,
+  targetDegree: string
+): string {
+  const selectedList = parseCanonicalDegrees(selectionStr);
+  const targetCan = resolveSingleDegreeCanonical(targetDegree);
+  if (!targetCan) return selectionStr;
+
+  let nextList: string[];
+  if (selectedList.includes(targetCan)) {
+    // Eğer zaten seçiliyse ve birden fazla derece seçiliyse çıkar; tek derece varsa koru
+    nextList =
+      selectedList.length > 1
+        ? selectedList.filter((d) => d !== targetCan)
+        : selectedList;
+  } else {
+    nextList = [...selectedList, targetCan];
+  }
+
+  const orderedCanonicals = DEGREE_DICTIONARY.map((d) => d.canonical);
+  const sorted = orderedCanonicals.filter((c) => nextList.includes(c));
+  return sorted.join(" + ");
+}
+
 export function isSameDegree(
   degA: string,
   degB: string,
   aiAllDegrees: string[] = []
 ): boolean {
-  const canA = resolveDegreeCanonical(degA || "");
-  const canB = resolveDegreeCanonical(degB || "");
-  if (!canA || !canB) return false;
-  if (canA === canB) return true;
-  for (const d of aiAllDegrees) {
-    if (resolveDegreeCanonical(d) === canA || resolveDegreeCanonical(d) === canB) {
-      // Eğer CV'de hem Lisans hem Yüksek Lisans varsa ve kullanıcı bunlardan birini seçtiyse
-      if (canA === resolveDegreeCanonical(d) && canB === resolveDegreeCanonical(degB)) {
-        return true;
-      }
-    }
+  const setA = parseCanonicalDegrees(
+    [degA, ...aiAllDegrees].filter(Boolean).join(" + ")
+  );
+  const setB = parseCanonicalDegrees(degB);
+  if (setA.length === 0 || setB.length === 0) return false;
+
+  // Tam küme eşleşmesi (Örn: İkisi de Lisans + Yüksek Lisans ise)
+  if (setA.length === setB.length && setA.every((d) => setB.includes(d))) {
+    return true;
   }
   return false;
 }
