@@ -1776,8 +1776,8 @@ const DEGREE_DICTIONARY: {
   aliases: string[];
 }[] = [
   {
-    canonical: "Ön Lisans / Associate Degree",
-    shortLabel: "Ön Lisans / Associate",
+    canonical: "Ön Lisans (Associate)",
+    shortLabel: "Ön Lisans",
     aliases: [
       "ön lisans",
       "önlisans",
@@ -1794,8 +1794,8 @@ const DEGREE_DICTIONARY: {
     ],
   },
   {
-    canonical: "Lisans / Bachelor's Degree (B.Sc.)",
-    shortLabel: "Lisans / Bachelor's (B.Sc.)",
+    canonical: "Lisans (Bachelor's)",
+    shortLabel: "Lisans",
     aliases: [
       "lisans",
       "lisans derecesi",
@@ -1818,8 +1818,8 @@ const DEGREE_DICTIONARY: {
     ],
   },
   {
-    canonical: "Yüksek Lisans / Master's Degree (M.Sc.)",
-    shortLabel: "Yüksek Lisans / Master (M.Sc.)",
+    canonical: "Yüksek Lisans (Master's)",
+    shortLabel: "Yüksek Lisans",
     aliases: [
       "yüksek lisans",
       "yuksek lisans",
@@ -1842,8 +1842,8 @@ const DEGREE_DICTIONARY: {
     ],
   },
   {
-    canonical: "Doktora / Ph.D. (Doctorate)",
-    shortLabel: "Doktora / Ph.D.",
+    canonical: "Doktora (Ph.D.)",
+    shortLabel: "Doktora",
     aliases: [
       "doktora",
       "phd",
@@ -1858,7 +1858,7 @@ const DEGREE_DICTIONARY: {
 
 const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegExp }[] = [
   {
-    canonical: "Bilgisayar Mühendisliği / Computer Engineering",
+    canonical: "Bilgisayar Mühendisliği",
     aliases: [
       "bilgisayar mühendisliği", "bilgisayar müh", "computer engineering",
       "computer science and engineering", "computers science and engineering",
@@ -1869,7 +1869,7 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:bilgisayar\s*(?:bilimi\s*ve\s*)?mühendisli[ğg]i|computers?\s*science\s*and\s*engineering|computer\s*engineering|co\s*m\s*p\s*u\s*te\s*r\s*en\s*g\s*ine\s*e\s*r\s*in\s*g|computer\s*engineer\s*\(\s*scholarship\s*\)|informatic\s*and\s*computer\s*engineering|bachelor[’']?s?\s*(?:degree\s*)?(?:of\s*science\s*)?,?\s*(?:in\s*)?computer\s*science|computer\s*science\s*graduate)/gi,
   },
   {
-    canonical: "Yazılım Mühendisliği / Software Engineering",
+    canonical: "Yazılım Mühendisliği",
     aliases: [
       "yazılım mühendisliği", "yazılım müh", "software engineering",
       "software development", "yazılım geliştirme", "bachelor of science in software"
@@ -1878,7 +1878,7 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:yaz[ıi]l[ıi]m\s*(?:mühendisli[ğg]i|geli[şs]tirme)|bachelor\s*of\s*science\s*in\s*software(?:\s*development|\s*engineering)?|software\s*development\s*-\s*third\s*year|(?:do[ğg]u[şs]\s*university)\s*\r?\n\s*software\s*engineer)/gi,
   },
   {
-    canonical: "Elektrik-Elektronik Mühendisliği / Electrical & Electronics Engineering",
+    canonical: "Elektrik-Elektronik Mühendisliği",
     aliases: [
       "elektrik-elektronik mühendisliği", "elektrik elektronik mühendisliği",
       "elektrik elektronik", "electrical and electronics engineering",
@@ -1889,7 +1889,7 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:elektrik[\s\-]*elektronik\s*mühendis(?:li[ğg]i|-)?|electrical\s*(?:and|&|-)\s*electronics?\s*engineering)/gi,
   },
   {
-    canonical: "Elektronik ve Haberleşme Mühendisliği / Electronics & Communication Engineering",
+    canonical: "Elektronik ve Haberleşme Mühendisliği",
     aliases: [
       "elektronik ve haberleşme mühendisliği", "elektronik haberleşme",
       "electronics and communication engineering", "ehb", "ehm"
@@ -1898,31 +1898,31 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:elektronik\s*ve\s*haberle[şs]me\s*mühendisli[ğg]i|electronics?\s*(?:and|&)\s*communications?\s*engineering)/gi,
   },
   {
-    canonical: "Endüstri Mühendisliği / Industrial Engineering",
+    canonical: "Endüstri Mühendisliği",
     aliases: ["endüstri mühendisliği", "endüstri müh", "industrial engineering", "ie"],
     regex:
       /(?:end[üu]stri\s*mühendisli[ğg]i|industrial\s*engineering|bachelor's\s*degre[e]?\s*-\s*industrial\s*engineer)/gi,
   },
   {
-    canonical: "Makine Mühendisliği / Mechanical Engineering",
+    canonical: "Makine Mühendisliği",
     aliases: ["makine mühendisliği", "makina mühendisliği", "mechanical engineering", "me"],
     regex:
       /(?:makin[ea]\s*mühendisli[ğg]i|mechanical\s*engineering)/gi,
   },
   {
-    canonical: "Mekatronik Mühendisliği / Mechatronics Engineering",
+    canonical: "Mekatronik Mühendisliği",
     aliases: ["mekatronik mühendisliği", "mechatronics engineering", "mechatronic engineering"],
     regex:
       /(?:mekatronik\s*mühendisli[ğg]i|mechatronics?\s*engineering|mechatron\s*i?cs\s*eng\s*i?neer\s*i?ng)/gi,
   },
   {
-    canonical: "Otomotiv Mühendisliği / Automotive Engineering",
+    canonical: "Otomotiv Mühendisliği",
     aliases: ["otomotiv mühendisliği", "automotive engineering", "makine / otomotiv mühendisliği"],
     regex:
       /(?:otomotiv\s*mühendisli[ğg]i|automotive\s*engineering)/gi,
   },
   {
-    canonical: "Metalurji ve Malzeme Mühendisliği / Metallurgical & Materials Engineering",
+    canonical: "Metalurji ve Malzeme Mühendisliği",
     aliases: [
       "metalurji ve malzeme mühendisliği", "metalurji mühendisliği",
       "metallurgical engineering", "metallurgical and materials engineering"
@@ -1931,55 +1931,55 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
       /(?:metalurji\s*(?:ve\s*malzeme\s*)?mühendisli[ğg]i|metallurgical\s*(?:and\s*materials?\s*)?engineering)/gi,
   },
   {
-    canonical: "Kimya Mühendisliği / Chemical Engineering",
+    canonical: "Kimya Mühendisliği",
     aliases: ["kimya mühendisliği", "chemical engineering"],
     regex:
       /(?:kimya\s*mühendisli[ğg]i|chemical\s*engineering)/gi,
   },
   {
-    canonical: "Kimya / Chemistry",
+    canonical: "Kimya",
     aliases: ["kimya", "kimya bölümü", "chemistry", "department of chemistry"],
     regex:
       /(?:kimya\s*bölümü|department\s*of\s*chemistry|bachelor\s*(?:of\s*science\s*)?in\s*chemistry)/gi,
   },
   {
-    canonical: "Jeofizik Mühendisliği / Geophysical Engineering",
+    canonical: "Jeofizik Mühendisliği",
     aliases: ["jeofizik mühendisliği", "geophysical engineering"],
     regex:
       /(?:jeofizik\s*mühendisli[ğg]i|geophysical\s*engineering)/gi,
   },
   {
-    canonical: "Bilişim Sistemleri Mühendisliği / Information Systems Engineering",
+    canonical: "Bilişim Sistemleri Mühendisliği",
     aliases: ["bilişim sistemleri mühendisliği", "information systems engineering", "ise"],
     regex:
       /(?:bili[şs]im\s*sistemleri\s*mühendisli[ğg]i|information\s*systems\s*engineering)/gi,
   },
   {
-    canonical: "Yönetim Bilişim Sistemleri (YBS) / Management Information Systems (MIS)",
+    canonical: "Yönetim Bilişim Sistemleri (YBS)",
     aliases: ["yönetim bilişim sistemleri", "ybs", "management information systems", "mis"],
     regex:
       /(?:yönetim\s*bili[şs]im\s*sistemleri|management\s*information\s*systems)/gi,
   },
   {
-    canonical: "İstatistik / Statistics",
+    canonical: "İstatistik",
     aliases: ["istatistik", "statistics", "istatistik ve bilgisayar bilimleri", "istatistik veri bilimi"],
     regex:
       /(?:departm[ae]nt\s*of\s*statistics|istatistik\s*\(\s*lisans\s*\)|undergraduate\s*degree\s*in\s*statistics|\bstatistics\s*\r?\n\s*mugla)/gi,
   },
   {
-    canonical: "Matematik / Mathematics",
+    canonical: "Matematik",
     aliases: ["matematik", "mathematics", "matematik bölümü", "department of mathematics"],
     regex:
       /(?:bachelor\s*in\s*mathematics|matematik\s*bölümü|department\s*of\s*mathematics)/gi,
   },
   {
-    canonical: "Fizik / Physics (Physics Engineering)",
+    canonical: "Fizik",
     aliases: ["fizik", "physics", "fizik mühendisliği", "engineering of physics", "physics engineering"],
     regex:
       /(?:physics\s*b\.?sc|engineering\s*of\s*physics|fizik\s*mühendisli[ğg]i|fizik\s*bölümü)/gi,
   },
   {
-    canonical: "İktisat / Economics",
+    canonical: "İktisat",
     aliases: ["iktisat", "ekonomi", "economics", "department of economics"],
     regex:
       /(?:department\s*of\s*economics|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*economics|iktisat\s*bölümü|ekonomi\s*bölümü)/gi,
@@ -2205,24 +2205,24 @@ export function extractEducationFromCV(rawText: string): {
 
   const allDegrees: string[] = [];
   if (hasAssociate) {
-    allDegrees.push("Ön Lisans / Associate Degree");
+    allDegrees.push("Ön Lisans (Associate)");
   }
   // Üniversite/fakülte/mühendislik/bölüm eğitimi olan her adayda Lisans (Bachelor's) mevcuttur (sadece Ön Lisans değilse)
   if (!hasAssociate || /\b(?:bachelor|b\.?sc|lisans\s*eğitimi|\(\s*lisans\s*\))\b/i.test(degreeCheckText)) {
-    allDegrees.push("Lisans / Bachelor's Degree (B.Sc.)");
+    allDegrees.push("Lisans (Bachelor's)");
   }
   if (hasMaster) {
-    allDegrees.push("Yüksek Lisans / Master's Degree (M.Sc.)");
+    allDegrees.push("Yüksek Lisans (Master's)");
   }
   if (hasPhd) {
-    allDegrees.push("Doktora / Ph.D. (Doctorate)");
+    allDegrees.push("Doktora (Ph.D.)");
   }
 
   // CV'de tespit edilen tüm eğitim kademelerini (Örn: Lisans + Yüksek Lisans) birleştir
   const combinedDegrees =
     allDegrees.length > 0
       ? allDegrees.join(" + ")
-      : "Lisans / Bachelor's Degree (B.Sc.)";
+      : "Lisans (Bachelor's)";
 
   const otherUnis = allFoundUnis.filter((u) => u !== bestUni);
   const otherDepts = allFoundDepts.filter((d) => d !== bestDept);
@@ -2237,7 +2237,7 @@ export function extractEducationFromCV(rawText: string): {
     department: bestDept,
     allDepartments: allFoundDepts.length > 0 ? allFoundDepts : [bestDept],
     degree: combinedDegrees,
-    allDegrees: allDegrees.length > 0 ? allDegrees : ["Lisans / Bachelor's Degree (B.Sc.)"],
+    allDegrees: allDegrees.length > 0 ? allDegrees : ["Lisans (Bachelor's)"],
     educationSummary,
   };
 }

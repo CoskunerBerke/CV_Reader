@@ -17,7 +17,6 @@ import {
   Users,
   RefreshCw,
   Lock,
-  GraduationCap,
 } from "lucide-react";
 import {
   isSameUniversity,
@@ -83,46 +82,25 @@ interface BenchmarkCVItem {
 
 const DEGREE_OPTIONS = [
   {
-    value: "Ön Lisans / Associate Degree",
-    shortTr: "Ön Lisans (MYO)",
-    shortEn: "Associate Degree",
+    value: "Ön Lisans (Associate)",
+    shortTr: "Ön Lisans",
+    shortEn: "Associate",
   },
   {
-    value: "Lisans / Bachelor's Degree (B.Sc.)",
+    value: "Lisans (Bachelor's)",
     shortTr: "Lisans",
-    shortEn: "Bachelor's / B.Sc.",
+    shortEn: "Bachelor's",
   },
   {
-    value: "Yüksek Lisans / Master's Degree (M.Sc.)",
+    value: "Yüksek Lisans (Master's)",
     shortTr: "Yüksek Lisans",
-    shortEn: "Master's / M.Sc. / MBA",
+    shortEn: "Master's",
   },
   {
-    value: "Doktora / Ph.D. (Doctorate)",
+    value: "Doktora (Ph.D.)",
     shortTr: "Doktora",
-    shortEn: "Ph.D. / Doctorate",
+    shortEn: "Ph.D.",
   },
-];
-
-const QUICK_DEPARTMENTS = [
-  "Bilgisayar Mühendisliği / Computer Engineering",
-  "Yazılım Mühendisliği / Software Engineering",
-  "Elektrik-Elektronik Mühendisliği / Electrical & Electronics Engineering",
-  "Elektronik ve Haberleşme Mühendisliği / Electronics & Communication Engineering",
-  "Makine Mühendisliği / Mechanical Engineering",
-  "Endüstri Mühendisliği / Industrial Engineering",
-  "Mekatronik Mühendisliği / Mechatronics Engineering",
-  "Yönetim Bilişim Sistemleri (YBS) / Management Information Systems (MIS)",
-  "Bilişim Sistemleri Mühendisliği / Information Systems Engineering",
-  "İstatistik / Statistics",
-  "Matematik / Mathematics",
-  "Fizik / Physics (Physics Engineering)",
-  "Kimya Mühendisliği / Chemical Engineering",
-  "Kimya / Chemistry",
-  "Metalurji ve Malzeme Mühendisliği / Metallurgical & Materials Engineering",
-  "Otomotiv Mühendisliği / Automotive Engineering",
-  "Jeofizik Mühendisliği / Geophysical Engineering",
-  "İktisat / Economics",
 ];
 
 export default function GroundTruthLabelerPage() {
@@ -145,9 +123,7 @@ export default function GroundTruthLabelerPage() {
   const [inputName, setInputName] = useState<string>("");
   const [inputUniversity, setInputUniversity] = useState<string>("");
   const [inputDepartment, setInputDepartment] = useState<string>("");
-  const [inputDegree, setInputDegree] = useState<string>(
-    "Lisans / Bachelor's Degree (B.Sc.)"
-  );
+  const [inputDegree, setInputDegree] = useState<string>("Lisans (Bachelor's)");
   const [saveMessage, setSaveMessage] = useState<string>("");
 
   // Bir CV'nin bu kullanıcı tarafından tamamen (Üni, Bölüm ve Derece dahil) etiketlenip etiketlenmediğini kontrol et
@@ -1265,24 +1241,21 @@ export default function GroundTruthLabelerPage() {
                   </div>
                 )}
 
-                {/* YENİ: GERÇEK ÜNİVERSİTE, BÖLÜM VE EĞİTİM DERECESİ (TR / EN) */}
-                <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-200 space-y-3">
-                  {/* EĞİTİM DERECESİ (ÖN LİSANS / LİSANS / MASTER / DOKTORA - TR & EN - ÇOKLU SEÇİM) */}
+                {/* YENİ: GERÇEK ÜNİVERSİTE, BÖLÜM VE EĞİTİM DERECESİ (SADE VE NET GÖRÜNÜM) */}
+                <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3.5">
+                  {/* 1. EĞİTİM DERECESİ (4 SADE BUTON - ÇOKLU SEÇİM) */}
                   <div>
-                    <label className="block text-xs font-bold text-teal-950 mb-1 flex flex-wrap items-center justify-between gap-1">
-                      <span>
-                        🎓 Eğitim Derecesi / Seviyesi (Türkçe &amp; İngilizce) *
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-zinc-900">
+                        Eğitim Derecesi
+                      </label>
+                      <span className="text-[11px] text-zinc-500">
+                        Birden fazla seçilebilir
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-900">
-                        ☑️ Birden Fazla Seçilebilir (Örn: Lisans + Master)
-                      </span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2">
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                       {DEGREE_OPTIONS.map((deg) => {
                         const active = hasDegreeSelected(inputDegree, deg.value);
-                        const detectedInCv = (
-                          currentItem.aiAllDegrees || []
-                        ).some((d) => hasDegreeSelected(d, deg.value));
                         return (
                           <button
                             key={deg.value}
@@ -1292,94 +1265,38 @@ export default function GroundTruthLabelerPage() {
                                 toggleDegreeInSelection(prev, deg.value)
                               )
                             }
-                            className={`px-2.5 py-2 rounded-lg text-left border transition-all cursor-pointer flex items-center justify-between gap-1 ${
+                            className={`px-2.5 py-2 rounded-lg text-center border transition-all cursor-pointer ${
                               active
                                 ? "bg-teal-700 text-white border-teal-700 shadow-xs"
-                                : detectedInCv
-                                ? "bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100"
-                                : "bg-white text-zinc-800 border-teal-200 hover:bg-teal-100/60"
+                                : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400"
                             }`}
                           >
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-xs font-extrabold mt-0.5">
-                                {active ? "☑️" : "⬜"}
-                              </span>
-                              <div>
-                                <div className="text-[11px] font-bold leading-tight">
-                                  {deg.shortTr} / {deg.shortEn}
-                                </div>
-                                <div
-                                  className={`text-[10px] leading-tight mt-0.5 ${
-                                    active ? "text-teal-100" : "text-zinc-500"
-                                  }`}
-                                >
-                                  {deg.value}
-                                </div>
-                              </div>
+                            <div className="text-xs font-bold leading-tight">
+                              {active ? `✓ ${deg.shortTr}` : deg.shortTr}
                             </div>
-                            {detectedInCv && (
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 ${
-                                  active
-                                    ? "bg-white/20 text-white"
-                                    : "bg-amber-200/80 text-amber-950"
-                                }`}
-                              >
-                                CV&apos;de Var
-                              </span>
-                            )}
+                            <div
+                              className={`text-[10px] leading-tight mt-0.5 ${
+                                active ? "text-teal-100" : "text-zinc-400"
+                              }`}
+                            >
+                              {deg.shortEn}
+                            </div>
                           </button>
                         );
                       })}
                     </div>
-                    <input
-                      type="text"
-                      value={inputDegree}
-                      onChange={(e) => setInputDegree(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSaveLabel();
-                        }
-                      }}
-                      placeholder="Örn: Lisans / Bachelor's Degree (B.Sc.) + Yüksek Lisans / Master's Degree (M.Sc.)"
-                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
-                    />
-                    {currentItem.aiAllDegrees &&
-                      currentItem.aiAllDegrees.length > 1 && (
-                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-teal-900 font-medium">
-                          <span>
-                            💡 CV&apos;de birden fazla eğitim kademesi tespit edildi:{" "}
-                            <strong>{currentItem.aiAllDegrees.join(" + ")}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setInputDegree(
-                                currentItem.aiAllDegrees.join(" + ")
-                              )
-                            }
-                            className="px-2 py-0.5 rounded bg-teal-700 text-white text-[10px] font-bold hover:bg-teal-800 cursor-pointer shrink-0"
-                          >
-                            ⚡ Tümünü Birlikte Seç
-                          </button>
-                        </div>
-                      )}
                   </div>
 
+                  {/* 2. ÜNİVERSİTE */}
                   <div>
-                    <label className="block text-xs font-bold text-teal-950 mb-1 flex flex-wrap items-center justify-between gap-1">
-                      <span className="flex items-center gap-1.5">
-                        <GraduationCap className="w-4 h-4 text-teal-700" />
-                        Gerçek Üniversite (TR / EN Eşleşir — Örn: ODTÜ / METU) *
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-900">
+                        Üniversite
+                      </label>
+                      <span className="text-[11px] text-zinc-500">
+                        TR / EN fark etmez
                       </span>
-                      {currentItem.aiAllUniversities &&
-                        currentItem.aiAllUniversities.length > 1 && (
-                          <span className="text-[10px] font-semibold text-teal-800">
-                            Birden fazla üniversite seçmek için butonlara tıklayın
-                          </span>
-                        )}
-                    </label>
+                    </div>
                     <input
                       type="text"
                       value={inputUniversity}
@@ -1390,13 +1307,12 @@ export default function GroundTruthLabelerPage() {
                           handleSaveLabel();
                         }
                       }}
-                      placeholder="Örn: Orta Doğu Teknik Üniversitesi (ODTÜ) / Middle East Technical University"
-                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
+                      placeholder="Örn: ODTÜ / Middle East Technical University"
+                      className="w-full border border-zinc-300 bg-white rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
                     />
-                    {/* CV içinde geçen üniversite adayları (Çoklu Seçim Toggle) */}
                     {currentItem.aiAllUniversities &&
                       currentItem.aiAllUniversities.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {currentItem.aiAllUniversities.map((uni) => {
                             const active = hasUniversitySelected(
                               inputUniversity,
@@ -1411,43 +1327,30 @@ export default function GroundTruthLabelerPage() {
                                     toggleUniversityInSelection(prev, uni)
                                   )
                                 }
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
                                   active
-                                    ? "bg-teal-700 text-white border-teal-700"
-                                    : "bg-white text-teal-900 border-teal-300 hover:bg-teal-100"
+                                    ? "bg-zinc-900 text-white border-zinc-900"
+                                    : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100"
                                 }`}
                               >
-                                {active ? "☑️" : "➕"} 🎓 {uni}
+                                {active ? `✓ ${uni}` : `+ ${uni}`}
                               </button>
                             );
                           })}
-                          {currentItem.aiAllUniversities.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setInputUniversity(
-                                  currentItem.aiAllUniversities.join(" + ")
-                                )
-                              }
-                              className="px-2 py-1 rounded-md text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-300 hover:bg-teal-200 cursor-pointer"
-                            >
-                              ⚡ Tüm Üniversiteleri Birlikte Seç
-                            </button>
-                          )}
                         </div>
                       )}
                   </div>
 
-                  {/* YENİ: GERÇEK BÖLÜM (LİSANS / YÜKSEK LİSANS BÖLÜM - TR & EN - ÇOKLU SEÇİM) */}
+                  {/* 3. BÖLÜM */}
                   <div>
-                    <label className="block text-xs font-bold text-teal-950 mb-1 flex flex-wrap items-center justify-between gap-1">
-                      <span>
-                        Gerçek Bölüm (Türkçe / İngilizce İkisi de Kabul Edilir) *
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-900">
+                        Bölüm
+                      </label>
+                      <span className="text-[11px] text-zinc-500">
+                        TR / EN fark etmez
                       </span>
-                      <span className="text-[10px] font-semibold text-teal-800">
-                        Birden fazla bölüm varsa tıklayarak ekleyip çıkarabilirsiniz
-                      </span>
-                    </label>
+                    </div>
                     <input
                       type="text"
                       value={inputDepartment}
@@ -1459,50 +1362,37 @@ export default function GroundTruthLabelerPage() {
                         }
                       }}
                       placeholder="Örn: Bilgisayar Mühendisliği / Computer Engineering"
-                      className="w-full border border-teal-300 bg-white rounded-lg px-3 py-2 text-sm font-bold text-zinc-900 focus:outline-none focus:border-teal-700"
+                      className="w-full border border-zinc-300 bg-white rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
                     />
-                    {/* CV içinde tespit edilen bölümler + hızlı bölüm butonları */}
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {Array.from(
-                        new Set([
-                          ...(currentItem.aiAllDepartments || []),
-                          ...QUICK_DEPARTMENTS.slice(0, 7),
-                        ])
-                      ).map((dept) => {
-                        const active = hasDepartmentSelected(
-                          inputDepartment,
-                          dept
-                        );
-                        const isFromCv = (
-                          currentItem.aiAllDepartments || []
-                        ).includes(dept);
-                        return (
-                          <button
-                            key={dept}
-                            type="button"
-                            onClick={() =>
-                              setInputDepartment((prev) =>
-                                isFromCv
-                                  ? toggleDepartmentInSelection(prev, dept)
-                                  : active
-                                  ? toggleDepartmentInSelection(prev, dept)
-                                  : dept
-                              )
-                            }
-                            className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
-                              active
-                                ? "bg-zinc-900 text-white border-zinc-900"
-                                : isFromCv
-                                ? "bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100 font-bold"
-                                : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100"
-                            }`}
-                          >
-                            {active ? "☑️ " : isFromCv ? "⭐ " : ""}
-                            {dept}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {currentItem.aiAllDepartments &&
+                      currentItem.aiAllDepartments.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {currentItem.aiAllDepartments.map((dept) => {
+                            const active = hasDepartmentSelected(
+                              inputDepartment,
+                              dept
+                            );
+                            return (
+                              <button
+                                key={dept}
+                                type="button"
+                                onClick={() =>
+                                  setInputDepartment((prev) =>
+                                    toggleDepartmentInSelection(prev, dept)
+                                  )
+                                }
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
+                                  active
+                                    ? "bg-zinc-900 text-white border-zinc-900"
+                                    : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100"
+                                }`}
+                              >
+                                {active ? `✓ ${dept}` : `+ ${dept}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                   </div>
                 </div>
 
