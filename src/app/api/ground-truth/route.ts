@@ -13,6 +13,7 @@ import {
   isSameDepartment,
   isSameDegree,
   GenderType,
+  EducationByDegreeMap,
 } from "@/lib/cvEngine";
 
 export type RaterId = "ben" | "arkadasim";
@@ -61,6 +62,7 @@ export interface BenchmarkCVItem {
   aiAllDepartments: string[];
   aiDegree: string;
   aiAllDegrees: string[];
+  aiEducationByDegree: EducationByDegreeMap;
   aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
@@ -323,6 +325,7 @@ export async function GET() {
         aiAllDepartments: eduRes.allDepartments,
         aiDegree: eduRes.degree,
         aiAllDegrees: eduRes.allDegrees,
+        aiEducationByDegree: eduRes.educationByDegree,
         aiEducationSummary: eduRes.educationSummary,
         humanLabel: savedLabels[item.fileName] || null,
       };

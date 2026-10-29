@@ -28,6 +28,9 @@ import {
   toggleUniversityInSelection,
   hasDepartmentSelected,
   toggleDepartmentInSelection,
+  DegreeKey,
+  DegreeEducationEntry,
+  EducationByDegreeMap,
 } from "@/lib/cvEngine";
 
 type RaterId = "ben" | "arkadasim";
@@ -76,32 +79,192 @@ interface BenchmarkCVItem {
   aiAllDepartments: string[];
   aiDegree: string;
   aiAllDegrees: string[];
+  aiEducationByDegree?: EducationByDegreeMap;
   aiEducationSummary: string;
   humanLabel: GroundTruthLabel | null;
 }
 
-const DEGREE_OPTIONS = [
+const DEGREE_OPTIONS: {
+  key: DegreeKey;
+  value: string;
+  shortTr: string;
+  shortEn: string;
+  cardTitle: string;
+  uniLabel: string;
+  deptLabel: string;
+  prefixLabel: string;
+}[] = [
   {
+    key: "associate",
     value: "Ön Lisans (Associate)",
     shortTr: "Ön Lisans",
     shortEn: "Associate",
+    cardTitle: "Ön Lisans Eğitimi (Associate)",
+    uniLabel: "Ön Lisans Üniversitesi",
+    deptLabel: "Ön Lisans Bölümü",
+    prefixLabel: "Ön Lisans",
   },
   {
+    key: "bachelor",
     value: "Lisans (Bachelor's)",
     shortTr: "Lisans",
     shortEn: "Bachelor's",
+    cardTitle: "Lisans Eğitimi (Bachelor's)",
+    uniLabel: "Lisans Üniversitesi",
+    deptLabel: "Lisans Bölümü",
+    prefixLabel: "Lisans",
   },
   {
+    key: "master",
     value: "Yüksek Lisans (Master's)",
     shortTr: "Yüksek Lisans",
     shortEn: "Master's",
+    cardTitle: "Yüksek Lisans / Master Eğitimi (Master's)",
+    uniLabel: "Master Üniversitesi",
+    deptLabel: "Master Bölümü",
+    prefixLabel: "Master",
   },
   {
+    key: "phd",
     value: "Doktora (Ph.D.)",
     shortTr: "Doktora",
     shortEn: "Ph.D.",
+    cardTitle: "Doktora Eğitimi (Ph.D.)",
+    uniLabel: "Doktora Üniversitesi",
+    deptLabel: "Doktora Bölümü",
+    prefixLabel: "Doktora",
   },
 ];
+
+function computeCombinedUniDeptFromMap(
+  degStr: string,
+  map: Record<DegreeKey, DegreeEducationEntry>
+): { uni: string; dept: string } {
+  const activeOpts = DEGREE_OPTIONS.filter((d) =>
+    hasDegreeSelected(degStr, d.value)
+  );
+  const effectiveOpts =
+    activeOpts.length > 0 ? activeOpts : [DEGREE_OPTIONS[1]];
+
+  if (effectiveOpts.length === 1) {
+    const k = effectiveOpts[0].key;
+    return {
+      uni: (map[k]?.university || "").trim(),
+      dept: (map[k]?.department || "").trim(),
+    };
+  }
+
+  const uniParts = effectiveOpts
+    .map((d) => {
+      const val = (map[d.key]?.university || "").trim();
+      return val ? `${d.prefixLabel}: ${val}` : "";
+    })
+    .filter(Boolean);
+
+  const deptParts = effectiveOpts
+    .map((d) => {
+      const val = (map[d.key]?.department || "").trim();
+      return val ? `${d.prefixLabel}: ${val}` : "";
+    })
+    .filter(Boolean);
+
+  return {
+    uni: uniParts.join(" | "),
+    dept: deptParts.join(" | "),
+  };
+}
+
+function buildInitialDegreeMap(
+  item: BenchmarkCVItem,
+  savedUni?: string | null,
+  savedDept?: string | null,
+  savedDeg?: string | null
+): Record<DegreeKey, DegreeEducationEntry> {
+  const aiMap = item.aiEducationByDegree || {};
+  const fallbackUni =
+    item.aiUniversity && item.aiUniversity !== "Belirtilmemiş"
+      ? item.aiUniversity
+      : "";
+  const fallbackDept =
+    item.aiDepartment && item.aiDepartment !== "Belirtilmemiş"
+      ? item.aiDepartment
+      : "";
+
+  const base: Record<DegreeKey, DegreeEducationEntry> = {
+    associate: {
+      university: aiMap.associate?.university || fallbackUni,
+      department: aiMap.associate?.department || fallbackDept,
+    },
+    bachelor: {
+      university: aiMap.bachelor?.university || fallbackUni,
+      department: aiMap.bachelor?.department || fallbackDept,
+    },
+    master: {
+      university:
+        aiMap.master?.university || aiMap.bachelor?.university || fallbackUni,
+      department:
+        aiMap.master?.department || aiMap.bachelor?.department || fallbackDept,
+    },
+    phd: {
+      university:
+        aiMap.phd?.university ||
+        aiMap.master?.university ||
+        aiMap.bachelor?.university ||
+        fallbackUni,
+      department:
+        aiMap.phd?.department ||
+        aiMap.master?.department ||
+        aiMap.bachelor?.department ||
+        fallbackDept,
+    },
+  };
+
+  if (savedDeg && (savedUni || savedDept)) {
+    const parsePrefixMap = (raw: string | null | undefined) => {
+      const out: Partial<Record<DegreeKey, string>> = {};
+      if (!raw) return out;
+      const chunks = raw.split(/\s*\|\s*/);
+      for (const ch of chunks) {
+        const m = ch.match(
+          /^\s*(ön\s*lisans|associate|lisans|bachelor|yüksek\s*lisans|master|doktora|ph\.?d\.?)\s*:\s*(.+)$/i
+        );
+        if (m) {
+          const p = m[1].toLowerCase();
+          const v = m[2].trim();
+          if (p.includes("ön") || p.includes("assoc")) out.associate = v;
+          else if (p.includes("yüksek") || p.includes("master")) out.master = v;
+          else if (p.includes("doktora") || p.includes("ph")) out.phd = v;
+          else out.bachelor = v;
+        }
+      }
+      return out;
+    };
+
+    const uMap = parsePrefixMap(savedUni);
+    const dMap = parsePrefixMap(savedDept);
+    const hasPrefixed =
+      Object.keys(uMap).length > 0 || Object.keys(dMap).length > 0;
+
+    if (hasPrefixed) {
+      for (const k of ["associate", "bachelor", "master", "phd"] as DegreeKey[]) {
+        if (uMap[k]) base[k].university = uMap[k]!;
+        if (dMap[k]) base[k].department = dMap[k]!;
+      }
+    } else {
+      // Tek derece kaydedilmişse ilgili dereceye ata
+      const activeOpts = DEGREE_OPTIONS.filter((d) =>
+        hasDegreeSelected(savedDeg, d.value)
+      );
+      if (activeOpts.length === 1) {
+        const k = activeOpts[0].key;
+        if (savedUni) base[k].university = savedUni;
+        if (savedDept) base[k].department = savedDept;
+      }
+    }
+  }
+
+  return base;
+}
 
 export default function GroundTruthLabelerPage() {
   const RATER_STORAGE_KEY = "cv_active_rater_role_v2";
@@ -124,7 +287,43 @@ export default function GroundTruthLabelerPage() {
   const [inputUniversity, setInputUniversity] = useState<string>("");
   const [inputDepartment, setInputDepartment] = useState<string>("");
   const [inputDegree, setInputDegree] = useState<string>("Lisans (Bachelor's)");
+  const [degreeInputs, setDegreeInputs] = useState<
+    Record<DegreeKey, DegreeEducationEntry>
+  >({
+    associate: { university: "", department: "" },
+    bachelor: { university: "", department: "" },
+    master: { university: "", department: "" },
+    phd: { university: "", department: "" },
+  });
   const [saveMessage, setSaveMessage] = useState<string>("");
+
+  const handleToggleDegreeButton = (degVal: string) => {
+    const nextDeg = toggleDegreeInSelection(inputDegree, degVal);
+    setInputDegree(nextDeg);
+    const { uni, dept } = computeCombinedUniDeptFromMap(nextDeg, degreeInputs);
+    setInputUniversity(uni);
+    setInputDepartment(dept);
+  };
+
+  const handleUpdateDegreeField = (
+    key: DegreeKey,
+    field: "university" | "department",
+    value: string
+  ) => {
+    setDegreeInputs((prev) => {
+      const nextMap = {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: value,
+        },
+      };
+      const { uni, dept } = computeCombinedUniDeptFromMap(inputDegree, nextMap);
+      setInputUniversity(uni);
+      setInputDepartment(dept);
+      return nextMap;
+    });
+  };
 
   // Bir CV'nin bu kullanıcı tarafından tamamen (Üni, Bölüm ve Derece dahil) etiketlenip etiketlenmediğini kontrol et
   const isRaterFullyDone = useCallback((it: BenchmarkCVItem, role: RaterId) => {
@@ -274,14 +473,6 @@ export default function GroundTruthLabelerPage() {
   useEffect(() => {
     if (!currentItem) return;
     const myVote = currentItem.humanLabel?.votes?.[activeRater];
-    const defaultUni =
-      currentItem.aiUniversity && currentItem.aiUniversity !== "Belirtilmemiş"
-        ? currentItem.aiUniversity
-        : "";
-    const defaultDept =
-      currentItem.aiDepartment && currentItem.aiDepartment !== "Belirtilmemiş"
-        ? currentItem.aiDepartment
-        : "";
     const defaultDeg =
       currentItem.aiAllDegrees && currentItem.aiAllDegrees.length > 0
         ? currentItem.aiAllDegrees.join(" + ")
@@ -291,22 +482,21 @@ export default function GroundTruthLabelerPage() {
       setInputGender(myVote.humanGender === "Kadın" ? "Kadın" : "Erkek");
       setInputAge(myVote.humanAge !== null ? String(myVote.humanAge) : "");
       setInputName(myVote.humanName || currentItem.aiName);
-      // Eğer bu CV derece sistemi eklenmeden önce kaydedildiyse (!myVote.humanDegree), Master/Doktora üniversite ve bölümlerini de otomatik dahil et
-      setInputUniversity(
-        myVote.humanDegree && myVote.humanUniversity
-          ? myVote.humanUniversity
-          : defaultUni
-      );
-      setInputDepartment(
-        myVote.humanDegree && myVote.humanDepartment
-          ? myVote.humanDepartment
-          : defaultDept
-      );
-      setInputDegree(
+      const degToUse =
         myVote.humanDegree ||
-          currentItem.humanLabel?.humanDegree ||
-          defaultDeg
+        currentItem.humanLabel?.humanDegree ||
+        defaultDeg;
+      setInputDegree(degToUse);
+      const map = buildInitialDegreeMap(
+        currentItem,
+        myVote.humanDegree ? myVote.humanUniversity : null,
+        myVote.humanDegree ? myVote.humanDepartment : null,
+        degToUse
       );
+      setDegreeInputs(map);
+      const { uni, dept } = computeCombinedUniDeptFromMap(degToUse, map);
+      setInputUniversity(uni);
+      setInputDepartment(dept);
     } else if (currentItem.humanLabel) {
       setInputGender(
         currentItem.humanLabel.humanGender === "Kadın" ? "Kadın" : "Erkek"
@@ -317,19 +507,22 @@ export default function GroundTruthLabelerPage() {
           : ""
       );
       setInputName(currentItem.humanLabel.humanName || currentItem.aiName);
-      setInputUniversity(
-        currentItem.humanLabel.humanDegree &&
-          currentItem.humanLabel.humanUniversity
+      const degToUse = currentItem.humanLabel.humanDegree || defaultDeg;
+      setInputDegree(degToUse);
+      const map = buildInitialDegreeMap(
+        currentItem,
+        currentItem.humanLabel.humanDegree
           ? currentItem.humanLabel.humanUniversity
-          : defaultUni
-      );
-      setInputDepartment(
-        currentItem.humanLabel.humanDegree &&
-          currentItem.humanLabel.humanDepartment
+          : null,
+        currentItem.humanLabel.humanDegree
           ? currentItem.humanLabel.humanDepartment
-          : defaultDept
+          : null,
+        degToUse
       );
-      setInputDegree(currentItem.humanLabel.humanDegree || defaultDeg);
+      setDegreeInputs(map);
+      const { uni, dept } = computeCombinedUniDeptFromMap(degToUse, map);
+      setInputUniversity(uni);
+      setInputDepartment(dept);
     } else {
       setInputGender(currentItem.aiGender === "Kadın" ? "Kadın" : "Erkek");
       const isNoBirthOrEduDate =
@@ -338,9 +531,12 @@ export default function GroundTruthLabelerPage() {
         currentItem.aiAgeMethod === "Bilinmiyor";
       setInputAge(isNoBirthOrEduDate ? "" : String(currentItem.aiAge));
       setInputName(currentItem.aiName);
-      setInputUniversity(defaultUni);
-      setInputDepartment(defaultDept);
       setInputDegree(defaultDeg);
+      const map = buildInitialDegreeMap(currentItem, null, null, defaultDeg);
+      setDegreeInputs(map);
+      const { uni, dept } = computeCombinedUniDeptFromMap(defaultDeg, map);
+      setInputUniversity(uni);
+      setInputDepartment(dept);
     }
     setSaveMessage("");
   }, [currentItem?.fileName, activeRater]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1252,8 +1448,8 @@ export default function GroundTruthLabelerPage() {
                   </div>
                 )}
 
-                {/* YENİ: GERÇEK ÜNİVERSİTE, BÖLÜM VE EĞİTİM DERECESİ (SADE VE NET GÖRÜNÜM) */}
-                <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3.5">
+                {/* YENİ: HER EĞİTİM DERECESİ İÇİN AYRI ÜNİVERSİTE VE BÖLÜM KARTLARI */}
+                <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
                   {/* 1. EĞİTİM DERECESİ (4 SADE BUTON - ÇOKLU SEÇİM) */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -1261,7 +1457,7 @@ export default function GroundTruthLabelerPage() {
                         Eğitim Derecesi
                       </label>
                       <span className="text-[11px] text-zinc-500">
-                        Birden fazla seçilebilir
+                        Seçilen her derece aşağıda ayrı açılır
                       </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -1271,11 +1467,7 @@ export default function GroundTruthLabelerPage() {
                           <button
                             key={deg.value}
                             type="button"
-                            onClick={() =>
-                              setInputDegree((prev) =>
-                                toggleDegreeInSelection(prev, deg.value)
-                              )
-                            }
+                            onClick={() => handleToggleDegreeButton(deg.value)}
                             className={`px-2.5 py-2 rounded-lg text-center border transition-all cursor-pointer ${
                               active
                                 ? "bg-teal-700 text-white border-teal-700 shadow-xs"
@@ -1298,112 +1490,161 @@ export default function GroundTruthLabelerPage() {
                     </div>
                   </div>
 
-                  {/* 2. ÜNİVERSİTE */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-zinc-900">
-                        Üniversite
-                      </label>
-                      <span className="text-[11px] text-zinc-500">
-                        TR / EN fark etmez
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      value={inputUniversity}
-                      onChange={(e) => setInputUniversity(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSaveLabel();
-                        }
-                      }}
-                      placeholder="Örn: ODTÜ / Middle East Technical University"
-                      className="w-full border border-zinc-300 bg-white rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
-                    />
-                    {currentItem.aiAllUniversities &&
-                      currentItem.aiAllUniversities.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {currentItem.aiAllUniversities.map((uni) => {
-                            const active = hasUniversitySelected(
-                              inputUniversity,
-                              uni
-                            );
-                            return (
-                              <button
-                                key={uni}
-                                type="button"
-                                onClick={() =>
-                                  setInputUniversity((prev) =>
-                                    toggleUniversityInSelection(prev, uni)
-                                  )
-                                }
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
-                                  active
-                                    ? "bg-zinc-900 text-white border-zinc-900"
-                                    : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100"
-                                }`}
-                              >
-                                {active ? `✓ ${uni}` : `+ ${uni}`}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                  </div>
+                  {/* 2. SEÇİLİ HER DERECE İÇİN AYRI ÜNİVERSİTE & BÖLÜM KUTUSU */}
+                  <div className="space-y-2.5">
+                    {(
+                      DEGREE_OPTIONS.filter((d) =>
+                        hasDegreeSelected(inputDegree, d.value)
+                      ).length > 0
+                        ? DEGREE_OPTIONS.filter((d) =>
+                            hasDegreeSelected(inputDegree, d.value)
+                          )
+                        : [DEGREE_OPTIONS[1]]
+                    ).map((deg) => {
+                      const entry = degreeInputs[deg.key] || {
+                        university: "",
+                        department: "",
+                      };
+                      return (
+                        <div
+                          key={deg.key}
+                          className="p-3 rounded-lg bg-white border border-zinc-200 space-y-2.5 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between border-b border-zinc-100 pb-1.5">
+                            <span className="text-xs font-extrabold text-teal-800">
+                              🎓 {deg.cardTitle}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 font-medium">
+                              TR / EN fark etmez
+                            </span>
+                          </div>
 
-                  {/* 3. BÖLÜM */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-zinc-900">
-                        Bölüm
-                      </label>
-                      <span className="text-[11px] text-zinc-500">
-                        TR / EN fark etmez
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      value={inputDepartment}
-                      onChange={(e) => setInputDepartment(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSaveLabel();
-                        }
-                      }}
-                      placeholder="Örn: Bilgisayar Mühendisliği / Computer Engineering"
-                      className="w-full border border-zinc-300 bg-white rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
-                    />
-                    {currentItem.aiAllDepartments &&
-                      currentItem.aiAllDepartments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {currentItem.aiAllDepartments.map((dept) => {
-                            const active = hasDepartmentSelected(
-                              inputDepartment,
-                              dept
-                            );
-                            return (
-                              <button
-                                key={dept}
-                                type="button"
-                                onClick={() =>
-                                  setInputDepartment((prev) =>
-                                    toggleDepartmentInSelection(prev, dept)
-                                  )
+                          {/* Dereceye Özel Üniversite */}
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              {deg.uniLabel}
+                            </label>
+                            <input
+                              type="text"
+                              value={entry.university}
+                              onChange={(e) =>
+                                handleUpdateDegreeField(
+                                  deg.key,
+                                  "university",
+                                  e.target.value
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleSaveLabel();
                                 }
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
-                                  active
-                                    ? "bg-zinc-900 text-white border-zinc-900"
-                                    : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-100"
-                                }`}
-                              >
-                                {active ? `✓ ${dept}` : `+ ${dept}`}
-                              </button>
-                            );
-                          })}
+                              }}
+                              placeholder={`Örn: ${deg.shortTr} Üniversitesi`}
+                              className="w-full border border-zinc-300 bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
+                            />
+                            {currentItem.aiAllUniversities &&
+                              currentItem.aiAllUniversities.length > 1 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {currentItem.aiAllUniversities.map((uni) => {
+                                    const active = hasUniversitySelected(
+                                      entry.university,
+                                      uni
+                                    );
+                                    return (
+                                      <button
+                                        key={uni}
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateDegreeField(
+                                            deg.key,
+                                            "university",
+                                            entry.university
+                                              ? toggleUniversityInSelection(
+                                                  entry.university,
+                                                  uni
+                                                )
+                                              : uni
+                                          )
+                                        }
+                                        className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
+                                          active
+                                            ? "bg-zinc-900 text-white border-zinc-900"
+                                            : "bg-zinc-50 text-zinc-700 border-zinc-300 hover:bg-zinc-100"
+                                        }`}
+                                      >
+                                        {active ? `✓ ${uni}` : uni}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                          </div>
+
+                          {/* Dereceye Özel Bölüm */}
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              {deg.deptLabel}
+                            </label>
+                            <input
+                              type="text"
+                              value={entry.department}
+                              onChange={(e) =>
+                                handleUpdateDegreeField(
+                                  deg.key,
+                                  "department",
+                                  e.target.value
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleSaveLabel();
+                                }
+                              }}
+                              placeholder={`Örn: ${deg.shortTr} Bölümü`}
+                              className="w-full border border-zinc-300 bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-zinc-900 focus:outline-none focus:border-teal-600"
+                            />
+                            {currentItem.aiAllDepartments &&
+                              currentItem.aiAllDepartments.length > 1 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {currentItem.aiAllDepartments.map((dept) => {
+                                    const active = hasDepartmentSelected(
+                                      entry.department,
+                                      dept
+                                    );
+                                    return (
+                                      <button
+                                        key={dept}
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateDegreeField(
+                                            deg.key,
+                                            "department",
+                                            entry.department
+                                              ? toggleDepartmentInSelection(
+                                                  entry.department,
+                                                  dept
+                                                )
+                                              : dept
+                                          )
+                                        }
+                                        className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
+                                          active
+                                            ? "bg-zinc-900 text-white border-zinc-900"
+                                            : "bg-zinc-50 text-zinc-700 border-zinc-300 hover:bg-zinc-100"
+                                        }`}
+                                      >
+                                        {active ? `✓ ${dept}` : dept}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                          </div>
                         </div>
-                      )}
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -1973,9 +1973,9 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
   },
   {
     canonical: "İstatistik ve Veri Bilimi",
-    aliases: ["istatistik veri bilimi", "istatistik-veri bilimi", "veri bilimi", "data science", "statistics and data science", "veri madenciliği", "data mining"],
+    aliases: ["istatistik veri bilimi", "istatistik-veri bilimi", "veri bilimi", "data science", "statistics and data science"],
     regex:
-      /(?:istatistik[\s\-]*veri\s*bilimi|doctoral\s*education\s*on\s*data\s*mining)/gi,
+      /(?:istatistik[\s\-]*veri\s*bilimi)/gi,
   },
   {
     canonical: "Matematik",
@@ -2058,6 +2058,17 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
   },
 ];
 
+export type DegreeKey = "associate" | "bachelor" | "master" | "phd";
+
+export interface DegreeEducationEntry {
+  university: string;
+  department: string;
+}
+
+export type EducationByDegreeMap = Partial<
+  Record<DegreeKey, DegreeEducationEntry>
+>;
+
 export function extractEducationFromCV(rawText: string): {
   university: string;
   allUniversities: string[];
@@ -2065,6 +2076,7 @@ export function extractEducationFromCV(rawText: string): {
   allDepartments: string[];
   degree: string;
   allDegrees: string[];
+  educationByDegree: EducationByDegreeMap;
   educationSummary: string;
 } {
   if (!rawText || rawText.trim().length < 10) {
@@ -2075,6 +2087,9 @@ export function extractEducationFromCV(rawText: string): {
       allDepartments: [],
       degree: "Lisans (Bachelor's)",
       allDegrees: ["Lisans (Bachelor's)"],
+      educationByDegree: {
+        bachelor: { university: "Belirtilmemiş", department: "Belirtilmemiş" },
+      },
       educationSummary: "Eğitim bilgisi okunamadı.",
     };
   }
@@ -2103,6 +2118,9 @@ export function extractEducationFromCV(rawText: string): {
   // 1. ÜNİVERSİTE ADAYLARINI PUANLA (Lisans / Ana Üniversite Öncelikli)
   const uniScores = new Map<string, number>();
   const allFoundUnis: string[] = [];
+  const masterTaggedUnis = new Set<string>();
+  const phdTaggedUnis = new Set<string>();
+  const bscTaggedUnis = new Set<string>();
 
   for (const entry of UNIVERSITY_DICTIONARY) {
     entry.regex.lastIndex = 0;
@@ -2120,6 +2138,8 @@ export function extractEducationFromCV(rawText: string): {
       const prevLine = lineStart > 0 ? normText.slice(prevLineStart === -1 ? 0 : prevLineStart + 1, lineStart) : "";
       const nextLineEnd = lineEnd !== -1 ? normText.indexOf("\n", lineEnd + 1) : -1;
       const nextLine = lineEnd !== -1 ? normText.slice(lineEnd + 1, nextLineEnd === -1 ? normText.length : nextLineEnd) : "";
+      const next2LineEnd = nextLineEnd !== -1 ? normText.indexOf("\n", nextLineEnd + 1) : -1;
+      const next2Line = nextLineEnd !== -1 ? normText.slice(nextLineEnd + 1, next2LineEnd === -1 ? normText.length : next2LineEnd) : "";
       const nearLines = prevLine + "\n" + sameLine + "\n" + nextLine;
 
       // Teknokent, Dergi, Sertifika, Kış Okulu, Erasmus, Research Fellow, Hobiler, Zirve/Summit veya Açıköğretim satırıysa atla/düşür
@@ -2138,6 +2158,30 @@ export function extractEducationFromCV(rawText: string): {
       if (!allFoundUnis.includes(entry.canonical)) {
         allFoundUnis.push(entry.canonical);
       }
+
+      const isExplicitBscRow =
+        /(?:bachelor|b\.sc|\bbsc\b|\bb\.s\b|\bb\.e\b|lisans\s*eğitimi|\(\s*lisans\s*\))/i.test(
+          sameLine + " " + nextLine
+        );
+      const hasPhdHere =
+        !isExplicitBscRow &&
+        /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b|\bdoctoral\b)/i.test(
+          sameLine + " " + prevLine
+        );
+      const hasMasterHere =
+        !isExplicitBscRow &&
+        /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(
+          sameLine +
+            " " +
+            (!/(?:bachelor|b\.sc|\bbsc\b|\bb\.e\b|lisans|phd|doktora|doctorate)/i.test(prevLine) ? prevLine : "") +
+            " " +
+            (!/(?:bachelor|b\.sc|\bbsc\b|\bb\.e\b|lisans|phd|doktora|doctorate)/i.test(nextLine) ? nextLine : "") +
+            " " +
+            (!/(?:bachelor|b\.sc|\bbsc\b|\bb\.e\b|lisans|phd|doktora|doctorate)/i.test(nextLine + " " + next2Line) ? next2Line : "")
+        );
+
+      if (hasPhdHere) phdTaggedUnis.add(entry.canonical);
+      if (hasMasterHere && !hasPhdHere) masterTaggedUnis.add(entry.canonical);
 
       let score = 40;
       if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
@@ -2187,6 +2231,10 @@ export function extractEducationFromCV(rawText: string): {
   const deptScores = new Map<string, number>();
   const deptFirstIdx = new Map<string, number>();
   const allFoundDepts: string[] = [];
+  const assocTaggedDepts = new Set<string>();
+  const masterTaggedDepts = new Set<string>();
+  const phdTaggedDepts = new Set<string>();
+  const bscTaggedDepts = new Set<string>();
 
   for (const entry of DEPARTMENT_DICTIONARY) {
     entry.regex.lastIndex = 0;
@@ -2217,6 +2265,31 @@ export function extractEducationFromCV(rawText: string): {
       if (!deptFirstIdx.has(entry.canonical)) {
         deptFirstIdx.set(entry.canonical, idx);
       }
+
+      if (
+        entry.canonical === "Bilgisayar Programcılığı" ||
+        /(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’']?s?\b|\bmyo\b)/i.test(sameLine)
+      ) {
+        assocTaggedDepts.add(entry.canonical);
+      }
+      const isPhdDeptLine =
+        /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b|\bdoctoral\b)/i.test(sameLine);
+      const isMasterDeptLine =
+        /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(
+          sameLine +
+            " " +
+            (!/(?:bachelor|b\.sc|\bbsc\b|\(\s*lisans\s*\)|phd|doktora|doctorate)/i.test(nextLine)
+              ? nextLine
+              : "")
+        );
+      const isBscDeptLine =
+        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans\s*eğitimi|\(\s*lisans\s*\)|double\s*major|çift\s*anadal)/i.test(
+          sameLine + " " + nextLine
+        );
+
+      if (isPhdDeptLine) phdTaggedDepts.add(entry.canonical);
+      if (isMasterDeptLine && !isPhdDeptLine) masterTaggedDepts.add(entry.canonical);
+      if (isBscDeptLine) bscTaggedDepts.add(entry.canonical);
 
       let score = 40;
       if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
@@ -2307,6 +2380,96 @@ export function extractEducationFromCV(rawText: string): {
       ? [bestDept, ...allFoundDepts.filter((d) => d !== bestDept)]
       : allFoundDepts;
 
+  // 4. HER EĞİTİM DERECESİ İÇİN AYRI ÜNİVERSİTE VE BÖLÜM EŞLEŞTİRMESİ (Ön Lisans / Lisans / Yüksek Lisans / Doktora)
+  const educationByDegree: EducationByDegreeMap = {};
+
+  if (allDegrees.length <= 1) {
+    educationByDegree.bachelor = {
+      university: orderedUnis.length > 0 ? orderedUnis.join(" + ") : bestUni,
+      department: orderedDepts.length > 0 ? orderedDepts.join(" + ") : bestDept,
+    };
+  } else {
+    const usedPostGradOnlyUnis = new Set<string>();
+    const usedNonBachelorDepts = new Set<string>();
+
+    if (hasAssociate) {
+      const assocDept =
+        orderedDepts.find((d) => assocTaggedDepts.has(d)) || bestDept;
+      if (assocDept !== bestDept) usedNonBachelorDepts.add(assocDept);
+      educationByDegree.associate = {
+        university: bestUni,
+        department: assocDept,
+      };
+    }
+
+    if (hasPhd) {
+      const phdUni =
+        orderedUnis.find((u) => phdTaggedUnis.has(u)) ||
+        orderedUnis[orderedUnis.length - 1] ||
+        bestUni;
+      if (phdUni !== bestUni) {
+        usedPostGradOnlyUnis.add(phdUni);
+      }
+      const phdDept =
+        orderedDepts.find((d) => phdTaggedDepts.has(d)) || bestDept;
+      if (phdDept !== bestDept && !bscTaggedDepts.has(phdDept)) {
+        usedNonBachelorDepts.add(phdDept);
+      }
+      educationByDegree.phd = {
+        university: phdUni,
+        department: phdDept,
+      };
+    }
+
+    if (hasMaster) {
+      let masterUni = orderedUnis.find((u) => masterTaggedUnis.has(u));
+      if (!masterUni) {
+        masterUni =
+          orderedUnis.find(
+            (u) => u !== bestUni && !phdTaggedUnis.has(u)
+          ) || bestUni;
+      }
+      if (masterUni !== bestUni) {
+        usedPostGradOnlyUnis.add(masterUni);
+      }
+
+      let masterDept = orderedDepts.find((d) => masterTaggedDepts.has(d));
+      if (!masterDept) {
+        masterDept =
+          orderedDepts.find(
+            (d) =>
+              d !== bestDept &&
+              !assocTaggedDepts.has(d) &&
+              !phdTaggedDepts.has(d) &&
+              !bscTaggedDepts.has(d)
+          ) || bestDept;
+      }
+      if (masterDept !== bestDept && !bscTaggedDepts.has(masterDept)) {
+        usedNonBachelorDepts.add(masterDept);
+      }
+
+      educationByDegree.master = {
+        university: masterUni,
+        department: masterDept,
+      };
+    }
+
+    // Lisans (Bachelor's): Ana lisans üniversitesi + varsa ikinci lisans üniversitesi (Örn: Anadolu Üni YBS)
+    const bachelorUniList = orderedUnis.filter(
+      (u) => u === bestUni || !usedPostGradOnlyUnis.has(u)
+    );
+    const bachelorDeptList = orderedDepts.filter(
+      (d) => d === bestDept || !usedNonBachelorDepts.has(d)
+    );
+
+    educationByDegree.bachelor = {
+      university:
+        bachelorUniList.length > 0 ? bachelorUniList.join(" + ") : bestUni,
+      department:
+        bachelorDeptList.length > 0 ? bachelorDeptList.join(" + ") : bestDept,
+    };
+  }
+
   const combinedUnis =
     orderedUnis.length > 0 ? orderedUnis.join(" + ") : bestUni;
   const combinedDepts =
@@ -2321,12 +2484,22 @@ export function extractEducationFromCV(rawText: string): {
     allDepartments: orderedDepts.length > 0 ? orderedDepts : [bestDept],
     degree: combinedDegrees,
     allDegrees: allDegrees.length > 0 ? allDegrees : ["Lisans (Bachelor's)"],
+    educationByDegree,
     educationSummary,
   };
 }
 
+function stripDegreePrefix(val: string): string {
+  return (val || "")
+    .replace(
+      /^\s*(?:ön\s*lisans|önlisans|associate['’]?s?|lisans|bachelor['’]?s?|yüksek\s*lisans|master['’]?s?|doktora|ph\.?\s*d\.?)\s*:\s*/i,
+      ""
+    )
+    .trim();
+}
+
 function resolveUniversityCanonical(val: string): string {
-  const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const vNorm = toAsciiTr(stripDegreePrefix(val)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   if (!vNorm) return "";
   for (const entry of UNIVERSITY_DICTIONARY) {
     const cNorm = toAsciiTr(entry.canonical).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -2349,19 +2522,19 @@ export function isSameUniversity(
   aiAll: string[] = []
 ): boolean {
   const partsA = (uniA || "")
-    .split(/\s*\+\s*/)
-    .map((s) => s.trim())
+    .split(/\s*(?:\+|\|)\s*/)
+    .map((s) => stripDegreePrefix(s))
     .filter(Boolean);
   const partsB = (uniB || "")
-    .split(/\s*\+\s*/)
-    .map((s) => s.trim())
+    .split(/\s*(?:\+|\|)\s*/)
+    .map((s) => stripDegreePrefix(s))
     .filter(Boolean);
   if (partsA.length === 0 || partsB.length === 0) return false;
 
   const poolB = [...partsB, ...aiAll].filter(Boolean);
   const singleMatch = (a: string, b: string): boolean => {
-    const normA = toAsciiTr(a).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    const normB = toAsciiTr(b).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normA = toAsciiTr(stripDegreePrefix(a)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normB = toAsciiTr(stripDegreePrefix(b)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
     if (!normA || !normB) return false;
     if (normA === normB) return true;
     const canA = resolveUniversityCanonical(a);
@@ -2404,7 +2577,7 @@ export function toggleUniversityInSelection(
 }
 
 function resolveDepartmentCanonical(val: string): string {
-  const vNorm = toAsciiTr(val).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const vNorm = toAsciiTr(stripDegreePrefix(val)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   if (!vNorm) return "";
   for (const entry of DEPARTMENT_DICTIONARY) {
     const cNorm = toAsciiTr(entry.canonical).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -2427,19 +2600,19 @@ export function isSameDepartment(
   aiAll: string[] = []
 ): boolean {
   const partsA = (deptA || "")
-    .split(/\s*\+\s*/)
-    .map((s) => s.trim())
+    .split(/\s*(?:\+|\|)\s*/)
+    .map((s) => stripDegreePrefix(s))
     .filter(Boolean);
   const partsB = (deptB || "")
-    .split(/\s*\+\s*/)
-    .map((s) => s.trim())
+    .split(/\s*(?:\+|\|)\s*/)
+    .map((s) => stripDegreePrefix(s))
     .filter(Boolean);
   if (partsA.length === 0 || partsB.length === 0) return false;
 
   const poolB = [...partsB, ...aiAll].filter(Boolean);
   const singleMatch = (a: string, b: string): boolean => {
-    const normA = toAsciiTr(a).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    const normB = toAsciiTr(b).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normA = toAsciiTr(stripDegreePrefix(a)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const normB = toAsciiTr(stripDegreePrefix(b)).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
     if (!normA || !normB) return false;
     if (normA === normB) return true;
     const canA = resolveDepartmentCanonical(a);
