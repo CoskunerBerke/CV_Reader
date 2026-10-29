@@ -285,21 +285,22 @@ export default function GroundTruthLabelerPage() {
     const defaultDeg =
       currentItem.aiAllDegrees && currentItem.aiAllDegrees.length > 0
         ? currentItem.aiAllDegrees.join(" + ")
-        : currentItem.aiDegree || "Lisans / Bachelor's Degree (B.Sc.)";
+        : currentItem.aiDegree || "Lisans (Bachelor's)";
 
     if (myVote) {
       setInputGender(myVote.humanGender === "Kadın" ? "Kadın" : "Erkek");
       setInputAge(myVote.humanAge !== null ? String(myVote.humanAge) : "");
       setInputName(myVote.humanName || currentItem.aiName);
+      // Eğer bu CV derece sistemi eklenmeden önce kaydedildiyse (!myVote.humanDegree), Master/Doktora üniversite ve bölümlerini de otomatik dahil et
       setInputUniversity(
-        myVote.humanUniversity ||
-          currentItem.humanLabel?.humanUniversity ||
-          defaultUni
+        myVote.humanDegree && myVote.humanUniversity
+          ? myVote.humanUniversity
+          : defaultUni
       );
       setInputDepartment(
-        myVote.humanDepartment ||
-          currentItem.humanLabel?.humanDepartment ||
-          defaultDept
+        myVote.humanDegree && myVote.humanDepartment
+          ? myVote.humanDepartment
+          : defaultDept
       );
       setInputDegree(
         myVote.humanDegree ||
@@ -316,8 +317,18 @@ export default function GroundTruthLabelerPage() {
           : ""
       );
       setInputName(currentItem.humanLabel.humanName || currentItem.aiName);
-      setInputUniversity(currentItem.humanLabel.humanUniversity || defaultUni);
-      setInputDepartment(currentItem.humanLabel.humanDepartment || defaultDept);
+      setInputUniversity(
+        currentItem.humanLabel.humanDegree &&
+          currentItem.humanLabel.humanUniversity
+          ? currentItem.humanLabel.humanUniversity
+          : defaultUni
+      );
+      setInputDepartment(
+        currentItem.humanLabel.humanDegree &&
+          currentItem.humanLabel.humanDepartment
+          ? currentItem.humanLabel.humanDepartment
+          : defaultDept
+      );
       setInputDegree(currentItem.humanLabel.humanDegree || defaultDeg);
     } else {
       setInputGender(currentItem.aiGender === "Kadın" ? "Kadın" : "Erkek");
