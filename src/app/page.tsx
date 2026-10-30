@@ -180,13 +180,12 @@ async function exportEvaluationsToExcelXlsx(
     "Doktora Bölümü",
     "Tüm Eğitim Özeti (Label Formatı)",
     "Şehir",
-    "Uyum Skoru (%)",
     "Aranan Yetenekler",
   ];
 
   const colWidths = [
     9, 28, 24, 12, 22, 26, 36, 14, 28, 28, 14, 32, 32, 16, 30, 32, 14, 28, 32,
-    55, 15, 15, 34,
+    55, 15, 34,
   ];
 
   const rows: (string | number)[][] = evaluations.map((item, idx) => {
@@ -232,7 +231,6 @@ async function exportEvaluationsToExcelXlsx(
       degMap.phd?.department || "—",
       labelSummaryParts.join(" | ") || `${cv.university} — ${cv.department || "—"}`,
       cv.city || "Belirtilmemiş",
-      item.totalMatchScore,
       skillsSummary,
     ];
   });
@@ -1454,7 +1452,6 @@ export default function CVReaderApp() {
                         <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Lisans (Üni — Bölüm)</th>
                         <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Yüksek Lisans / Master (Üni — Bölüm)</th>
                         <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Doktora / Ph.D. (Üni — Bölüm)</th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap text-right">Uyum</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-200">
@@ -1540,9 +1537,6 @@ export default function CVReaderApp() {
                             <td className="py-3 px-3">{renderDegreeCell(degMap.bachelor)}</td>
                             <td className="py-3 px-3">{renderDegreeCell(degMap.master)}</td>
                             <td className="py-3 px-3">{renderDegreeCell(degMap.phd)}</td>
-                            <td className="py-3 px-3 text-right font-bold text-teal-700 whitespace-nowrap">
-                              %{item.totalMatchScore}
-                            </td>
                           </tr>
                         );
                       })}
@@ -1723,71 +1717,48 @@ export default function CVReaderApp() {
                               )}
                             </div>
 
-                            {/* Sağ: Skor & Uygun/Ele/Sil */}
+                            {/* Sağ: Uygun/Ele/Sil */}
                             <div
-                              className="flex items-center gap-3 shrink-0"
+                              className="flex items-center gap-1 shrink-0"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="text-right">
-                                <div
-                                  className={`text-base font-bold ${
-                                    isSelected
-                                      ? "text-white"
-                                      : item.totalMatchScore >= 80
-                                      ? "text-teal-700"
-                                      : "text-zinc-700"
-                                  }`}
-                                >
-                                  %{item.totalMatchScore}
-                                </div>
-                                <div
-                                  className={`text-[10px] ${
-                                    isSelected ? "text-zinc-400" : "text-zinc-400"
-                                  }`}
-                                >
-                                  Uyum
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleFeedback(item.cv, "approved")}
-                                  title="Uygun"
-                                  className={`p-1.5 rounded border cursor-pointer ${
-                                    isApproved
-                                      ? "bg-teal-600 text-white border-teal-600"
-                                      : isSelected
-                                      ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
-                                      : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
-                                  }`}
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleFeedback(item.cv, "rejected")}
-                                  title="Ele"
-                                  className={`p-1.5 rounded border cursor-pointer ${
-                                    isRejected
-                                      ? "bg-red-600 text-white border-red-600"
-                                      : isSelected
-                                      ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
-                                      : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
-                                  }`}
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteCandidate(item.cv.id)}
-                                  title="CV'yi Kaldır"
-                                  className={`p-1.5 rounded border cursor-pointer ${
-                                    isSelected
-                                      ? "border-zinc-700 text-zinc-400 hover:text-red-400"
-                                      : "border-zinc-200 text-zinc-400 hover:text-red-600"
-                                  }`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => handleFeedback(item.cv, "approved")}
+                                title="Uygun"
+                                className={`p-1.5 rounded border cursor-pointer ${
+                                  isApproved
+                                    ? "bg-teal-600 text-white border-teal-600"
+                                    : isSelected
+                                    ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
+                                    : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
+                                }`}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleFeedback(item.cv, "rejected")}
+                                title="Ele"
+                                className={`p-1.5 rounded border cursor-pointer ${
+                                  isRejected
+                                    ? "bg-red-600 text-white border-red-600"
+                                    : isSelected
+                                    ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
+                                    : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
+                                }`}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCandidate(item.cv.id)}
+                                title="CV'yi Kaldır"
+                                className={`p-1.5 rounded border cursor-pointer ${
+                                  isSelected
+                                    ? "border-zinc-700 text-zinc-400 hover:text-red-400"
+                                    : "border-zinc-200 text-zinc-400 hover:text-red-600"
+                                }`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
                         );
@@ -1807,23 +1778,18 @@ export default function CVReaderApp() {
                       return (
                         <>
                           {/* Aday Başlığı */}
-                          <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
-                            <div>
-                              <h3 className="text-lg font-bold text-zinc-950">
-                                {selectedEvaluation.cv.fullName}
-                              </h3>
-                              <p className="text-xs text-zinc-500 mt-0.5">
-                                {selectedEvaluation.cv.university}
-                                {selectedEvaluation.cv.department &&
-                                selectedEvaluation.cv.department !== "Belirtilmemiş"
-                                  ? ` — ${selectedEvaluation.cv.department}`
-                                  : ""}{" "}
-                                • {selectedEvaluation.cv.city} • {selectedEvaluation.cv.source}
-                              </p>
-                            </div>
-                            <span className="px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 font-bold text-sm shrink-0">
-                              %{selectedEvaluation.totalMatchScore} Uyum
-                            </span>
+                          <div className="border-b border-zinc-100 pb-4">
+                            <h3 className="text-lg font-bold text-zinc-950">
+                              {selectedEvaluation.cv.fullName}
+                            </h3>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                              {selectedEvaluation.cv.university}
+                              {selectedEvaluation.cv.department &&
+                              selectedEvaluation.cv.department !== "Belirtilmemiş"
+                                ? ` — ${selectedEvaluation.cv.department}`
+                                : ""}{" "}
+                              • {selectedEvaluation.cv.city} • {selectedEvaluation.cv.source}
+                            </p>
                           </div>
 
                           {/* Yapay Zeka Tespit Özeti */}
@@ -1832,34 +1798,16 @@ export default function CVReaderApp() {
                               <span className="text-xs font-semibold text-zinc-500 uppercase">
                                 Yapay Zeka Tespit Özeti
                               </span>
-                              <button
-                                onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
-                                disabled={isGeminiLoading}
-                                className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-                              >
-                                <Sparkles className="w-3.5 h-3.5" />
-                                {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
-                              </button>
                             </div>
-
-                            {geminiResults[selectedEvaluation.cv.id] && (
-                              <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
-                                <strong>Gemini AI Raporu:</strong>{" "}
-                                {geminiResults[selectedEvaluation.cv.id]}
-                              </div>
-                            )}
 
                             {/* Cinsiyet Tespiti */}
                             <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
-                              <div className="flex items-center justify-between font-semibold text-zinc-900">
-                                <span>Cinsiyet: {selectedEvaluation.cv.detectedGender}</span>
-                                <span className="text-teal-700">
-                                  %{selectedEvaluation.cv.genderConfidence} Doğruluk
-                                </span>
+                              <div className="font-semibold text-zinc-900">
+                                Cinsiyet: {selectedEvaluation.cv.detectedGender}
                               </div>
                               <p className="text-zinc-600">
                                 {selectedEvaluation.cv.genderEvidence
-                                  .map((e) => e.signal)
+                                  .map((e) => e.signal.replace(/%\d+(\.\d+)?\s*/g, ""))
                                   .slice(0, 2)
                                   .join(" + ")}
                               </p>
