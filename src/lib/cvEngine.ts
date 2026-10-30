@@ -2256,7 +2256,12 @@ const DEGREE_DICTIONARY: {
   },
 ];
 
-const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegExp }[] = [
+const DEPARTMENT_DICTIONARY: {
+  canonical: string;
+  aliases: string[];
+  regex: RegExp;
+  requiresEduContext?: boolean;
+}[] = [
   {
     canonical: "Bilgisayar Mühendisliği",
     aliases: [
@@ -2340,7 +2345,7 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "Kimya",
     aliases: ["kimya", "kimya bölümü", "chemistry", "department of chemistry"],
     regex:
-      /(?:kimya\s*bölümü|department\s*of\s*chemistry|bachelor\s*(?:of\s*science\s*)?in\s*chemistry)/gi,
+      /(?:kimya\s*bölümü|department\s*of\s*chemistry|bachelor\s*(?:of\s*science\s*)?in\s*chemistry|(?:lisans|yüksek\s*lisans|doktora)\s*[:\-–—]\s*kimya\b)/gi,
   },
   {
     canonical: "Jeofizik Mühendisliği",
@@ -2364,7 +2369,7 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "İstatistik",
     aliases: ["istatistik", "statistics", "istatistik ve bilgisayar bilimleri"],
     regex:
-      /(?:departm[ae]nt\s*of\s*statistics|istatistik\s*\(\s*lisans\s*\)|undergraduate\s*degree\s*in\s*statistics|\bstatistics\s*\r?\n\s*mugla)/gi,
+      /(?:departm[ae]nt\s*of\s*statistics|istatistik\s*(?:\(\s*lisans\s*\)|bölümü)|undergraduate\s*degree\s*in\s*statistics|\bstatistics\s*\r?\n\s*mugla|(?:lisans|yüksek\s*lisans|doktora)\s*[:\-–—]\s*istatistik\b)/gi,
   },
   {
     canonical: "İstatistik ve Veri Bilimi",
@@ -2382,13 +2387,13 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "Matematik",
     aliases: ["matematik", "mathematics", "matematik bölümü", "department of mathematics"],
     regex:
-      /(?:bachelor\s*in\s*mathematics|matematik\s*bölümü|department\s*of\s*mathematics)/gi,
+      /(?:bachelor\s*in\s*mathematics|matematik\s*bölümü|department\s*of\s*mathematics|(?:lisans|yüksek\s*lisans|doktora)\s*[:\-–—]\s*matematik\b)/gi,
   },
   {
     canonical: "Fizik",
     aliases: ["fizik", "physics", "fizik bölümü", "department of physics"],
     regex:
-      /(?:physics\s*b\.?sc|fizik\s*bölümü|\bdepartment\s*of\s*physics\b)/gi,
+      /(?:physics\s*b\.?sc|fizik\s*bölümü|\bdepartment\s*of\s*physics\b|(?:lisans|yüksek\s*lisans|doktora)\s*[:\-–—]\s*fizik\b)/gi,
   },
   {
     canonical: "Fizik Mühendisliği",
@@ -2400,7 +2405,8 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "İktisat",
     aliases: ["iktisat", "ekonomi", "economics", "department of economics"],
     regex:
-      /(?:department\s*of\s*economics|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*economics|iktisat\s*bölümü|ekonomi\s*bölümü)/gi,
+      /(?:department\s*of\s*economics|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*economics|iktisat\s*bölümü|ekonomi\s*bölümü|\biktisat\b|(?:lisans|yüksek\s*lisans|doktora)\s*[:\-–—]\s*ekonomi\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "Robotik ve Otomasyon",
@@ -2539,7 +2545,8 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "İşletme (Business Administration)",
     aliases: ["işletme", "işletme bölümü", "business administration"],
     regex:
-      /(?:i[şs]letme\s*bölümü|business\s*administration|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*business)/gi,
+      /(?:i[şs]letme\s*bölümü|business\s*administration|bachelor\s*(?:of\s*science\s*|of\s*arts\s*)?in\s*business|\bi[şs]letme\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "İşletme Yüksek Lisansı (MBA)",
@@ -2551,7 +2558,8 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "Mimarlık",
     aliases: ["mimarlık", "mimarlık bölümü", "architecture", "iç mimarlık", "interior architecture"],
     regex:
-      /(?:(?:i[çc]\s*)?mimar[l]?[ıi]k\s*(?:bölümü|fakültesi|\(\s*lisans\s*\))|(?:bachelor|master)\s*(?:of\s*)?architecture|department\s*of\s*(?:interior\s*)?architecture)/gi,
+      /(?:(?:i[çc]\s*)?mimar[l]?[ıi]k\s*(?:bölümü|fakültesi|\(\s*lisans\s*\))|(?:bachelor|master)\s*(?:of\s*)?architecture|department\s*of\s*(?:interior\s*)?architecture|\b(?:i[çc]\s*)?mimar[l]?[ıi]k\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "Endüstriyel Tasarım",
@@ -2563,27 +2571,280 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     canonical: "Hukuk",
     aliases: ["hukuk", "hukuk fakültesi", "law", "llb", "llm"],
     regex:
-      /(?:hukuk\s*fakültesi|faculty\s*of\s*law|bachelor\s*of\s*laws|\bll\.?[bm]\.?\b)/gi,
+      /(?:hukuk\s*fakültesi|faculty\s*of\s*law|bachelor\s*of\s*laws|\bll\.?[bm]\.?\b|\bhukuk\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "Psikoloji",
     aliases: ["psikoloji", "psikoloji bölümü", "psychology"],
     regex:
-      /(?:psikoloji\s*bölümü|department\s*of\s*psychology|(?:bachelor|master)\s*(?:of\s*arts\s*|of\s*science\s*)?in\s*psychology)/gi,
+      /(?:psikoloji\s*bölümü|department\s*of\s*psychology|(?:bachelor|master)\s*(?:of\s*arts\s*|of\s*science\s*)?in\s*psychology|\bpsikoloji\b|\bpsychology\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "Uluslararası İlişkiler",
-    aliases: ["uluslararası ilişkiler", "international relations"],
+    aliases: ["uluslararası ilişkiler", "international relations", "siyaset bilimi ve uluslararası ilişkiler"],
     regex:
-      /(?:uluslararas[ıi]\s*ili[şs]kiler\s*(?:bölümü)?|department\s*of\s*international\s*relations|(?:bachelor|master)\s*(?:of\s*arts\s*)?in\s*international\s*relations)/gi,
+      /(?:(?:siyaset\s*bilimi\s*ve\s*)?uluslararas[ıi]\s*ili[şs]kiler\s*(?:bölümü)?|department\s*of\s*international\s*relations|(?:bachelor|master)\s*(?:of\s*arts\s*)?in\s*international\s*relations)/gi,
+  },
+  {
+    canonical: "Maliye",
+    aliases: ["maliye", "maliye bölümü", "public finance", "department of public finance"],
+    regex:
+      /(?:maliye\s*(?:bölümü)?|department\s*of\s*public\s*finance|\bpublic\s*finance\b|\bmaliye\b)/gi,
+    requiresEduContext: true,
   },
   {
     canonical: "Ekonometri / Finans",
-    aliases: ["ekonometri", "econometrics", "maliye", "finans ve bankacılık", "finance"],
+    aliases: ["ekonometri", "econometrics", "finans ve bankacılık", "finance", "bankacılık ve finans"],
     regex:
-      /(?:ekonometri\s*(?:bölümü)?|department\s*of\s*econometrics|maliye\s*bölümü|finans\s*ve\s*bankac[ıi]l[ıi]k|(?:bachelor|master|m\.?sc\.?)\s*in\s*finance)/gi,
+      /(?:ekonometri\s*(?:bölümü)?|department\s*of\s*econometrics|(?:finans\s*ve\s*bankac[ıi]l[ıi]k|bankac[ıi]l[ıi]k\s*ve\s*finans)|(?:bachelor|master|m\.?sc\.?)\s*in\s*finance|\bekonometri\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Çalışma Ekonomisi ve Endüstri İlişkileri",
+    aliases: ["çalışma ekonomisi ve endüstri ilişkileri", "çalışma ekonomisi", "çeko", "labour economics and industrial relations"],
+    regex:
+      /(?:[çc]al[ıi][şs]ma\s*ekonomisi(?:\s*ve\s*end[üu]stri\s*ili[şs]kileri)?|labou?r\s*economics\s*(?:and\s*industrial\s*relations)?)/gi,
+  },
+  {
+    canonical: "Kamu Yönetimi",
+    aliases: ["kamu yönetimi", "siyaset bilimi ve kamu yönetimi", "public administration", "political science and public administration"],
+    regex:
+      /(?:(?:siyaset\s*bilimi\s*ve\s*)?kamu\s*yönetimi|(?:\bpolitical\s*science\s*and\s*)?public\s*administration)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "İnsan Kaynakları Yönetimi",
+    aliases: ["insan kaynakları yönetimi", "insan kaynakları", "human resources management", "hrm"],
+    regex:
+      /(?:insan\s*kaynaklar[ıi]\s*yönetimi(?:\s*bölümü)?|human\s*resources?\s*management)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Uluslararası Ticaret ve Lojistik",
+    aliases: ["uluslararası ticaret ve lojistik", "uluslararası ticaret ve finansman", "uluslararası ticaret", "international trade and logistics", "international trade"],
+    regex:
+      /(?:uluslararas[ıi]\s*ticaret(?:\s*ve\s*(?:lojistik|finansman|finans|i[şs]letmecilik))?|international\s*trade(?:\s*and\s*(?:logistics|finance|business))?)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Lojistik Yönetimi",
+    aliases: ["lojistik yönetimi", "lojistik", "logistics management", "uluslararası lojistik"],
+    regex:
+      /(?:(?:uluslararas[ıi]\s*)?lojistik\s*(?:yönetimi|bölümü)?|logistics\s*management)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Bankacılık ve Sigortacılık",
+    aliases: ["bankacılık ve sigortacılık", "banking and insurance"],
+    regex:
+      /(?:bankac[ıi]l[ıi]k\s*ve\s*sigortac[ıi]l[ıi]k|banking\s*and\s*insurance)/gi,
+  },
+  {
+    canonical: "Muhasebe ve Finans Yönetimi",
+    aliases: ["muhasebe ve finans yönetimi", "muhasebe ve vergi uygulamaları", "muhasebe", "accounting and finance"],
+    regex:
+      /(?:muhasebe\s*ve\s*(?:finans(?:\s*yönetimi)?|vergi\s*uygulamalar[ıi])|accounting\s*and\s*finance|\bmuhasebe\s*bölümü\b)/gi,
+  },
+  {
+    canonical: "Turizm İşletmeciliği",
+    aliases: ["turizm işletmeciliği", "turizm ve otel işletmeciliği", "tourism management"],
+    regex:
+      /(?:turizm\s*(?:ve\s*otel\s*)?i[şs]letmecili[ğg]i|tourism\s*(?:and\s*hotel\s*)?management)/gi,
+  },
+  {
+    canonical: "Sağlık Yönetimi",
+    aliases: ["sağlık yönetimi", "health management", "healthcare management"],
+    regex:
+      /(?:sa[ğg]l[ıi]k\s*yönetimi|health(?:care)?\s*management)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Sosyoloji",
+    aliases: ["sosyoloji", "sociology", "sosyoloji bölümü"],
+    regex:
+      /(?:sosyoloji\s*(?:bölümü)?|department\s*of\s*sociology|\bsosyoloji\b|\bsociology\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Felsefe",
+    aliases: ["felsefe", "philosophy", "felsefe bölümü"],
+    regex:
+      /(?:felsefe\s*(?:bölümü)?|department\s*of\s*philosophy|\bfelsefe\b|\bphilosophy\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Tarih",
+    aliases: ["tarih", "history", "tarih bölümü"],
+    regex:
+      /(?:tarih\s*bölümü|department\s*of\s*history|\btarih\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Türk Dili ve Edebiyatı",
+    aliases: ["türk dili ve edebiyatı", "turkish language and literature"],
+    regex:
+      /(?:t[üu]rk\s*dili\s*ve\s*edebiyat[ıi]|turkish\s*language\s*and\s*literature)/gi,
+  },
+  {
+    canonical: "İngiliz Dili ve Edebiyatı",
+    aliases: ["ingiliz dili ve edebiyatı", "english language and literature", "amerikan kültürü ve edebiyatı"],
+    regex:
+      /(?:ingiliz\s*dili\s*ve\s*edebiyat[ıi]|english\s*language\s*and\s*literature|amerikan\s*k[üu]lt[üu]r[üu]\s*ve\s*edebiyat[ıi])/gi,
+  },
+  {
+    canonical: "Mütercim Tercümanlık",
+    aliases: ["mütercim tercümanlık", "çeviribilim", "translation and interpreting", "translation studies"],
+    regex:
+      /(?:m[üu]tercim[\s\-]*terc[üu]manl[ıi]k|[çc]eviribilim|translation\s*(?:and\s*interpreting|studies))/gi,
+  },
+  {
+    canonical: "Halkla İlişkiler ve Tanıtım",
+    aliases: ["halkla ilişkiler ve tanıtım", "halkla ilişkiler ve reklamcılık", "halkla ilişkiler", "public relations and advertising", "public relations"],
+    regex:
+      /(?:halkla\s*ili[şs]kiler(?:\s*ve\s*(?:tan[ıi]t[ıi]m|reklamc[ıi]l[ıi]k))?|public\s*relations(?:\s*and\s*advertising)?)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Gazetecilik / İletişim",
+    aliases: ["gazetecilik", "journalism", "radyo televizyon ve sinema", "yeni medya ve iletişim", "iletişim fakültesi"],
+    regex:
+      /(?:gazetecilik(?:\s*bölümü)?|radyo[,\s]*televizyon\s*ve\s*sinema|yeni\s*medya(?:\s*ve\s*ileti[şs]im)?|\bjournalism\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Görsel İletişim Tasarımı / Grafik Tasarım",
+    aliases: ["görsel iletişim tasarımı", "grafik tasarım", "visual communication design", "graphic design"],
+    regex:
+      /(?:g[öo]rsel\s*ileti[şs]im\s*tasar[ıi]m[ıi]|grafik\s*tasar[ıi]m[ıi]?|visual\s*communication\s*design|graphic\s*design)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Gastronomi ve Mutfak Sanatları",
+    aliases: ["gastronomi ve mutfak sanatları", "gastronomi", "gastronomy and culinary arts"],
+    regex:
+      /(?:gastronomi(?:\s*ve\s*mutfak\s*sanatlar[ıi])?|gastronomy(?:\s*and\s*culinary\s*arts)?)/gi,
+  },
+  {
+    canonical: "Biyoloji",
+    aliases: ["biyoloji", "biyoloji bölümü", "biology", "department of biology"],
+    regex:
+      /(?:biyoloji\s*(?:bölümü)?|department\s*of\s*biology|\bbiyoloji\b|\bbiology\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Hemşirelik",
+    aliases: ["hemşirelik", "nursing", "hemşirelik bölümü"],
+    regex:
+      /(?:hem[şs]irelik(?:\s*bölümü|\s*fakültesi)?|department\s*of\s*nursing|\bnursing\b)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Fizyoterapi ve Rehabilitasyon",
+    aliases: ["fizyoterapi ve rehabilitasyon", "fizyoterapi", "physiotherapy and rehabilitation"],
+    regex:
+      /(?:fizyoterapi(?:\s*ve\s*rehabilitasyon)?|physiotherapy(?:\s*and\s*rehabilitation)?)/gi,
+  },
+  {
+    canonical: "Beslenme ve Diyetetik",
+    aliases: ["beslenme ve diyetetik", "nutrition and dietetics"],
+    regex:
+      /(?:beslenme\s*ve\s*diyetetik|nutrition\s*and\s*dietetics)/gi,
+  },
+  {
+    canonical: "Çocuk Gelişimi",
+    aliases: ["çocuk gelişimi", "child development"],
+    regex:
+      /(?:[çc]ocuk\s*geli[şs]imi|child\s*development)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Rehberlik ve Psikolojik Danışmanlık (PDR)",
+    aliases: ["rehberlik ve psikolojik danışmanlık", "psikolojik danışmanlık ve rehberlik", "pdr", "psychological counseling and guidance"],
+    regex:
+      /(?:rehberlik\s*ve\s*psikolojik\s*dan[ıi][şs]manl[ıi]k|psikolojik\s*dan[ıi][şs]manl[ıi]k\s*ve\s*rehberlik|psychological\s*counseling\s*and\s*guidance)/gi,
+  },
+  {
+    canonical: "Eğitim / Öğretmenlik",
+    aliases: ["okul öncesi öğretmenliği", "sınıf öğretmenliği", "ingilizce öğretmenliği", "matematik öğretmenliği", "fen bilgisi öğretmenliği", "türkçe öğretmenliği", "böte"],
+    regex:
+      /(?:(?:okul\s*öncesi|s[ıi]n[ıi]f|ingilizce|matematik|fen\s*bilgisi|t[üu]rk[çc]e|sosyal\s*bilgiler|beden\s*eğitimi(?:\s*ve\s*spor)?|özel\s*eğitim|bilgisayar\s*ve\s*öğretim\s*teknolojileri)\s*öğretmenli[ğg]i|english\s*language\s*teaching)/gi,
+  },
+  {
+    canonical: "Tıp / Diş Hekimliği / Eczacılık",
+    aliases: ["tıp fakültesi", "diş hekimliği", "eczacılık", "veterinerlik", "medicine", "dentistry", "pharmacy"],
+    regex:
+      /(?:t[ıi]p\s*fakültesi|di[şs]\s*hekimli[ğg]i(?:\s*fakültesi)?|eczac[ıi]l[ıi]k(?:\s*fakültesi)?|veteriner(?:lik)?\s*fakültesi|faculty\s*of\s*(?:medicine|dentistry|pharmacy|veterinary))/gi,
+  },
+  {
+    canonical: "Ziraat / Orman / Su Ürünleri Mühendisliği",
+    aliases: ["ziraat mühendisliği", "orman mühendisliği", "su ürünleri mühendisliği", "agricultural engineering", "forest engineering"],
+    regex:
+      /(?:(?:ziraat|orman|su\s*ürünleri|biyosistem)\s*mühendisli[ğg]i|(?:agricultural|forest|biosystems)\s*engineering)/gi,
+  },
+  {
+    canonical: "Maden / Jeoloji / Petrol Mühendisliği",
+    aliases: ["maden mühendisliği", "jeoloji mühendisliği", "petrol ve doğalgaz mühendisliği", "mining engineering", "geological engineering", "petroleum engineering"],
+    regex:
+      /(?:(?:maden|jeoloji|petrol\s*ve\s*do[ğg]algaz)\s*mühendisli[ğg]i|(?:mining|geological|petroleum(?:\s*and\s*natural\s*gas)?)\s*engineering)/gi,
+  },
+  {
+    canonical: "Tekstil Mühendisliği",
+    aliases: ["tekstil mühendisliği", "textile engineering"],
+    regex:
+      /(?:tekstil\s*mühendisli[ğg]i|textile\s*engineering)/gi,
+  },
+  {
+    canonical: "Gemi İnşaatı ve Gemi Makineleri Mühendisliği",
+    aliases: ["gemi inşaatı ve gemi makineleri mühendisliği", "gemi makineleri işletme mühendisliği", "naval architecture and marine engineering"],
+    regex:
+      /(?:gemi\s*(?:in[şs]aat[ıi]\s*(?:ve\s*gemi\s*makineleri\s*)?|makineleri\s*i[şs]letme\s*)mühendisli[ğg]i|naval\s*architecture(?:\s*and\s*marine\s*engineering)?)/gi,
+  },
+  {
+    canonical: "Dış Ticaret",
+    aliases: ["dış ticaret", "foreign trade"],
+    regex:
+      /(?:d[ıi][şs]\s*ticaret(?:\s*bölümü|\s*program[ıi])?|foreign\s*trade)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "İş Sağlığı ve Güvenliği",
+    aliases: ["iş sağlığı ve güvenliği", "occupational health and safety", "isg"],
+    regex:
+      /(?:i[şs]\s*sa[ğg]l[ıi][ğg][ıi]\s*ve\s*g[üu]venli[ğg]i|occupational\s*health\s*and\s*safety)/gi,
+    requiresEduContext: true,
+  },
+  {
+    canonical: "Büro Yönetimi ve Yönetici Asistanlığı",
+    aliases: ["büro yönetimi ve yönetici asistanlığı", "büro yönetimi", "office management and executive assistance"],
+    regex:
+      /(?:b[üu]ro\s*yönetimi(?:\s*ve\s*yönetici\s*asistanl[ıi][ğg][ıi])?|office\s*management(?:\s*and\s*executive\s*assistance)?)/gi,
+  },
+  {
+    canonical: "Adalet",
+    aliases: ["adalet", "adalet meslek yüksekokulu", "adalet bölümü"],
+    regex:
+      /(?:adalet\s*(?:meslek\s*yüksek\s*okulu|myo|bölümü|program[ıi])|\badalet\b)/gi,
+    requiresEduContext: true,
   },
 ];
+
+function hasStandaloneBscKeyword(text: string): boolean {
+  if (!text) return false;
+  if (
+    /\b(?:bachelor[’'´]?s?|b\.?\s*sc\.?|b\.?\s*s\.?|b\.?\s*a\.?|b\.?\s*e\.?|undergraduate|double\s*major|çift\s*anadal|lisans\s*eğitimi|\(\s*lisans\s*\))\b/i.test(
+      text
+    )
+  ) {
+    return true;
+  }
+  const stripped = text.replace(
+    /(?:yüksek\s*lisans|yuksek\s*lisans|ön\s*lisans|on\s*lisans|önlisans|onlisans|sürücü\s*lisans\w*|pilot\s*lisans\w*|sporcu\s*lisans\w*|yaz[ıi]l[ıi]m\s*lisans\w*)/gi,
+    " "
+  );
+  return /\blisans\b/i.test(stripped);
+}
 
 export type DegreeKey = "associate" | "bachelor" | "master" | "phd";
 
@@ -2636,11 +2897,23 @@ export function extractEducationFromCV(rawText: string): {
     });
   const normText = normalizeTr(nonEmptyLines.join("\n")).replace(/ı/g, "i");
 
-  // EDUCATION / EĞİTİM başlığının konumunu bul (aralıklı E D U C A T I O N ve bitişik EĞİTİM2011 dahil)
+  // EDUCATION / EĞİTİM başlığının konumunu ve bitiş sınırını bul (aralıklı E D U C A T I O N ve bitişik EĞİTİM2011 dahil)
   const eduHeaderMatch = normText.match(
-    /(?:^|\n)\s*(?:education(?:\s*and\s*training|\s*history|\s*background)?|educations|e\s*d\s*u\s*c\s*a\s*t\s*i\s*o\s*n|eğitim(?:\s*bilgileri|\s*geçmişi)?)/i
+    /(?:^|\n)\s*(?:education(?:\s*and\s*training|\s*history|\s*background)?|educations|e\s*d\s*u\s*c\s*a\s*t\s*i\s*o\s*n|eğitim(?:\s*bilgileri|\s*geçmişi|\s*durumu)?)/i
   );
   const eduStartIdx = eduHeaderMatch?.index ?? -1;
+  let eduEndIdx = normText.length;
+  if (eduStartIdx !== -1) {
+    const afterEduText = normText.slice(eduStartIdx + (eduHeaderMatch?.[0]?.length || 6));
+    const nextSecMatch = afterEduText.match(
+      /\n\s*(?:yabanci\s*dil(?:ler)?|diller|languages?|programlar|bilgisayar\s*bilgisi|temel\s*yetkinlikler|profesyonel\s*yetkinlikler|yetkinlikler|yetenekler|beceriler|skills|technical\s*skills|sertifikalar|certificates?|certifications?|kurslar|courses|ilgi\s*alanlari|hobiler|interests|hobbies|i[şs]\s*deneyimi|deneyim|tecrübe|work\s*experience|professional\s*experience|experience|employment|projeler|projects|yayinlar|publications|referanslar|references|ödüller|awards|gönüllülük|volunteering)\s*(?:\n|$)/i
+    );
+    if (nextSecMatch?.index !== undefined) {
+      eduEndIdx = eduStartIdx + (eduHeaderMatch?.[0]?.length || 6) + nextSecMatch.index;
+    } else {
+      eduEndIdx = Math.min(normText.length, eduStartIdx + 1600);
+    }
+  }
 
   // 1. ÜNİVERSİTE ADAYLARINI PUANLA (Lisans / Ana Üniversite Öncelikli)
   const uniScores = new Map<string, number>();
@@ -2695,14 +2968,13 @@ export function extractEducationFromCV(rawText: string): {
         assocTaggedUnis.add(entry.canonical);
       }
 
-      const isExplicitBscRow =
-        /(?:bachelor|b\.sc|\bbsc\b|\bb\.s\b|\bb\.e\b|lisans\s*eğitimi|\(\s*lisans\s*\))/i.test(
-          sameLine +
-            " " +
-            (!/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|phd|doktora|doctorate)/i.test(prevLine)
-              ? nextLine
-              : "")
-        );
+      const isExplicitBscRow = hasStandaloneBscKeyword(
+        sameLine +
+          " " +
+          (!/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|phd|doktora|doctorate)/i.test(prevLine)
+            ? nextLine
+            : "")
+      );
       const hasPhdHere =
         !isExplicitBscRow &&
         /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b|\bdoctoral\b)/i.test(
@@ -2725,15 +2997,14 @@ export function extractEducationFromCV(rawText: string): {
       if (hasMasterHere && !hasPhdHere) masterTaggedUnis.add(entry.canonical);
 
       let score = 40;
-      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
+      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120 && idx <= eduEndIdx + 120) {
         score += 65;
       }
 
       // Lisans (Bachelor / BSc / Lisans / Graduate from) sinyali
       const hasBsc =
-        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans\s*eğitimi|\(lisans\)|graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(
-          nearLines
-        );
+        hasStandaloneBscKeyword(nearLines) ||
+        /(?:graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(nearLines);
       const hasPostGrad =
         /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
           sameLine + " " + (/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|doktora|doctorate)/i.test(prevLine) && !hasBsc ? prevLine : "") + " " + (/(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|doktora|doctorate)/i.test(nextLine) && !/(?:bachelor|b\.sc|\bbsc\b|lisans)/i.test(sameLine + " " + prevLine) ? nextLine : "")
@@ -2814,11 +3085,39 @@ export function extractEducationFromCV(rawText: string): {
 
       // Topluluk (Society/Club), Dergi (Journal), Konferans, Hobi veya İş Deneyimi Danışmanı satırıysa atla
       if (
-        /(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|hobiler|capoeira|erasmus|organizing\s*workshops|organizing\s*social\s*events|academic\s*advisor|years\s*in\s*chemical)/i.test(
+        /(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|hobiler|capoeira|erasmus|organizing\s*workshops|organizing\s*social\s*events|academic\s*advisor|years\s*in\s*chemical|sertifika\s*program[ıi])/i.test(
           nearLines
         )
       ) {
         continue;
+      }
+
+      // Kısa/genel bölüm isimleri (Örn: Maliye, İşletme, Hukuk, Sosyoloji, Psikoloji, İKY vb.) için Eğitim Bağlamı Kontrolü
+      if (entry.requiresEduContext) {
+        const matchedTextHasExplicitSuffix =
+          /(?:bölümü|fakültesi|department|faculty|bachelor|master|lisans|degree|anabilim|program[ıi]|yüksekokulu)/i.test(
+            m[0]
+          );
+        const isInBoundedEduSection =
+          eduStartIdx !== -1 && idx >= eduStartIdx - 30 && idx <= eduEndIdx;
+        const hasUniOrDegreeNearby =
+          /(?:üniversitesi|university|enstitüsü|institute|yüksek\s*okulu|yüksekokulu|myo|fakültesi|faculty|bölümü|bölüm|department|bachelor|master|ph\.?\s*d|doktora|yüksek\s*lisans|ön\s*lisans|önlisans|associate|\blisans\b|\bb\.?\s*sc\b|\bm\.?\s*sc\b|\bb\.?\s*a\b|\bm\.?\s*a\b)/i.test(
+            nearLines
+          );
+        if (!matchedTextHasExplicitSuffix) {
+          if ((!isInBoundedEduSection && !hasUniOrDegreeNearby) || sameLine.length > 135) {
+            continue;
+          }
+          // Uzun cümle / iş tanımı maddesi içindeyse ve aynı satırda üniversite/derece yoksa atla
+          if (
+            !/(?:üniversitesi|university|enstitüsü|institute|lisans|bachelor|master|doktora|ph\.?\s*d|bölüm|department)/i.test(
+              sameLine
+            ) &&
+            !isInBoundedEduSection
+          ) {
+            continue;
+          }
+        }
       }
 
       if (!allFoundDepts.includes(entry.canonical)) {
@@ -2840,28 +3139,24 @@ export function extractEducationFromCV(rawText: string): {
         /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(
           sameLine +
             " " +
-            (!/(?:bachelor|b\.sc|\bbsc\b|\(\s*lisans\s*\)|phd|doktora|doctorate)/i.test(nextLine)
+            (!hasStandaloneBscKeyword(nextLine) && !/(?:phd|doktora|doctorate)/i.test(nextLine)
               ? nextLine
               : "")
         );
-      const isBscDeptLine =
-        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans\s*eğitimi|\(\s*lisans\s*\)|double\s*major|çift\s*anadal)/i.test(
-          sameLine + " " + nextLine
-        );
+      const isBscDeptLine = hasStandaloneBscKeyword(sameLine + " " + nextLine);
 
       if (isPhdDeptLine) phdTaggedDepts.add(entry.canonical);
       if (isMasterDeptLine && !isPhdDeptLine) masterTaggedDepts.add(entry.canonical);
       if (isBscDeptLine) bscTaggedDepts.add(entry.canonical);
 
       let score = 40;
-      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120) {
+      if (eduStartIdx !== -1 && idx >= eduStartIdx - 120 && idx <= eduEndIdx + 120) {
         score += 65;
       }
 
       const hasBsc =
-        /(?:bachelor|b\.sc|\bbsc\b|b\.s\.|\bbs\b|\bb\.e\b|lisans\s*eğitimi|\(\s*lisans\s*\)|graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(
-          nearLines
-        );
+        hasStandaloneBscKeyword(nearLines) ||
+        /(?:graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(nearLines);
       const hasPostGrad =
         /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
           sameLine + " " + nextLine
@@ -2909,16 +3204,17 @@ export function extractEducationFromCV(rawText: string): {
     }
   }
 
-  // Derece satırlarında (MSc in X, University of Y vb.) sözlükte yer almayan yurtdışı/özel üniversite veya bölüm varsa kaçırma
+  // Derece satırlarında ("Lisans: Maliye | Pamukkale Üniversitesi", "MSc in X", "University of Y" vb.) yapısal bölüm & üniversite yakalayıcı
   for (const line of nonEmptyLines) {
     const nl = normalizeTr(line).replace(/ı/g, "i");
-    if (/(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|erasmus|exchange\s*program|certificate\s*program)/i.test(nl)) {
+    if (/(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|erasmus|exchange\s*program|certificate\s*program|sertifika\s*program)/i.test(nl)) {
       continue;
     }
+    const isAssocLine = /(?:\bön\s*lisans\b|\bönlisans\b|\bon\s*lisans\b|\bassociate[’'´]?s?\b|\bmyo\b)/i.test(nl);
     const isMasterLine = /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(nl);
     const isPhdLine = /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b)/i.test(nl);
-    const isBscLine = /(?:\bbachelor[’'´]?s?\b|\bb\.?\s*sc\.?\b|\bb\.?\s*s\.?\s+in\b|\blisans\s*eğitimi\b)/i.test(nl);
-    if (!isMasterLine && !isPhdLine && !isBscLine) continue;
+    const isBscLine = hasStandaloneBscKeyword(nl);
+    if (!isAssocLine && !isMasterLine && !isPhdLine && !isBscLine) continue;
 
     // Satırda sözlükten bir üniversite eşleşti mi kontrol et
     const hasDictUniOnLine = UNIVERSITY_DICTIONARY.some((u) => {
@@ -2934,6 +3230,7 @@ export function extractEducationFromCV(rawText: string): {
         if (bestUni === "Belirtilmemiş") bestUni = rawUni;
         if (isPhdLine && !isBscLine) phdTaggedUnis.add(rawUni);
         else if (isMasterLine && !isBscLine) masterTaggedUnis.add(rawUni);
+        else if (isAssocLine && !isBscLine) assocTaggedUnis.add(rawUni);
         else if (isBscLine) bscTaggedUnis.add(rawUni);
       }
     }
@@ -2944,13 +3241,22 @@ export function extractEducationFromCV(rawText: string): {
       return d.regex.test(nl);
     });
     if (!hasDictDeptOnLine) {
+      // 1) "MSc in Data Science" / "Bachelor in X" kalıbı
       const mInDept = line.match(/(?:\bM\.?\s*Sc\.?|\bM\.?\s*S\.?|\bMaster[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bB\.?\s*Sc\.?|\bB\.?\s*S\.?|\bBachelor[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bPh\.?\s*D\.?)\s+in\s+([A-Z][A-Za-z\s&\-]{2,38}?)(?=\s*[,|•(\-–—]|\s+at\b|\s+from\b|$)/);
-      const candDept = mInDept?.[1]?.trim();
-      if (candDept && !/^(?:progress|turkey|italy|germany|english)/i.test(candDept)) {
+      // 2) "Lisans: Maliye | Pamukkale Üniversitesi | 2017 - 2021" veya "Yüksek Lisans: X | Y Üniversitesi" kalıbı
+      const mColonDept = line.match(/(?:^|[|•·])\s*(?:Ön\s*Lisans|Önlisans|Yüksek\s*Lisans|Doktora|Lisans|Bachelor[’'´]?s?|Master[’'´]?s?|Associate[’'´]?s?|B\.?\s*Sc\.?|M\.?\s*Sc\.?|Ph\.?\s*D\.?)\s*:\s*([^|•·\n]{2,45}?)(?=\s*[|•·(\-–—]|\s+\d{4}|$)/i);
+      const candDept = (mInDept?.[1] || mColonDept?.[1] || "").trim();
+      if (
+        candDept &&
+        candDept.length >= 3 &&
+        !/^(?:progress|turkey|türkiye|italy|germany|english|orta\s*düzey|ileri\s*düzey)/i.test(candDept) &&
+        !/(?:üniversitesi|university|institute|enstitüsü|yüksekokulu|fakültesi|lisesi|koleji|\d{4})/i.test(candDept)
+      ) {
         if (!allFoundDepts.includes(candDept)) allFoundDepts.push(candDept);
         if (bestDept === "Belirtilmemiş") bestDept = candDept;
         if (isPhdLine && !isBscLine) phdTaggedDepts.add(candDept);
         else if (isMasterLine && !isBscLine) masterTaggedDepts.add(candDept);
+        else if (isAssocLine && !isBscLine) assocTaggedDepts.add(candDept);
         else if (isBscLine) bscTaggedDepts.add(candDept);
       }
     }
