@@ -1140,8 +1140,8 @@ export default function GroundTruthLabelerPage() {
       : "";
 
   return (
-    <div className="relative min-h-screen bg-[#f7f5f0] text-[#0f172a] overflow-x-hidden">
-      {/* ARKA PLAN DÖNGÜ VİDEOSU & AÇIK AKADEMİK FİLDİŞİ KATMAN */}
+    <div className="relative min-h-screen bg-[#cbc4b4] text-[#141c2b] overflow-x-hidden">
+      {/* ARKA PLAN DÖNGÜ VİDEOSU & GÖZ YORMAYAN KOYU KUMTAŞI / ARDUVAZ KATMAN */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <video
           autoPlay
@@ -1149,28 +1149,28 @@ export default function GroundTruthLabelerPage() {
           muted
           playsInline
           preload="auto"
-          className="w-full h-full object-cover scale-[1.02] filter brightness-[1.06] contrast-[0.98] saturate-[0.9]"
+          className="w-full h-full object-cover scale-[1.02] filter brightness-[0.86] contrast-[1.02] saturate-[0.88]"
         >
           <source src="/videos/interview-bg.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f6f0]/86 via-[#f8f6f0]/80 to-[#f3f0e8]/88 backdrop-blur-[1.5px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#c4bdb0]/82 via-[#ccc5b7]/76 to-[#beb7a8]/85 backdrop-blur-[1.5px]" />
       </div>
 
-      {/* ÜST BAR: CANLI SKOR TABLOSU VE TR/EN DİL SEÇİMİ */}
-      <header className="bg-[#fcfbf8]/92 backdrop-blur-md border-b border-[#dedad0] sticky top-0 z-30 shadow-2xs">
+      {/* ÜST BAR: CANLI SKOR TABLOSU VE TR/EN DİL SEÇİMİ (Koyu Oxford Arduvaz) */}
+      <header className="bg-[#182235]/95 backdrop-blur-md border-b border-[#2c3a52] sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-wrap">
             <Link
               href="/"
-              className="px-3 py-1.5 rounded-md border border-[#d5d0c5] hover:border-[#1e3a8a] text-xs font-semibold flex items-center gap-1.5 bg-white text-[#0f172a] transition-colors"
+              className="px-3 py-1.5 rounded-md border border-[#384966] bg-[#212f47] hover:bg-[#2a3b57] text-xs font-semibold flex items-center gap-1.5 text-[#f0ece1] transition-colors"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#1e3a8a]" />
+              <ArrowLeft className="w-3.5 h-3.5 text-[#93c5fd]" />
               {t.backToApp}
             </Link>
 
             {/* TEKİL ETİKETLEME DURUM GÖSTERGESİ */}
-            <div className="flex items-center bg-[#1e3a8a] text-white px-3 py-1.5 rounded-lg text-xs font-bold gap-1.5 shadow-2xs">
-              <CheckCircle2 className="w-3.5 h-3.5 text-blue-200" />
+            <div className="flex items-center bg-[#e2dcd0] text-[#182235] px-3 py-1.5 rounded-lg text-xs font-bold gap-1.5 shadow-2xs">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
               <span>
                 {t.labeledCount(
                   items.filter((i) => isRaterFullyDone(i, "ben")).length,
@@ -1181,18 +1181,18 @@ export default function GroundTruthLabelerPage() {
 
             {/* TR | EN Dil Seçeneği */}
             <div
-              className="inline-flex items-center rounded-md border border-[#d5d0c5] bg-[#f4f1ea] p-0.5 shrink-0"
+              className="inline-flex items-center rounded-md border border-[#33435e] bg-[#111927] p-0.5 shrink-0"
               role="group"
               aria-label="Language Switcher"
             >
-              <Globe className="w-3.5 h-3.5 text-slate-500 ml-1.5 mr-1 hidden sm:inline" />
+              <Globe className="w-3.5 h-3.5 text-[#9ca3af] ml-1.5 mr-1 hidden sm:inline" />
               <button
                 type="button"
                 onClick={() => handleSwitchLang("tr")}
                 className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   lang === "tr"
-                    ? "bg-[#1e3a8a] text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#e2dcd0] text-[#182235] shadow-2xs"
+                    : "text-[#b8b2a6] hover:text-white"
                 }`}
               >
                 TR
@@ -1202,8 +1202,8 @@ export default function GroundTruthLabelerPage() {
                 onClick={() => handleSwitchLang("en")}
                 className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   lang === "en"
-                    ? "bg-[#1e3a8a] text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#e2dcd0] text-[#182235] shadow-2xs"
+                    : "text-[#b8b2a6] hover:text-white"
                 }`}
               >
                 EN
@@ -1213,63 +1213,63 @@ export default function GroundTruthLabelerPage() {
 
           {/* CANLI GERÇEK BAŞARI KARTLARI */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-2.5 py-1.5 rounded-lg border border-[#dedad0] bg-white text-center">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+            <div className="px-2.5 py-1.5 rounded-lg border border-[#33435e] bg-[#212f47] text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[#b8b2a6] font-semibold">
                 {t.metricGender}
               </div>
-              <div className="text-sm font-bold text-[#0f172a]">
+              <div className="text-sm font-bold text-[#f0ece1]">
                 {stats.totalLabeled === 0 ? "—" : `%${stats.genderAccuracy}`}
-                <span className="text-[11px] text-slate-500 font-normal ml-1">
+                <span className="text-[11px] text-[#b8b2a6] font-normal ml-1">
                   ({stats.genderCorrect}/{stats.totalLabeled})
                 </span>
               </div>
             </div>
 
-            <div className="px-2.5 py-1.5 rounded-lg border border-[#dedad0] bg-white text-center">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+            <div className="px-2.5 py-1.5 rounded-lg border border-[#33435e] bg-[#212f47] text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[#b8b2a6] font-semibold">
                 {t.metricAge}
               </div>
-              <div className="text-sm font-bold text-[#0f172a]">
+              <div className="text-sm font-bold text-[#f0ece1]">
                 {stats.ageLabeledCount === 0
                   ? "—"
                   : `%${stats.ageExactAccuracy} / %${stats.ageCloseAccuracy}`}
-                <span className="text-[11px] text-slate-500 font-normal ml-1">
+                <span className="text-[11px] text-[#b8b2a6] font-normal ml-1">
                   ({stats.ageExactCorrect}/{stats.ageLabeledCount})
                 </span>
               </div>
             </div>
 
-            <div className="px-2.5 py-1.5 rounded-lg border border-[#1e3a8a]/30 bg-[#f0f4ff] text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[#1e3a8a] font-bold">
+            <div className="px-2.5 py-1.5 rounded-lg border border-[#33435e] bg-[#212f47] text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[#93c5fd] font-bold">
                 {t.metricUni}
               </div>
-              <div className="text-sm font-bold text-[#0f172a]">
+              <div className="text-sm font-bold text-[#f0ece1]">
                 {stats.uniLabeledCount === 0 ? "—" : `%${stats.uniAccuracy}`}
-                <span className="text-[11px] text-slate-500 font-normal ml-1">
+                <span className="text-[11px] text-[#b8b2a6] font-normal ml-1">
                   ({stats.uniCorrect}/{stats.uniLabeledCount})
                 </span>
               </div>
             </div>
 
-            <div className="px-2.5 py-1.5 rounded-lg border border-[#1e3a8a]/30 bg-[#f0f4ff] text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[#1e3a8a] font-bold">
+            <div className="px-2.5 py-1.5 rounded-lg border border-[#33435e] bg-[#212f47] text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[#93c5fd] font-bold">
                 {t.metricDept}
               </div>
-              <div className="text-sm font-bold text-[#0f172a]">
+              <div className="text-sm font-bold text-[#f0ece1]">
                 {stats.deptLabeledCount === 0 ? "—" : `%${stats.deptAccuracy}`}
-                <span className="text-[11px] text-slate-500 font-normal ml-1">
+                <span className="text-[11px] text-[#b8b2a6] font-normal ml-1">
                   ({stats.deptCorrect}/{stats.deptLabeledCount})
                 </span>
               </div>
             </div>
 
-            <div className="px-2.5 py-1.5 rounded-lg border border-[#1e3a8a]/30 bg-[#f0f4ff] text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[#1e3a8a] font-bold">
+            <div className="px-2.5 py-1.5 rounded-lg border border-[#33435e] bg-[#212f47] text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[#93c5fd] font-bold">
                 {t.metricDeg}
               </div>
-              <div className="text-sm font-bold text-[#0f172a]">
+              <div className="text-sm font-bold text-[#f0ece1]">
                 {stats.degLabeledCount === 0 ? "—" : `%${stats.degAccuracy}`}
-                <span className="text-[11px] text-slate-500 font-normal ml-1">
+                <span className="text-[11px] text-[#b8b2a6] font-normal ml-1">
                   ({stats.degCorrect}/{stats.degLabeledCount})
                 </span>
               </div>
@@ -1278,10 +1278,10 @@ export default function GroundTruthLabelerPage() {
             <div
               className={`px-3 py-1.5 rounded-lg border text-center ${
                 stats.totalLabeled === 0
-                  ? "border-[#dedad0] bg-white text-slate-800"
+                  ? "border-[#33435e] bg-[#212f47] text-[#f0ece1]"
                   : stats.overallAccuracy >= 90
-                  ? "border-[#1e3a8a] bg-[#1e3a8a] text-white"
-                  : "border-red-300 bg-red-50 text-red-900"
+                  ? "border-[#e2dcd0] bg-[#e2dcd0] text-[#182235]"
+                  : "border-red-400 bg-red-950 text-red-100"
               }`}
             >
               <div className="text-[10px] uppercase tracking-wider font-bold">
@@ -1297,11 +1297,11 @@ export default function GroundTruthLabelerPage() {
             <button
               onClick={() => fetchAll(true)}
               title={t.refreshTooltip}
-              className="p-2 border border-[#d5d0c5] rounded-lg hover:border-[#1e3a8a] text-slate-600 bg-white cursor-pointer"
+              className="p-2 border border-[#33435e] rounded-lg hover:bg-[#2a3b57] text-[#d2ccc0] bg-[#212f47] cursor-pointer"
             >
               <RefreshCw
                 className={`w-4 h-4 ${
-                  syncing ? "animate-spin text-[#1e3a8a]" : ""
+                  syncing ? "animate-spin text-[#93c5fd]" : ""
                 }`}
               />
             </button>
@@ -1311,14 +1311,14 @@ export default function GroundTruthLabelerPage() {
                 <button
                   onClick={handleExportLabelsJson}
                   title={t.jsonTooltip}
-                  className="px-2.5 py-2 border border-[#d5d0c5] rounded-lg hover:border-[#1e3a8a] text-xs font-semibold text-slate-700 bg-white cursor-pointer"
+                  className="px-2.5 py-2 border border-[#33435e] rounded-lg hover:bg-[#2a3b57] text-xs font-semibold text-[#f0ece1] bg-[#212f47] cursor-pointer"
                 >
                   📥 JSON
                 </button>
                 <button
                   onClick={handleClearAllLabels}
                   title={t.resetTooltip}
-                  className="p-2 border border-[#d5d0c5] rounded-lg hover:border-red-600 hover:text-red-600 text-slate-500 bg-white cursor-pointer"
+                  className="p-2 border border-[#33435e] rounded-lg hover:border-red-400 hover:text-red-300 text-[#d2ccc0] bg-[#212f47] cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -1331,9 +1331,9 @@ export default function GroundTruthLabelerPage() {
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-5 space-y-5">
         {/* %90 ALTI UYARI BANNER'I */}
         {stats.totalLabeled > 0 && stats.overallAccuracy < 90 && (
-          <div className="bg-red-50/95 border border-red-300 rounded-lg p-3.5 flex items-center justify-between gap-3 text-xs text-red-900">
+          <div className="bg-red-950/90 border border-red-400/50 rounded-lg p-3.5 flex items-center justify-between gap-3 text-xs text-red-100">
             <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-red-300 shrink-0" />
               <div>
                 <strong>{t.lowAccTitle(stats.overallAccuracy)}</strong>{" "}
                 {t.lowAccSub}
@@ -1343,18 +1343,18 @@ export default function GroundTruthLabelerPage() {
         )}
 
         {loading ? (
-          <div className="bg-[#fcfbf9]/95 border border-[#dedad0] rounded-xl p-12 text-center text-sm text-slate-600">
+          <div className="bg-[#e2dcd0]/95 border border-[#b8b0a0] rounded-xl p-12 text-center text-sm text-[#333d4f]">
             {t.loadingText}
           </div>
         ) : !currentItem ? (
-          <div className="bg-[#fcfbf9]/95 border border-[#dedad0] rounded-xl p-12 text-center space-y-3">
+          <div className="bg-[#e2dcd0]/95 border border-[#b8b0a0] rounded-xl p-12 text-center space-y-3">
             <p className="text-sm font-semibold">{t.emptyFilterText}</p>
             <button
               onClick={() => {
                 setFilterMode("all");
                 setCurrentIndex(0);
               }}
-              className="px-4 py-2 bg-[#1e3a8a] text-white rounded-md text-xs font-medium cursor-pointer"
+              className="px-4 py-2 bg-[#182235] text-[#f0ece1] rounded-md text-xs font-medium cursor-pointer"
             >
               {t.showAllBtn(items.length)}
             </button>
@@ -1362,13 +1362,13 @@ export default function GroundTruthLabelerPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* SOL SÜTUN (7 Sütun): ORİJİNAL PDF GÖRÜNTÜLEYİCİ VEYA HAM METİN */}
-            <div className="lg:col-span-7 bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl overflow-hidden shadow-xs">
-              <div className="px-4 py-3 border-b border-[#e5e0d5] bg-[#f4f1ea] flex flex-wrap items-center justify-between gap-2">
+            <div className="lg:col-span-7 bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-xs">
+              <div className="px-4 py-3 border-b border-[#c4bdb0] bg-[#d6cfc0] flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#1e3a8a] text-white text-xs font-mono-academic font-bold">
+                  <span className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-xs font-mono-academic font-bold">
                     #{currentItem.index} / {items.length}
                   </span>
-                  <span className="font-serif-academic font-bold text-xs sm:text-sm text-[#0f172a] truncate max-w-[260px] sm:max-w-[360px]">
+                  <span className="font-serif-academic font-bold text-xs sm:text-sm text-[#121926] truncate max-w-[260px] sm:max-w-[360px]">
                     {currentItem.fileName}
                   </span>
                 </div>
@@ -1380,7 +1380,7 @@ export default function GroundTruthLabelerPage() {
                     )}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-2.5 py-1 rounded text-xs font-semibold bg-[#f0f4ff] border border-[#1e3a8a]/25 text-[#1e3a8a] hover:bg-[#e2ebff]"
+                    className="px-2.5 py-1 rounded text-xs font-semibold bg-[#e2dcd0] border border-[#aba393] text-[#182235] hover:bg-[#ece7db]"
                   >
                     {t.fullScreenPdf}
                   </a>
@@ -1388,8 +1388,8 @@ export default function GroundTruthLabelerPage() {
                     onClick={() => setViewMode("pdf")}
                     className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer ${
                       viewMode === "pdf"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "bg-white border border-[#cfc9bc] text-slate-700"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "bg-[#e2dcd0] border border-[#aba393] text-[#273142]"
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -1399,8 +1399,8 @@ export default function GroundTruthLabelerPage() {
                     onClick={() => setViewMode("text")}
                     className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer ${
                       viewMode === "text"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "bg-white border border-[#cfc9bc] text-slate-700"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "bg-[#e2dcd0] border border-[#aba393] text-[#273142]"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
@@ -1415,11 +1415,11 @@ export default function GroundTruthLabelerPage() {
                   src={`/api/ground-truth/pdf?file=${encodeURIComponent(
                     currentItem.fileName
                   )}`}
-                  className="w-full h-[680px] border-0 bg-[#eae6df]"
+                  className="w-full h-[680px] border-0 bg-[#cfc8b8]"
                   title={currentItem.fileName}
                 />
               ) : (
-                <pre className="w-full h-[680px] overflow-y-auto p-4 bg-[#f8f6f0] text-[#0f172a] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed">
+                <pre className="w-full h-[680px] overflow-y-auto p-4 bg-[#182235] text-[#e2dcd0] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed">
                   {currentItem.rawText || t.textNotRead}
                 </pre>
               )}
@@ -1428,12 +1428,12 @@ export default function GroundTruthLabelerPage() {
             {/* SAĞ SÜTUN (5 Sütun): TEKİL ETİKETLEME FORMU */}
             <div className="lg:col-span-5 space-y-4">
               {/* 1. GEZİNME VE FİLTRE KUTUSU */}
-              <div className="bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl p-4 space-y-3 shadow-xs">
+              <div className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-4 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between gap-2">
                   <button
                     disabled={currentIndex <= 0}
                     onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))}
-                    className="px-3 py-1.5 rounded-md border border-[#cfc9bc] bg-white hover:border-[#1e3a8a] disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 rounded-md border border-[#aba393] bg-[#ece7db] hover:border-[#182235] disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     {t.prevBtn}
@@ -1442,7 +1442,7 @@ export default function GroundTruthLabelerPage() {
                   <select
                     value={currentIndex}
                     onChange={(e) => setCurrentIndex(Number(e.target.value))}
-                    className="flex-1 border border-[#cfc9bc] rounded-md px-2.5 py-1.5 text-xs font-medium bg-white truncate"
+                    className="flex-1 border border-[#aba393] rounded-md px-2.5 py-1.5 text-xs font-medium bg-[#ece7db] truncate"
                   >
                     {filteredItems.map((it, idx) => {
                       const iDidIt = isRaterFullyDone(it, "ben");
@@ -1462,7 +1462,7 @@ export default function GroundTruthLabelerPage() {
                         Math.min(filteredItems.length - 1, p + 1)
                       )
                     }
-                    className="px-3 py-1.5 rounded-md border border-[#cfc9bc] bg-white hover:border-[#1e3a8a] disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 rounded-md border border-[#aba393] bg-[#ece7db] hover:border-[#182235] disabled:opacity-40 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     {t.nextBtn}
                     <ChevronRight className="w-4 h-4" />
@@ -1474,7 +1474,7 @@ export default function GroundTruthLabelerPage() {
                     <button
                       type="button"
                       onClick={() => jumpToFirstUnlabeledForRole(items, "ben")}
-                      className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                      className="w-full py-2 px-3 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                     >
                       {t.jumpUnlabeledBtn}
                     </button>
@@ -1489,8 +1489,8 @@ export default function GroundTruthLabelerPage() {
                     }}
                     className={`py-1.5 rounded text-[11px] font-semibold cursor-pointer ${
                       filterMode === "all"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "bg-[#f4f1ea] text-slate-700 hover:bg-[#e8e4db]"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "bg-[#d5cec0] text-[#273142] hover:bg-[#cbc3b3]"
                     }`}
                   >
                     {t.tabAll(items.length)}
@@ -1502,8 +1502,8 @@ export default function GroundTruthLabelerPage() {
                     }}
                     className={`py-1.5 rounded text-[11px] font-semibold cursor-pointer ${
                       filterMode === "my_unlabeled"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "bg-[#f4f1ea] text-slate-700 hover:bg-[#e8e4db]"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "bg-[#d5cec0] text-[#273142] hover:bg-[#cbc3b3]"
                     }`}
                   >
                     {t.tabRemaining(items.length - stats.myLabeledCount)}
@@ -1512,16 +1512,16 @@ export default function GroundTruthLabelerPage() {
               </div>
 
               {/* 2. GERÇEK ETİKET (GROUND TRUTH GİRİŞ FORMU) */}
-              <div className="bg-[#fcfbf9]/95 backdrop-blur-md border-2 border-[#1e3a8a] rounded-xl p-4 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between border-b border-[#e5e0d5] pb-2.5">
+              <div className="bg-[#e2dcd0]/95 backdrop-blur-md border-2 border-[#182235] rounded-xl p-4 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-2.5">
                   <div>
-                    <h2 className="font-serif-academic text-base font-bold text-[#0f172a]">
+                    <h2 className="font-serif-academic text-base font-bold text-[#121926]">
                       {t.formTitle}
                     </h2>
-                    <p className="text-[11px] text-slate-600">{t.formSub}</p>
+                    <p className="text-[11px] text-[#3b4454]">{t.formSub}</p>
                   </div>
                   {isRaterFullyDone(currentItem, "ben") && (
-                    <span className="px-2 py-0.5 rounded bg-[#f0f4ff] text-[#1e3a8a] border border-[#1e3a8a]/25 text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-bold">
                       {t.badgeDone}
                     </span>
                   )}
@@ -1529,25 +1529,25 @@ export default function GroundTruthLabelerPage() {
 
                 {/* EKSTRA CASE UYARI KUTUSU */}
                 {activeComparison?.isExtraCaseNoDate && (
-                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 space-y-1">
+                  <div className="p-3 rounded-lg bg-[#e8dcc4] border border-amber-700/40 text-xs text-amber-950 space-y-1">
                     <div className="font-bold flex items-center gap-1.5 text-amber-900">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
                       {t.extraCaseTitle}
                     </div>
-                    <p className="text-[11px] leading-relaxed text-amber-800">
+                    <p className="text-[11px] leading-relaxed text-amber-900">
                       {t.extraCaseSub}
                     </p>
                   </div>
                 )}
 
                 {/* HER EĞİTİM DERECESİ İÇİN AYRI ÜNİVERSİTE VE BÖLÜM KARTLARI */}
-                <div className="p-3.5 rounded-xl bg-[#f4f1ea] border border-[#dedad0] space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#d6cfc0] border border-[#b8b0a0] space-y-3">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold text-[#0f172a]">
+                      <label className="text-xs font-bold text-[#121926]">
                         {t.degSectionLabel}
                       </label>
-                      <span className="text-[11px] text-slate-600">
+                      <span className="text-[11px] text-[#3b4454]">
                         {t.degSectionHint}
                       </span>
                     </div>
@@ -1568,8 +1568,8 @@ export default function GroundTruthLabelerPage() {
                             onClick={() => handleToggleDegreeButton(deg.value)}
                             className={`px-2.5 py-2 rounded-lg text-center border transition-all cursor-pointer ${
                               active
-                                ? "bg-[#1e3a8a] text-white border-[#1e3a8a] shadow-2xs"
-                                : "bg-white text-slate-700 border-[#cfc9bc] hover:border-[#1e3a8a]"
+                                ? "bg-[#182235] text-[#f0ece1] border-[#182235] shadow-2xs"
+                                : "bg-[#ece7db] text-[#273142] border-[#aba393] hover:border-[#182235]"
                             }`}
                           >
                             <div className="text-xs font-bold leading-tight">
@@ -1577,7 +1577,7 @@ export default function GroundTruthLabelerPage() {
                             </div>
                             <div
                               className={`text-[10px] leading-tight mt-0.5 ${
-                                active ? "text-blue-200" : "text-slate-400"
+                                active ? "text-[#93c5fd]" : "text-[#525b6c]"
                               }`}
                             >
                               {secondaryLabel}
@@ -1608,21 +1608,21 @@ export default function GroundTruthLabelerPage() {
                       return (
                         <div
                           key={deg.key}
-                          className="p-3 rounded-lg bg-white border border-[#dedad0] space-y-2.5 shadow-2xs"
+                          className="p-3 rounded-lg bg-[#e2dcd0] border border-[#b8b0a0] space-y-2.5 shadow-2xs"
                         >
-                          <div className="flex items-center justify-between border-b border-[#e5e0d5] pb-1.5">
-                            <span className="text-xs font-extrabold text-[#1e3a8a]">
+                          <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-1.5">
+                            <span className="text-xs font-extrabold text-[#182235]">
                               🎓{" "}
                               {lang === "en" ? deg.cardTitleEn : deg.cardTitleTr}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-medium">
+                            <span className="text-[10px] text-[#4a5363] font-medium">
                               {t.trEnAccepted}
                             </span>
                           </div>
 
                           {/* Dereceye Özel Üniversite */}
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            <label className="block text-[11px] font-bold text-[#273142] mb-1">
                               {lang === "en" ? deg.uniLabelEn : deg.uniLabelTr}
                             </label>
                             <input
@@ -1642,7 +1642,7 @@ export default function GroundTruthLabelerPage() {
                                 }
                               }}
                               placeholder={t.uniPlaceholder(shortName)}
-                              className="w-full border border-[#cfc9bc] bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-[#0f172a] focus:outline-none focus:border-[#1e3a8a]"
+                              className="w-full border border-[#aba393] bg-[#ece7db] rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-[#121926] focus:outline-none focus:border-[#182235]"
                             />
                             {currentItem.aiAllUniversities &&
                               currentItem.aiAllUniversities.length > 1 && (
@@ -1670,8 +1670,8 @@ export default function GroundTruthLabelerPage() {
                                         }
                                         className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
                                           active
-                                            ? "bg-[#1e3a8a] text-white border-[#1e3a8a]"
-                                            : "bg-[#f8f6f0] text-slate-700 border-[#cfc9bc] hover:bg-[#e8e4db]"
+                                            ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
+                                            : "bg-[#d6cfc0] text-[#273142] border-[#aba393] hover:bg-[#cbc3b3]"
                                         }`}
                                       >
                                         {active ? `✓ ${uni}` : uni}
@@ -1684,7 +1684,7 @@ export default function GroundTruthLabelerPage() {
 
                           {/* Dereceye Özel Bölüm */}
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            <label className="block text-[11px] font-bold text-[#273142] mb-1">
                               {lang === "en"
                                 ? deg.deptLabelEn
                                 : deg.deptLabelTr}
@@ -1706,7 +1706,7 @@ export default function GroundTruthLabelerPage() {
                                 }
                               }}
                               placeholder={t.deptPlaceholder(shortName)}
-                              className="w-full border border-[#cfc9bc] bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-[#0f172a] focus:outline-none focus:border-[#1e3a8a]"
+                              className="w-full border border-[#aba393] bg-[#ece7db] rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-[#121926] focus:outline-none focus:border-[#182235]"
                             />
                             {currentItem.aiAllDepartments &&
                               currentItem.aiAllDepartments.length > 1 && (
@@ -1734,8 +1734,8 @@ export default function GroundTruthLabelerPage() {
                                         }
                                         className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
                                           active
-                                            ? "bg-[#1e3a8a] text-white border-[#1e3a8a]"
-                                            : "bg-[#f8f6f0] text-slate-700 border-[#cfc9bc] hover:bg-[#e8e4db]"
+                                            ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
+                                            : "bg-[#d6cfc0] text-[#273142] border-[#aba393] hover:bg-[#cbc3b3]"
                                         }`}
                                       >
                                         {active ? `✓ ${dept}` : dept}
@@ -1753,20 +1753,20 @@ export default function GroundTruthLabelerPage() {
 
                 {/* Ad Soyad */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-[#273142] mb-1">
                     {t.candidateNameLabel}
                   </label>
                   <input
                     type="text"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
-                    className="w-full border border-[#cfc9bc] bg-white rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:border-[#1e3a8a]"
+                    className="w-full border border-[#aba393] bg-[#ece7db] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:border-[#182235]"
                   />
                 </div>
 
                 {/* Gerçek Cinsiyet Seçimi */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-semibold text-[#273142] mb-1.5">
                     {t.verifiedGenderLabel}
                   </label>
                   <div className="grid grid-cols-2 gap-2.5">
@@ -1775,8 +1775,8 @@ export default function GroundTruthLabelerPage() {
                       onClick={() => setInputGender("Erkek")}
                       className={`py-2 px-4 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         inputGender === "Erkek"
-                          ? "bg-[#1e3a8a] border-[#1e3a8a] text-white shadow-2xs"
-                          : "bg-white border-[#cfc9bc] text-slate-700 hover:border-[#1e3a8a]"
+                          ? "bg-[#182235] border-[#182235] text-[#f0ece1] shadow-2xs"
+                          : "bg-[#ece7db] border-[#aba393] text-[#273142] hover:border-[#182235]"
                       }`}
                     >
                       {t.maleBtn}
@@ -1786,8 +1786,8 @@ export default function GroundTruthLabelerPage() {
                       onClick={() => setInputGender("Kadın")}
                       className={`py-2 px-4 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         inputGender === "Kadın"
-                          ? "bg-[#1e3a8a] border-[#1e3a8a] text-white shadow-2xs"
-                          : "bg-white border-[#cfc9bc] text-slate-700 hover:border-[#1e3a8a]"
+                          ? "bg-[#182235] border-[#182235] text-[#f0ece1] shadow-2xs"
+                          : "bg-[#ece7db] border-[#aba393] text-[#273142] hover:border-[#182235]"
                       }`}
                     >
                       {t.femaleBtn}
@@ -1798,11 +1798,11 @@ export default function GroundTruthLabelerPage() {
                 {/* Gerçek Yaş Girişi */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-slate-700">
+                    <label className="block text-xs font-semibold text-[#273142]">
                       {t.verifiedAgeLabel}
                     </label>
                     {inputAge.trim() === "" && (
-                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[11px] font-bold">
+                      <span className="px-2 py-0.5 rounded bg-amber-900/15 text-amber-950 text-[11px] font-bold">
                         {t.noAgeSelectedBadge}
                       </span>
                     )}
@@ -1815,7 +1815,7 @@ export default function GroundTruthLabelerPage() {
                           String(Math.max(17, (parseInt(prev, 10) || 24) - 1))
                         )
                       }
-                      className="px-3 py-1.5 border border-[#cfc9bc] rounded-lg bg-white hover:bg-[#f4f1ea] font-bold text-xs cursor-pointer"
+                      className="px-3 py-1.5 border border-[#aba393] rounded-lg bg-[#ece7db] hover:bg-[#d6cfc0] font-bold text-xs cursor-pointer"
                     >
                       -1
                     </button>
@@ -1832,7 +1832,7 @@ export default function GroundTruthLabelerPage() {
                         }
                       }}
                       placeholder={t.noAgePlaceholder}
-                      className="flex-1 border border-[#cfc9bc] bg-white rounded-lg px-3 py-1.5 text-center text-sm font-bold focus:outline-none focus:border-[#1e3a8a] placeholder:text-xs placeholder:font-semibold placeholder:text-amber-700"
+                      className="flex-1 border border-[#aba393] bg-[#ece7db] rounded-lg px-3 py-1.5 text-center text-sm font-bold focus:outline-none focus:border-[#182235] placeholder:text-xs placeholder:font-semibold placeholder:text-amber-800"
                     />
                     <button
                       type="button"
@@ -1841,7 +1841,7 @@ export default function GroundTruthLabelerPage() {
                           String(Math.min(75, (parseInt(prev, 10) || 24) + 1))
                         )
                       }
-                      className="px-3 py-1.5 border border-[#cfc9bc] rounded-lg bg-white hover:bg-[#f4f1ea] font-bold text-xs cursor-pointer"
+                      className="px-3 py-1.5 border border-[#aba393] rounded-lg bg-[#ece7db] hover:bg-[#d6cfc0] font-bold text-xs cursor-pointer"
                     >
                       +1
                     </button>
@@ -1854,14 +1854,14 @@ export default function GroundTruthLabelerPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => handleSaveLabel()}
-                    className="w-full py-2.5 px-4 rounded-lg bg-[#1e3a8a] hover:bg-[#172e6e] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs cursor-pointer transition-colors"
+                    className="w-full py-2.5 px-4 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs cursor-pointer transition-colors"
                   >
-                    <Check className="w-4 h-4" />
+                    <Check className="w-4 h-4 text-[#93c5fd]" />
                     {saving ? t.savingBtn : t.saveAndNextBtn}
                   </button>
 
                   {renderedSaveMessage && (
-                    <div className="text-xs font-semibold text-[#1e3a8a] text-center">
+                    <div className="text-xs font-semibold text-[#182235] text-center">
                       {renderedSaveMessage}
                     </div>
                   )}
@@ -1873,23 +1873,23 @@ export default function GroundTruthLabelerPage() {
 
         {/* ALT TABLO: ETİKETLENEN TÜM CV'LER VE AI KARŞILAŞTIRMA ÖZETİ */}
         {stats.totalAnyLabeled > 0 && (
-          <section className="bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl overflow-hidden shadow-xs">
-            <div className="px-4 py-3 border-b border-[#e5e0d5] bg-[#f4f1ea] flex flex-wrap items-center justify-between gap-2">
+          <section className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-xs">
+            <div className="px-4 py-3 border-b border-[#c4bdb0] bg-[#d6cfc0] flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Brain className="w-4 h-4 text-[#1e3a8a]" />
-                <h3 className="font-serif-academic text-sm font-bold text-[#0f172a]">
+                <Brain className="w-4 h-4 text-[#182235]" />
+                <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
                   {t.liveTableTitle(
                     stats.totalAnyLabeled,
                     stats.uniLabeledCount
                   )}
                 </h3>
               </div>
-              <span className="text-xs text-slate-600">{t.liveTableSub}</span>
+              <span className="text-xs text-[#3b4454]">{t.liveTableSub}</span>
             </div>
 
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-[#1e3a8a] text-white sticky top-0">
+                <thead className="bg-[#182235] text-[#f0ece1] sticky top-0">
                   <tr>
                     <th className="py-2.5 px-3 font-semibold">#</th>
                     <th className="py-2.5 px-3 font-semibold">
@@ -1904,7 +1904,7 @@ export default function GroundTruthLabelerPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#e5e0d5]">
+                <tbody className="divide-y divide-[#c4bdb0]">
                   {items
                     .filter((it) => it.humanLabel !== null)
                     .map((it) => {
@@ -1944,18 +1944,18 @@ export default function GroundTruthLabelerPage() {
                             setFilterMode("all");
                             setCurrentIndex(it.index - 1);
                           }}
-                          className="hover:bg-[#f0f4ff]/60 cursor-pointer"
+                          className="hover:bg-[#d6cfc0] cursor-pointer"
                         >
-                          <td className="py-2 px-3 font-mono-academic text-slate-500">
+                          <td className="py-2 px-3 font-mono-academic text-[#4a5363]">
                             #{it.index}
                           </td>
-                          <td className="py-2 px-3 font-medium text-[#0f172a]">
+                          <td className="py-2 px-3 font-medium text-[#121926]">
                             {lbl.humanName || it.aiName}{" "}
-                            <span className="text-slate-400 font-normal">
+                            <span className="text-[#4a5363] font-normal">
                               ({it.fileName})
                             </span>
                           </td>
-                          <td className="py-2 px-3 font-semibold text-[#0f172a]">
+                          <td className="py-2 px-3 font-semibold text-[#121926]">
                             {vB
                               ? `${translateGender(vB.humanGender, lang)}, ${
                                   vB.humanAge ?? "—"
@@ -1980,11 +1980,11 @@ export default function GroundTruthLabelerPage() {
                               : "—"}
                           </td>
                           <td className="py-2 px-3">
-                            <span className="font-semibold text-[#0f172a]">
+                            <span className="font-semibold text-[#121926]">
                               {translateEduField(it.aiUniversity, lang)}
                             </span>{" "}
                             — {translateEduField(it.aiDepartment, lang)} •{" "}
-                            <span className="text-[#1e3a8a] font-semibold">
+                            <span className="text-[#182235] font-semibold">
                               {translateEduField(it.aiDegree, lang)}
                             </span>{" "}
                             ({translateGender(it.aiGender, lang)},{" "}
@@ -1992,11 +1992,11 @@ export default function GroundTruthLabelerPage() {
                           </td>
                           <td className="py-2 px-3">
                             {gOk && aOk && uOk && dOk && degOk ? (
-                              <span className="px-2 py-0.5 rounded bg-[#f0f4ff] text-[#1e3a8a] border border-[#1e3a8a]/25 font-bold">
+                              <span className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] font-bold">
                                 {t.aiCorrectBadge}
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold">
+                              <span className="px-2 py-0.5 rounded bg-red-900/20 text-red-950 font-bold">
                                 {t.aiWrongBadge}
                               </span>
                             )}

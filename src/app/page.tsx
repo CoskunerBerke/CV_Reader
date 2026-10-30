@@ -9,7 +9,6 @@ import {
   DegreeKey,
   DegreeEducationEntry,
   evaluateCandidateForCompany,
-  parseNaturalLanguageCriteria,
   normalizeTr,
   hasDegreeSelected,
 } from "@/lib/cvEngine";
@@ -361,15 +360,15 @@ async function exportEvaluationsToExcelXlsx(
   <fills count="3">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A8A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF182235"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFE2E8F0"/></left>
-      <right style="thin"><color rgb="FFE2E8F0"/></right>
-      <top style="thin"><color rgb="FFE2E8F0"/></top>
-      <bottom style="thin"><color rgb="FFE2E8F0"/></bottom>
+      <left style="thin"><color rgb="FFCBD5E1"/></left>
+      <right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top>
+      <bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -441,7 +440,7 @@ async function exportEvaluationsToExcelXlsx(
 }
 
 export default function CVReaderApp() {
-  // Dil Seçeneği (TR / EN) — Tüm sayfada ve localStorage üzerinde senkronize
+  // Dil Seçeneği (TR / EN)
   const [lang, setLang] = useState<AppLang>("tr");
 
   useEffect(() => {
@@ -494,9 +493,9 @@ export default function CVReaderApp() {
 
   // Yeni Şirket oluşturma state
   const [newCompName, setNewCompName] = useState<string>("");
-  const [newCompGender, setNewCompGender] = useState<"Kadın" | "Erkek" | "Farketmez">("Farketmez");
-  const [newCompMinAge, setNewCompMinAge] = useState<number>(18);
-  const [newCompMaxAge, setNewCompMaxAge] = useState<number>(45);
+  const [newCompGender] = useState<"Kadın" | "Erkek" | "Farketmez">("Farketmez");
+  const [newCompMinAge] = useState<number>(18);
+  const [newCompMaxAge] = useState<number>(45);
   const [newCompSkills, setNewCompSkills] = useState<string>("");
 
   const activeCompany = useMemo(
@@ -532,12 +531,10 @@ export default function CVReaderApp() {
     );
   }, [evaluatedList, displayedEvaluations, selectedCandidateId]);
 
-  // Tek bir CV'yi sil
   const handleDeleteCandidate = (id: string) => {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Klasör sürükleme (FileSystemEntry) ve çoklu dosya okuma yardımcısı
   const readEntryRecursively = async (entry: FileSystemEntry): Promise<File[]> => {
     if (entry.isFile) {
       const fileEntry = entry as FileSystemFileEntry;
@@ -573,7 +570,6 @@ export default function CVReaderApp() {
     return [];
   };
 
-  // Tarayıcıda doğrudan .ZIP arşivini açma
   const expandClientFiles = async (inputFiles: File[]): Promise<File[]> => {
     const expanded: File[] = [];
     const allowedExts = new Set(["pdf", "docx", "doc", "html", "htm", "txt", "md", "rar"]);
@@ -619,7 +615,6 @@ export default function CVReaderApp() {
     return expanded;
   };
 
-  // ORTAK DOSYA İŞLEME MOTORU
   const processFiles = async (
     fileList: FileList | File[],
     autoAddSingleInModal = true
@@ -1291,14 +1286,14 @@ export default function CVReaderApp() {
 
   return (
     <div
-      className="relative min-h-screen bg-[#f7f5f0] text-[#0f172a] overflow-x-hidden"
+      className="relative min-h-screen bg-[#cbc4b4] text-[#141c2b] overflow-x-hidden"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={(e) => handleDropFiles(e, true)}
     >
       {/* =====================================================================
           0. TÜM SAYFAYA YAYILAN SÜREKLİ DÖNGÜDE İŞ MÜLAKATI ARKA PLAN VİDEOSU
-             (AÇIK RENK AKADEMİK FİLDİŞİ / ALABASTER KATMANI İLE)
+             (GÖZ YORMAYAN KOYU TAŞ / KUMTAŞI-ARDUVAZ KATMANI İLE)
          ===================================================================== */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <video
@@ -1307,7 +1302,7 @@ export default function CVReaderApp() {
           muted
           playsInline
           preload="auto"
-          className="w-full h-full object-cover scale-[1.02] filter brightness-[1.06] contrast-[0.98] saturate-[0.92]"
+          className="w-full h-full object-cover scale-[1.02] filter brightness-[0.86] contrast-[1.02] saturate-[0.88]"
         >
           <source src="/videos/interview-bg.mp4" type="video/mp4" />
           <source
@@ -1319,55 +1314,55 @@ export default function CVReaderApp() {
             type="video/mp4"
           />
         </video>
-        {/* Açık Renk Akademik Fildişi (Warm Ivory / Oxford Paper) Yarı Saydam Katman */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f6f0]/80 via-[#f8f6f0]/72 to-[#f3f0e8]/84 backdrop-blur-[1px]" />
+        {/* Göz Yormayan Yumuşak Koyu Kumtaşı / Taş-Arduvaz Katman (Beyaz parlama sıfır) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#c4bdb0]/78 via-[#ccc5b7]/72 to-[#beb7a8]/82 backdrop-blur-[1px]" />
       </div>
 
       {/* =====================================================================
-          1. ÜST BAR (NAVBAR — Açık Akademik Tema, Tek Satır & TR/EN Dil Seçimi)
+          1. ÜST BAR (NAVBAR — Koyu Oxford Arduvaz `#182235`, Göz Yormayan Kontrast)
          ===================================================================== */}
-      <header className="bg-[#fcfbf8]/90 backdrop-blur-md border-b border-[#dedad0] sticky top-0 z-30 shadow-2xs">
+      <header className="bg-[#182235]/95 backdrop-blur-md border-b border-[#2c3a52] sticky top-0 z-30 shadow-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Sol: Logo & Başlık */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 rounded bg-[#1e3a8a] text-white flex items-center justify-center font-serif-academic font-bold text-xs tracking-tight shadow-2xs">
+            <div className="w-8 h-8 rounded bg-[#e2dcd0] text-[#182235] flex items-center justify-center font-serif-academic font-bold text-xs tracking-tight shadow-2xs">
               CV
             </div>
             <div className="flex items-center gap-2.5">
-              <span className="font-serif-academic font-bold text-base sm:text-lg tracking-tight text-[#0f172a] whitespace-nowrap">
+              <span className="font-serif-academic font-bold text-base sm:text-lg tracking-tight text-[#f0ece1] whitespace-nowrap">
                 CV Reader AI
               </span>
-              <span className="hidden md:inline-block text-slate-300">|</span>
-              <span className="hidden md:inline-block text-xs text-slate-600 font-medium whitespace-nowrap">
+              <span className="hidden md:inline-block text-slate-600">|</span>
+              <span className="hidden md:inline-block text-xs text-[#b8b2a6] font-medium whitespace-nowrap">
                 {t.brandSub}
               </span>
             </div>
           </div>
 
           {/* Orta: Tek Kelimelik Akıcı Menü Linkleri */}
-          <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold text-slate-700">
+          <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold text-[#d2ccc0]">
             <a
               href="#yukleme"
-              className="hover:text-[#1e3a8a] transition-colors whitespace-nowrap"
+              className="hover:text-[#f0ece1] transition-colors whitespace-nowrap"
             >
               {t.navUpload}
             </a>
             <a
               href="#sistem"
-              className="hover:text-[#1e3a8a] transition-colors whitespace-nowrap"
+              className="hover:text-[#f0ece1] transition-colors whitespace-nowrap"
             >
               {t.navSystem}
             </a>
             <a
               href="#ozellikler"
-              className="hover:text-[#1e3a8a] transition-colors whitespace-nowrap"
+              className="hover:text-[#f0ece1] transition-colors whitespace-nowrap"
             >
               {t.navFeatures}
             </a>
             {candidates.length > 0 && (
               <a
                 href="#sonuclar"
-                className="text-[#1e3a8a] hover:text-[#172e6e] transition-colors whitespace-nowrap"
+                className="text-[#93c5fd] hover:text-white transition-colors whitespace-nowrap"
               >
                 {t.navResults} ({candidates.length})
               </a>
@@ -1378,18 +1373,18 @@ export default function CVReaderApp() {
           <div className="flex items-center gap-2 shrink-0">
             {/* TR | EN Dil Seçeneği */}
             <div
-              className="inline-flex items-center rounded-md border border-[#d5d0c5] bg-[#f4f1ea] p-0.5 shrink-0"
+              className="inline-flex items-center rounded-md border border-[#33435e] bg-[#111927] p-0.5 shrink-0"
               role="group"
               aria-label="Language Switcher"
             >
-              <Globe className="w-3.5 h-3.5 text-slate-500 ml-1.5 mr-1 hidden sm:inline" />
+              <Globe className="w-3.5 h-3.5 text-[#9ca3af] ml-1.5 mr-1 hidden sm:inline" />
               <button
                 type="button"
                 onClick={() => handleSwitchLang("tr")}
                 className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   lang === "tr"
-                    ? "bg-[#1e3a8a] text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#e2dcd0] text-[#182235] shadow-2xs"
+                    : "text-[#b8b2a6] hover:text-white"
                 }`}
               >
                 TR
@@ -1399,8 +1394,8 @@ export default function CVReaderApp() {
                 onClick={() => handleSwitchLang("en")}
                 className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   lang === "en"
-                    ? "bg-[#1e3a8a] text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#e2dcd0] text-[#182235] shadow-2xs"
+                    : "text-[#b8b2a6] hover:text-white"
                 }`}
               >
                 EN
@@ -1409,9 +1404,9 @@ export default function CVReaderApp() {
 
             <Link
               href="/label"
-              className="px-3 py-1.5 rounded-md border border-[#d5d0c5] bg-white hover:border-[#1e3a8a] text-[#0f172a] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors shadow-2xs"
+              className="px-3 py-1.5 rounded-md border border-[#384966] bg-[#212f47] hover:bg-[#2a3b57] text-[#f0ece1] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors shadow-2xs"
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#1e3a8a]" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#93c5fd]" />
               {t.btnBenchmark}
             </Link>
 
@@ -1427,7 +1422,7 @@ export default function CVReaderApp() {
                       lang
                     )
                   }
-                  className="px-3.5 py-1.5 rounded-md bg-[#1e3a8a] hover:bg-[#172e6e] text-white text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                  className="px-3.5 py-1.5 rounded-md bg-[#e2dcd0] hover:bg-[#ece7dc] text-[#182235] text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
                   title={t.btnExportTooltip}
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1443,7 +1438,7 @@ export default function CVReaderApp() {
                     setCandidates([]);
                     setSelectedCandidateId("");
                   }}
-                  className="px-2.5 py-1.5 rounded-md border border-[#d5d0c5] bg-white hover:border-red-600 hover:text-red-700 text-slate-600 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-2.5 py-1.5 rounded-md border border-[#384966] bg-[#1c283d] hover:border-red-400 hover:text-red-300 text-[#d2ccc0] text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   {t.btnClear}
@@ -1461,14 +1456,14 @@ export default function CVReaderApp() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDropFiles(e, true)}
-            className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 bg-[#141c2b]/65 backdrop-blur-xs flex items-center justify-center p-6"
           >
-            <div className="bg-[#fcfbf9] border-2 border-dashed border-[#1e3a8a] rounded-2xl p-10 max-w-lg w-full text-center shadow-2xl pointer-events-none">
-              <FileUp className="w-12 h-12 text-[#1e3a8a] mx-auto mb-3 animate-bounce" />
-              <h3 className="font-serif-academic text-xl font-bold text-[#0f172a]">
+            <div className="bg-[#e3ddd0] border-2 border-dashed border-[#182235] rounded-2xl p-10 max-w-lg w-full text-center shadow-2xl pointer-events-none">
+              <FileUp className="w-12 h-12 text-[#182235] mx-auto mb-3 animate-bounce" />
+              <h3 className="font-serif-academic text-xl font-bold text-[#141c2b]">
                 {t.dragOverlayTitle}
               </h3>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              <p className="text-xs text-[#3b4454] mt-1.5 leading-relaxed">
                 {t.dragOverlaySub}
               </p>
             </div>
@@ -1481,27 +1476,27 @@ export default function CVReaderApp() {
         <section id="yukleme" className="space-y-7 pt-2">
           {/* Akademik Editoryal Başlık ve Değer Önerisi */}
           <div className="max-w-3xl space-y-3.5">
-            <div className="text-[11px] font-mono-academic font-semibold uppercase tracking-[0.2em] text-[#1e3a8a] border-l-2 border-[#1e3a8a] pl-2.5">
+            <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#182235] pl-2.5">
               {t.heroEyebrow}
             </div>
-            <h1 className="font-serif-academic text-2xl sm:text-4xl font-bold tracking-tight text-[#0f172a] leading-[1.2]">
+            <h1 className="font-serif-academic text-2xl sm:text-4xl font-bold tracking-tight text-[#121926] leading-[1.2]">
               {t.heroTitle}
             </h1>
-            <p className="text-sm sm:text-base text-slate-700 leading-relaxed max-w-2xl">
+            <p className="text-sm sm:text-base text-[#273142] leading-relaxed max-w-2xl">
               {t.heroDescStart}
-              <strong className="text-[#0f172a] font-semibold">
+              <strong className="text-[#121926] font-semibold">
                 {t.heroAge}
               </strong>
               ,{" "}
-              <strong className="text-[#0f172a] font-semibold">
+              <strong className="text-[#121926] font-semibold">
                 {t.heroGender}
               </strong>
               {t.heroAnd}
-              <strong className="text-[#0f172a] font-semibold">
+              <strong className="text-[#121926] font-semibold">
                 {t.heroDegrees}
               </strong>
               {t.heroDescMid}
-              <strong className="text-[#1e3a8a] font-semibold underline decoration-[#1e3a8a]/35 underline-offset-4">
+              <strong className="text-[#182235] font-bold underline decoration-[#182235]/50 underline-offset-4">
                 {t.heroExcel}
               </strong>
               {t.heroDescEnd}
@@ -1513,13 +1508,13 @@ export default function CVReaderApp() {
             <div
               className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md shadow-sm ${
                 pdfParseStatus.startsWith("⚠️")
-                  ? "bg-amber-50/95 border-amber-300 text-amber-950"
-                  : "bg-[#f0f4ff]/95 border-[#1e3a8a]/30 text-[#0f172a]"
+                  ? "bg-[#e8dcc4] border-amber-700/40 text-amber-950"
+                  : "bg-[#182235] border-[#2c3a52] text-[#f0ece1]"
               }`}
             >
               <div className="flex items-center gap-2.5">
                 {isParsingPdf && (
-                  <Loader2 className="w-4 h-4 text-[#1e3a8a] animate-spin shrink-0" />
+                  <Loader2 className="w-4 h-4 text-[#93c5fd] animate-spin shrink-0" />
                 )}
                 <span>
                   {translateParseStatus(pdfParseStatus, lang) || t.readingFiles}
@@ -1528,7 +1523,7 @@ export default function CVReaderApp() {
               {!isParsingPdf && pdfParseStatus && (
                 <button
                   onClick={() => setPdfParseStatus("")}
-                  className="text-slate-500 hover:text-slate-900 text-sm font-bold px-1 cursor-pointer"
+                  className="text-[#b8b2a6] hover:text-white text-sm font-bold px-1 cursor-pointer"
                 >
                   ×
                 </button>
@@ -1536,37 +1531,37 @@ export default function CVReaderApp() {
             </div>
           )}
 
-          {/* HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) KARTI */}
+          {/* HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) KARTI — Göz Yormayan Sıcak Taş (`#e2dcd0`) */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDropFiles(e, true)}
-            className={`bg-[#fcfbf9]/94 backdrop-blur-md border-2 border-dashed rounded-2xl transition-all shadow-lg ${
+            className={`bg-[#e2dcd0]/95 backdrop-blur-md border-2 border-dashed rounded-2xl transition-all shadow-xl ${
               candidates.length === 0 ? "p-7 sm:p-10" : "p-6"
             } ${
               isDragging
-                ? "border-[#1e3a8a] bg-[#f0f4ff]/95 scale-[1.005]"
-                : "border-[#1e3a8a]/45 hover:border-[#1e3a8a]"
+                ? "border-[#182235] bg-[#d8d1c3] scale-[1.005]"
+                : "border-[#182235]/50 hover:border-[#182235]"
             }`}
           >
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-center lg:text-left">
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-[#1e3a8a] text-white flex items-center justify-center shrink-0 shadow-sm">
+                <div className="w-14 h-14 rounded-xl bg-[#182235] text-[#f0ece1] flex items-center justify-center shrink-0 shadow-sm">
                   {isParsingPdf ? (
-                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    <Loader2 className="w-6 h-6 text-[#93c5fd] animate-spin" />
                   ) : (
-                    <FileUp className="w-6 h-6 text-white" />
+                    <FileUp className="w-6 h-6 text-[#93c5fd]" />
                   )}
                 </div>
                 <div>
-                  <h2 className="font-serif-academic text-base sm:text-xl font-bold text-[#0f172a]">
+                  <h2 className="font-serif-academic text-base sm:text-xl font-bold text-[#121926]">
                     {isDragging
                       ? t.dropTitleDragging
                       : candidates.length === 0
                       ? t.dropTitleEmpty
                       : t.dropTitleLoaded(candidates.length)}
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed max-w-2xl">
+                  <p className="text-xs sm:text-sm text-[#333d4f] mt-1 leading-relaxed max-w-2xl">
                     {t.dropSubText}
                   </p>
                 </div>
@@ -1574,8 +1569,8 @@ export default function CVReaderApp() {
 
               <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
                 {/* Çoklu Dosya Seç Butonu */}
-                <label className="px-4 py-2.5 rounded-lg bg-[#1e3a8a] hover:bg-[#172e6e] text-white text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-xs transition-colors whitespace-nowrap shrink-0">
-                  <Upload className="w-3.5 h-3.5 text-blue-200" />
+                <label className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-xs transition-colors whitespace-nowrap shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-[#93c5fd]" />
                   {t.btnSelectFiles}
                   <input
                     type="file"
@@ -1587,7 +1582,7 @@ export default function CVReaderApp() {
                 </label>
 
                 {/* Klasör Seç Butonu */}
-                <label className="px-4 py-2.5 rounded-lg border border-[#cfc9bc] bg-white hover:border-[#1e3a8a] text-[#0f172a] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                <label className="px-4 py-2.5 rounded-lg border border-[#a8a090] bg-[#d6cfc0] hover:bg-[#cbc3b3] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
                   📁 {t.btnSelectFolder}
                   <input
                     type="file"
@@ -1604,35 +1599,35 @@ export default function CVReaderApp() {
             </div>
 
             {/* Alt 01-02-03 Akademik İş Akışı Şeridi */}
-            <div className="mt-6 pt-5 border-t border-[#e5e0d5] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+            <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
               <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#1e3a8a] shrink-0">
+                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
                   01
                 </span>
-                <div className="text-xs text-slate-600">
-                  <strong className="text-[#0f172a] font-semibold block">
+                <div className="text-xs text-[#333d4f]">
+                  <strong className="text-[#121926] font-semibold block">
                     {t.step1Title}
                   </strong>
                   {t.step1Desc}
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#1e3a8a] shrink-0">
+                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
                   02
                 </span>
-                <div className="text-xs text-slate-600">
-                  <strong className="text-[#0f172a] font-semibold block">
+                <div className="text-xs text-[#333d4f]">
+                  <strong className="text-[#121926] font-semibold block">
                     {t.step2Title}
                   </strong>
                   {t.step2Desc}
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#1e3a8a] shrink-0">
+                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
                   03
                 </span>
-                <div className="text-xs text-slate-600">
-                  <strong className="text-[#0f172a] font-semibold block">
+                <div className="text-xs text-[#333d4f]">
+                  <strong className="text-[#121926] font-semibold block">
                     {t.step3Title}
                   </strong>
                   {t.step3Desc}
@@ -1648,15 +1643,15 @@ export default function CVReaderApp() {
         {candidates.length > 0 && (
           <div id="sonuclar" className="space-y-4">
             {/* ÜST TOPLU İŞLEM & EXCEL EXPORT BARI */}
-            <div className="bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex rounded-md border border-[#d5d0c5] bg-[#f4f1ea] p-0.5">
+                <div className="inline-flex rounded-md border border-[#b8b0a0] bg-[#d5cec0] p-0.5">
                   <button
                     onClick={() => setLayoutMode("split")}
                     className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
                       layoutMode === "split"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "text-slate-600 hover:text-[#0f172a]"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "text-[#333d4f] hover:text-[#121926]"
                     }`}
                   >
                     📋 {t.viewSplit}
@@ -1665,8 +1660,8 @@ export default function CVReaderApp() {
                     onClick={() => setLayoutMode("table")}
                     className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                       layoutMode === "table"
-                        ? "bg-[#1e3a8a] text-white"
-                        : "text-slate-600 hover:text-[#0f172a]"
+                        ? "bg-[#182235] text-[#f0ece1]"
+                        : "text-[#333d4f] hover:text-[#121926]"
                     }`}
                   >
                     <TableIcon className="w-3.5 h-3.5" />
@@ -1685,9 +1680,9 @@ export default function CVReaderApp() {
                     )
                   }
                   disabled={displayedEvaluations.length === 0}
-                  className="px-4 py-2 rounded-md bg-[#1e3a8a] hover:bg-[#172e6e] disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
+                  className="px-4 py-2 rounded-md bg-[#182235] hover:bg-[#22304a] disabled:opacity-50 text-[#f0ece1] text-xs font-bold flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 text-[#93c5fd]" />
                   {t.btnDownloadExcelFull(displayedEvaluations.length)}
                 </button>
               </div>
@@ -1697,24 +1692,24 @@ export default function CVReaderApp() {
               /* ===============================================================
                  TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ (30-40+ CV İÇİN)
                  =============================================================== */
-              <section className="bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl overflow-hidden shadow-md">
-                <div className="p-4 border-b border-[#e5e0d5] flex flex-wrap items-center justify-between gap-3">
+              <section className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
+                <div className="p-4 border-b border-[#c4bdb0] flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="font-serif-academic font-bold text-base text-[#0f172a]">
+                    <h2 className="font-serif-academic font-bold text-base text-[#121926]">
                       {t.tableHeading(displayedEvaluations.length)}
                     </h2>
-                    <p className="text-xs text-slate-600 mt-0.5">{t.tableSub}</p>
+                    <p className="text-xs text-[#3b4454] mt-0.5">{t.tableSub}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <Search className="w-3.5 h-3.5 text-[#525b6c] absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t.searchTablePlaceholder}
-                        className="pl-8 pr-2.5 py-1.5 bg-white border border-[#cfc9bc] rounded text-xs focus:outline-none focus:border-[#1e3a8a] w-48"
+                        className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-48"
                       />
                     </div>
                   </div>
@@ -1722,7 +1717,7 @@ export default function CVReaderApp() {
 
                 <div className="overflow-x-auto max-h-[680px]">
                   <table className="w-full text-left border-collapse text-xs">
-                    <thead className="bg-[#1e3a8a] text-white sticky top-0 z-10">
+                    <thead className="bg-[#182235] text-[#f0ece1] sticky top-0 z-10">
                       <tr>
                         <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
                           #
@@ -1753,7 +1748,7 @@ export default function CVReaderApp() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#e5e0d5]">
+                    <tbody className="divide-y divide-[#c4bdb0]">
                       {displayedEvaluations.map((item, idx) => {
                         const degMap = getCandidateDegreeMap(item.cv);
                         const activeDegrees = DEGREE_CARDS.filter(
@@ -1765,11 +1760,11 @@ export default function CVReaderApp() {
                           slot: DegreeEducationEntry | null
                         ) => {
                           if (!slot) {
-                            return <span className="text-slate-300">—</span>;
+                            return <span className="text-[#857f72]">—</span>;
                           }
                           return (
                             <div className="space-y-0.5 min-w-[170px]">
-                              <div className="font-semibold text-[#0f172a]">
+                              <div className="font-semibold text-[#121926]">
                                 {translateEduField(slot.university, lang)}
                               </div>
                               <div className="text-[11px] text-[#1e3a8a] font-medium">
@@ -1786,16 +1781,16 @@ export default function CVReaderApp() {
                               setSelectedCandidateId(item.cv.id);
                               setLayoutMode("split");
                             }}
-                            className="hover:bg-[#f0f4ff]/60 cursor-pointer transition-colors align-top"
+                            className="hover:bg-[#d6cfc0] cursor-pointer transition-colors align-top"
                           >
-                            <td className="py-3 px-3 font-mono-academic text-slate-500">
+                            <td className="py-3 px-3 font-mono-academic text-[#4a5363]">
                               {idx + 1}
                             </td>
                             <td className="py-3 px-3 min-w-[180px]">
-                              <div className="font-bold text-[#0f172a]">
+                              <div className="font-bold text-[#121926]">
                                 {item.cv.fullName}
                               </div>
-                              <div className="text-[11px] text-slate-500 truncate max-w-[210px]">
+                              <div className="text-[11px] text-[#4a5363] truncate max-w-[210px]">
                                 {item.cv.source}
                               </div>
                             </td>
@@ -1803,10 +1798,10 @@ export default function CVReaderApp() {
                               <span
                                 className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                                   item.cv.detectedGender === "Kadın"
-                                    ? "bg-[#f0f4ff] text-[#1e3a8a] border border-[#1e3a8a]/25"
+                                    ? "bg-[#182235] text-[#f0ece1]"
                                     : item.cv.detectedGender === "Erkek"
-                                    ? "bg-slate-100 text-slate-800 border border-slate-300"
-                                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                                    ? "bg-[#cfc8b8] text-[#182235] border border-[#aba393]"
+                                    : "bg-amber-900/15 text-amber-950 border border-amber-800/30"
                                 }`}
                               >
                                 {translateGender(item.cv.detectedGender, lang)}
@@ -1815,10 +1810,10 @@ export default function CVReaderApp() {
                             <td className="py-3 px-3 whitespace-nowrap">
                               {item.cv.detectedAge !== null ? (
                                 <div>
-                                  <span className="font-bold text-[#0f172a]">
+                                  <span className="font-bold text-[#121926]">
                                     {item.cv.detectedAge} {t.ageUnit}
                                   </span>
-                                  <div className="text-[10px] text-slate-500">
+                                  <div className="text-[10px] text-[#4a5363]">
                                     {translateAgeMethod(
                                       item.cv.ageMethod,
                                       lang
@@ -1826,7 +1821,7 @@ export default function CVReaderApp() {
                                   </div>
                                 </div>
                               ) : (
-                                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-medium">
+                                <span className="px-2 py-0.5 rounded bg-amber-900/15 text-amber-950 border border-amber-800/30 text-[11px] font-medium">
                                   {ageMissing
                                     ? t.noAgeEduDate
                                     : t.unspecified}
@@ -1839,13 +1834,13 @@ export default function CVReaderApp() {
                                   activeDegrees.map((d) => (
                                     <span
                                       key={d.key}
-                                      className="px-2 py-0.5 rounded bg-[#f0f4ff] text-[#1e3a8a] border border-[#1e3a8a]/25 text-[11px] font-semibold whitespace-nowrap"
+                                      className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-semibold whitespace-nowrap"
                                     >
                                       ✓ {lang === "en" ? d.shortEn : d.shortTr}
                                     </span>
                                   ))
                                 ) : (
-                                  <span className="text-slate-400">
+                                  <span className="text-[#5a6270]">
                                     {t.notSpecified}
                                   </span>
                                 )}
@@ -1873,33 +1868,33 @@ export default function CVReaderApp() {
             ) : (
               <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* SOL: ADAY LİSTESİ (7 Sütun) */}
-                <div className="lg:col-span-7 bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl overflow-hidden shadow-sm">
+                <div className="lg:col-span-7 bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-sm">
                   {/* Liste Başlığı */}
-                  <div className="p-4 border-b border-[#e5e0d5] flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-4 border-b border-[#c4bdb0] flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <h2 className="font-serif-academic font-bold text-base text-[#0f172a]">
+                      <h2 className="font-serif-academic font-bold text-base text-[#121926]">
                         {t.uploadedCvsTitle(candidates.length)}
                       </h2>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <Search className="w-3.5 h-3.5 text-[#525b6c] absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           placeholder={t.searchCandidatePlaceholder}
-                          className="pl-8 pr-2.5 py-1.5 bg-white border border-[#cfc9bc] rounded text-xs focus:outline-none focus:border-[#1e3a8a] w-40"
+                          className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-40"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Aday Kartları */}
-                  <div className="divide-y divide-[#e5e0d5] max-h-[680px] overflow-y-auto">
+                  <div className="divide-y divide-[#c4bdb0] max-h-[680px] overflow-y-auto">
                     {displayedEvaluations.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-slate-500">
+                      <div className="p-8 text-center text-sm text-[#4a5363]">
                         {t.noCandidatesMatch}
                       </div>
                     ) : (
@@ -1918,21 +1913,29 @@ export default function CVReaderApp() {
                             onClick={() => setSelectedCandidateId(item.cv.id)}
                             className={`p-4 transition-colors cursor-pointer flex items-start justify-between gap-4 ${
                               isSelected
-                                ? "bg-[#f0f4ff] border-l-4 border-l-[#1e3a8a]"
-                                : "bg-white/80 hover:bg-[#f8f6f0]"
+                                ? "bg-[#182235] text-[#f0ece1]"
+                                : "bg-[#e2dcd0] hover:bg-[#d8d1c3]"
                             }`}
                           >
                             {/* Sol Bilgi */}
                             <div className="min-w-0 flex-1 space-y-1.5">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-serif-academic font-bold text-base text-[#0f172a] truncate">
+                                <span
+                                  className={`font-serif-academic font-bold text-base truncate ${
+                                    isSelected
+                                      ? "text-[#f0ece1]"
+                                      : "text-[#121926]"
+                                  }`}
+                                >
                                   {item.cv.fullName}
                                 </span>
                                 <span
                                   className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                                    item.cv.detectedGender === "Kadın"
-                                      ? "bg-[#e8effd] text-[#1e3a8a]"
-                                      : "bg-slate-200/80 text-slate-800"
+                                    isSelected
+                                      ? "bg-[#283652] text-[#d2ccc0]"
+                                      : item.cv.detectedGender === "Kadın"
+                                      ? "bg-[#cfc8b8] text-[#182235]"
+                                      : "bg-[#d4cdc0] text-[#273142]"
                                   }`}
                                 >
                                   {translateGender(
@@ -1940,7 +1943,13 @@ export default function CVReaderApp() {
                                     lang
                                   )}
                                 </span>
-                                <span className="text-xs text-slate-600 font-medium">
+                                <span
+                                  className={`text-xs font-medium ${
+                                    isSelected
+                                      ? "text-[#b8b2a6]"
+                                      : "text-[#3b4454]"
+                                  }`}
+                                >
                                   •{" "}
                                   {item.cv.detectedAge !== null
                                     ? `${item.cv.detectedAge} ${t.ageUnit}`
@@ -1959,23 +1968,51 @@ export default function CVReaderApp() {
                                     return (
                                       <div
                                         key={deg.key}
-                                        className="text-xs flex flex-wrap items-center gap-1.5 text-slate-700"
+                                        className={`text-xs flex flex-wrap items-center gap-1.5 ${
+                                          isSelected
+                                            ? "text-[#d2ccc0]"
+                                            : "text-[#273142]"
+                                        }`}
                                       >
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#1e3a8a] text-white">
+                                        <span
+                                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                                            isSelected
+                                              ? "bg-[#e2dcd0] text-[#182235]"
+                                              : "bg-[#182235] text-[#f0ece1]"
+                                          }`}
+                                        >
                                           {lang === "en"
                                             ? deg.shortEn
                                             : deg.shortTr}
                                         </span>
-                                        <span className="font-semibold text-[#0f172a]">
+                                        <span
+                                          className={`font-semibold ${
+                                            isSelected
+                                              ? "text-[#f0ece1]"
+                                              : "text-[#121926]"
+                                          }`}
+                                        >
                                           {translateEduField(
                                             slot.university,
                                             lang
                                           )}
                                         </span>
-                                        <span className="text-slate-400">
+                                        <span
+                                          className={
+                                            isSelected
+                                              ? "text-[#8c8577]"
+                                              : "text-[#635d51]"
+                                          }
+                                        >
                                           —
                                         </span>
-                                        <span className="text-[#1e3a8a] font-medium">
+                                        <span
+                                          className={`font-medium ${
+                                            isSelected
+                                              ? "text-[#93c5fd]"
+                                              : "text-[#1e3a8a]"
+                                          }`}
+                                        >
                                           {translateEduField(
                                             slot.department,
                                             lang
@@ -1998,7 +2035,11 @@ export default function CVReaderApp() {
                                   handleDeleteCandidate(item.cv.id)
                                 }
                                 title={t.removeCvTooltip}
-                                className="p-1.5 rounded border border-[#d5d0c5] bg-white text-slate-500 hover:text-red-600 hover:border-red-300 cursor-pointer"
+                                className={`p-1.5 rounded border cursor-pointer ${
+                                  isSelected
+                                    ? "border-[#33435e] bg-[#212f47] text-[#b8b2a6] hover:text-red-300"
+                                    : "border-[#b8b0a0] bg-[#d6cfc0] text-[#3b4454] hover:text-red-700"
+                                }`}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -2011,7 +2052,7 @@ export default function CVReaderApp() {
                 </div>
 
                 {/* SAĞ: SEÇİLİ ADAYIN AKADEMİK ÖZETİ VE CV METNİ (5 Sütun) */}
-                <div className="lg:col-span-5 bg-[#fcfbf9]/95 backdrop-blur-md border border-[#dedad0] rounded-xl p-5 shadow-sm space-y-5">
+                <div className="lg:col-span-5 bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-5 shadow-sm space-y-5">
                   {selectedEvaluation ? (
                     (() => {
                       const degMap = getCandidateDegreeMap(
@@ -2027,11 +2068,11 @@ export default function CVReaderApp() {
                       return (
                         <>
                           {/* Aday Başlığı */}
-                          <div className="border-b border-[#e5e0d5] pb-4">
-                            <h3 className="font-serif-academic text-xl font-bold text-[#0f172a]">
+                          <div className="border-b border-[#c4bdb0] pb-4">
+                            <h3 className="font-serif-academic text-xl font-bold text-[#121926]">
                               {selectedEvaluation.cv.fullName}
                             </h3>
-                            <p className="text-xs text-slate-600 mt-1">
+                            <p className="text-xs text-[#3b4454] mt-1">
                               {translateEduField(
                                 selectedEvaluation.cv.university,
                                 lang
@@ -2056,21 +2097,21 @@ export default function CVReaderApp() {
                           {/* Yapay Zeka Tespit Özeti */}
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-mono-academic font-semibold text-[#1e3a8a] uppercase tracking-wider">
+                              <span className="text-[11px] font-mono-academic font-bold text-[#182235] uppercase tracking-wider">
                                 {t.aiSummaryHeading}
                               </span>
                             </div>
 
                             {/* Cinsiyet Tespiti */}
-                            <div className="p-3 rounded-lg bg-white border border-[#e5e0d5] text-xs space-y-1">
-                              <div className="font-semibold text-[#0f172a]">
+                            <div className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1">
+                              <div className="font-semibold text-[#121926]">
                                 {t.genderLabel}:{" "}
                                 {translateGender(
                                   selectedEvaluation.cv.detectedGender,
                                   lang
                                 )}
                               </div>
-                              <p className="text-slate-600">
+                              <p className="text-[#333d4f]">
                                 {selectedEvaluation.cv.genderEvidence
                                   .map((e) =>
                                     translateGenderSignal(e.signal, lang)
@@ -2081,8 +2122,8 @@ export default function CVReaderApp() {
                             </div>
 
                             {/* Yaş Tespiti */}
-                            <div className="p-3 rounded-lg bg-white border border-[#e5e0d5] text-xs space-y-1">
-                              <div className="flex items-center justify-between font-semibold text-[#0f172a]">
+                            <div className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1">
+                              <div className="flex items-center justify-between font-semibold text-[#121926]">
                                 <span>
                                   {t.ageLabel}:{" "}
                                   {selectedEvaluation.cv.detectedAge !== null
@@ -2091,14 +2132,14 @@ export default function CVReaderApp() {
                                     ? t.noAgeEduDateLong
                                     : t.unspecified}
                                 </span>
-                                <span className="text-[#1e3a8a] text-[11px] font-medium">
+                                <span className="text-[#1e3a8a] text-[11px] font-semibold">
                                   {translateAgeMethod(
                                     selectedEvaluation.cv.ageMethod,
                                     lang
                                   )}
                                 </span>
                               </div>
-                              <p className="text-slate-600">
+                              <p className="text-[#333d4f]">
                                 {translateAgeEvidence(
                                   selectedEvaluation.cv.ageEvidence,
                                   lang
@@ -2107,13 +2148,13 @@ export default function CVReaderApp() {
                             </div>
 
                             {/* Derece Bazlı Eğitim Tespiti */}
-                            <div className="p-3.5 rounded-lg bg-white border border-[#dedad0] text-xs space-y-3">
+                            <div className="p-3.5 rounded-lg bg-[#ece7db] border border-[#b8b0a0] text-xs space-y-3">
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-[#0f172a] flex items-center gap-1.5">
-                                  <GraduationCap className="w-4 h-4 text-[#1e3a8a]" />
+                                <span className="font-semibold text-[#121926] flex items-center gap-1.5">
+                                  <GraduationCap className="w-4 h-4 text-[#182235]" />
                                   {t.eduSectionTitle}
                                 </span>
-                                <span className="text-[11px] font-semibold text-[#1e3a8a]">
+                                <span className="text-[11px] font-bold text-[#182235]">
                                   {activeDegrees.length > 0
                                     ? activeDegrees
                                         .map((d) =>
@@ -2133,8 +2174,8 @@ export default function CVReaderApp() {
                                       key={deg.key}
                                       className={`px-2 py-1.5 rounded border text-center font-semibold text-[11px] ${
                                         isHas
-                                          ? "bg-[#1e3a8a] text-white border-[#1e3a8a]"
-                                          : "bg-[#f8f6f0] text-slate-400 border-[#e5e0d5]"
+                                          ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
+                                          : "bg-[#ded8c8] text-[#6b7280] border-[#c4bdb0]"
                                       }`}
                                     >
                                       {isHas ? "✓ " : ""}
@@ -2155,27 +2196,27 @@ export default function CVReaderApp() {
                                     return (
                                       <div
                                         key={deg.key}
-                                        className="p-2.5 rounded-md bg-[#f8f6f0] border border-[#1e3a8a]/25 space-y-1.5"
+                                        className="p-2.5 rounded-md bg-[#e2dcd0] border border-[#b8b0a0] space-y-1.5"
                                       >
-                                        <div className="flex items-center justify-between border-b border-[#e5e0d5] pb-1">
-                                          <span className="font-bold text-[#1e3a8a] text-[11px]">
+                                        <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-1">
+                                          <span className="font-bold text-[#182235] text-[11px]">
                                             🎓{" "}
                                             {lang === "en"
                                               ? deg.cardTitleEn
                                               : deg.cardTitleTr}
                                           </span>
-                                          <span className="text-[10px] font-medium text-slate-500">
+                                          <span className="text-[10px] font-medium text-[#4a5363]">
                                             {deg.shortEn}
                                           </span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                                           <div>
-                                            <div className="text-[10px] font-semibold text-slate-500 uppercase">
+                                            <div className="text-[10px] font-semibold text-[#4a5363] uppercase">
                                               {lang === "en"
                                                 ? deg.uniLabelEn
                                                 : deg.uniLabelTr}
                                             </div>
-                                            <div className="font-semibold text-[#0f172a] mt-0.5">
+                                            <div className="font-semibold text-[#121926] mt-0.5">
                                               {translateEduField(
                                                 slot.university,
                                                 lang
@@ -2183,7 +2224,7 @@ export default function CVReaderApp() {
                                             </div>
                                           </div>
                                           <div>
-                                            <div className="text-[10px] font-semibold text-slate-500 uppercase">
+                                            <div className="text-[10px] font-semibold text-[#4a5363] uppercase">
                                               {lang === "en"
                                                 ? deg.deptLabelEn
                                                 : deg.deptLabelTr}
@@ -2201,7 +2242,7 @@ export default function CVReaderApp() {
                                   })}
                                 </div>
                               ) : (
-                                <p className="text-slate-500">
+                                <p className="text-[#4a5363]">
                                   {t.noUniDeptDetected}
                                 </p>
                               )}
@@ -2211,41 +2252,41 @@ export default function CVReaderApp() {
                             {selectedEvaluation.skillAssessments.map((sa) => (
                               <div
                                 key={sa.skill}
-                                className="p-3 rounded-lg bg-white border border-[#e5e0d5] text-xs space-y-1"
+                                className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1"
                               >
-                                <div className="flex items-center justify-between font-semibold text-[#0f172a]">
+                                <div className="flex items-center justify-between font-semibold text-[#121926]">
                                   <span className="flex items-center gap-1.5">
                                     {sa.level === "Uzman / Proje Kanıtlı" ? (
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#1e3a8a]" />
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
                                     ) : (
-                                      <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                      <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
                                     )}
                                     {sa.skill}
                                   </span>
                                   <span
                                     className={
                                       sa.level === "Uzman / Proje Kanıtlı"
-                                        ? "text-[#1e3a8a]"
-                                        : "text-amber-700"
+                                        ? "text-[#182235]"
+                                        : "text-amber-800"
                                     }
                                   >
                                     {translateSkillLevel(sa.level, lang)}
                                   </span>
                                 </div>
-                                <p className="text-slate-600 italic">
+                                <p className="text-[#333d4f] italic">
                                   &ldquo;{sa.evidenceSnippet}&rdquo;
                                 </p>
                               </div>
                             ))}
                           </div>
 
-                          {/* CV Metni */}
+                          {/* CV Metni (Koyu Oxford Arduvaz Kutusu) */}
                           <div>
-                            <div className="text-[11px] font-mono-academic font-semibold text-slate-600 uppercase mb-2 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-[#1e3a8a]" />
+                            <div className="text-[11px] font-mono-academic font-bold text-[#273142] uppercase mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-[#182235]" />
                               {t.rawCvTextHeading}
                             </div>
-                            <pre className="p-3.5 rounded-lg bg-[#f4f1ea] border border-[#dedad0] text-[#0f172a] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                            <pre className="p-3.5 rounded-lg bg-[#182235] border border-[#2c3a52] text-[#e2dcd0] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
                               {selectedEvaluation.cv.rawText}
                             </pre>
                           </div>
@@ -2253,7 +2294,7 @@ export default function CVReaderApp() {
                       );
                     })()
                   ) : (
-                    <div className="text-sm text-slate-500 py-8 text-center">
+                    <div className="text-sm text-[#4a5363] py-8 text-center">
                       {t.selectCandidatePrompt}
                     </div>
                   )}
@@ -2264,59 +2305,59 @@ export default function CVReaderApp() {
         )}
 
         {/* =====================================================================
-            4. SİSTEM MİMARİSİ & PAZARLAMA AKIŞI (Açık Akademik Kartlar)
+            4. SİSTEM MİMARİSİ & PAZARLAMA AKIŞI (Koyu Oxford Arduvaz Kartlar)
            ===================================================================== */}
         <section
           id="sistem"
-          className="pt-8 border-t border-[#d8d3c8] space-y-6"
+          className="pt-8 border-t border-[#a8a090] space-y-6"
         >
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2 max-w-2xl">
-              <div className="text-[11px] font-mono-academic font-semibold uppercase tracking-[0.2em] text-[#1e3a8a] border-l-2 border-[#1e3a8a] pl-2.5">
+              <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#182235] pl-2.5">
                 {t.sec2Eyebrow}
               </div>
-              <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+              <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#121926] tracking-tight">
                 {t.sec2Title}
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-slate-700 max-w-md leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#273142] max-w-md leading-relaxed">
               {t.sec2Sub}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="p-6 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2.5 shadow-xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md">
+              <div className="text-xs font-mono-academic font-bold text-[#93c5fd]">
                 {t.arch1Tag}
               </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
                 {t.arch1Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#c7c1b4] leading-relaxed">
                 {t.arch1Desc}
               </p>
             </div>
 
-            <div className="p-6 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2.5 shadow-xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md">
+              <div className="text-xs font-mono-academic font-bold text-[#93c5fd]">
                 {t.arch2Tag}
               </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
                 {t.arch2Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#c7c1b4] leading-relaxed">
                 {t.arch2Desc}
               </p>
             </div>
 
-            <div className="p-6 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2.5 shadow-xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md">
+              <div className="text-xs font-mono-academic font-bold text-[#93c5fd]">
                 {t.arch3Tag}
               </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
                 {t.arch3Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#c7c1b4] leading-relaxed">
                 {t.arch3Desc}
               </p>
             </div>
@@ -2324,66 +2365,66 @@ export default function CVReaderApp() {
         </section>
 
         {/* =====================================================================
-            5. TEKNİK ÖZELLİKLER (01–04 Akademik Kırılım)
+            5. TEKNİK ÖZELLİKLER (01–04 Sıcak Taş Kartlar)
            ===================================================================== */}
         <section
           id="ozellikler"
-          className="pt-8 border-t border-[#d8d3c8] space-y-6"
+          className="pt-8 border-t border-[#a8a090] space-y-6"
         >
           <div className="space-y-2 max-w-2xl">
-            <div className="text-[11px] font-mono-academic font-semibold uppercase tracking-[0.2em] text-[#1e3a8a] border-l-2 border-[#1e3a8a] pl-2.5">
+            <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#182235] pl-2.5">
               {t.sec3Eyebrow}
             </div>
-            <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+            <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#121926] tracking-tight">
               {t.sec3Title}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2 shadow-2xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-5 rounded-xl bg-[#ded8c8]/94 backdrop-blur-md border border-[#b8b0a0] space-y-2 shadow-xs">
+              <div className="text-xs font-mono-academic font-bold text-[#182235]">
                 01
               </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
                 {t.feat1Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#333d4f] leading-relaxed">
                 {t.feat1Desc}
               </p>
             </div>
 
-            <div className="p-5 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2 shadow-2xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-5 rounded-xl bg-[#ded8c8]/94 backdrop-blur-md border border-[#b8b0a0] space-y-2 shadow-xs">
+              <div className="text-xs font-mono-academic font-bold text-[#182235]">
                 02
               </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
                 {t.feat2Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#333d4f] leading-relaxed">
                 {t.feat2Desc}
               </p>
             </div>
 
-            <div className="p-5 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2 shadow-2xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-5 rounded-xl bg-[#ded8c8]/94 backdrop-blur-md border border-[#b8b0a0] space-y-2 shadow-xs">
+              <div className="text-xs font-mono-academic font-bold text-[#182235]">
                 03
               </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
                 {t.feat3Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#333d4f] leading-relaxed">
                 {t.feat3Desc}
               </p>
             </div>
 
-            <div className="p-5 rounded-xl bg-[#fcfbf9]/92 backdrop-blur-md border border-[#dedad0] space-y-2 shadow-2xs">
-              <div className="text-xs font-mono-academic font-bold text-[#1e3a8a]">
+            <div className="p-5 rounded-xl bg-[#ded8c8]/94 backdrop-blur-md border border-[#b8b0a0] space-y-2 shadow-xs">
+              <div className="text-xs font-mono-academic font-bold text-[#182235]">
                 04
               </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#0f172a]">
+              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
                 {t.feat4Title}
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-[#333d4f] leading-relaxed">
                 {t.feat4Desc}
               </p>
             </div>
@@ -2392,12 +2433,12 @@ export default function CVReaderApp() {
       </main>
 
       {/* =====================================================================
-          ALT BİLGİ (FOOTER — Açık Akademik Tema)
+          ALT BİLGİ (FOOTER — Koyu Oxford Arduvaz)
          ===================================================================== */}
-      <footer className="relative z-10 border-t border-[#dedad0] bg-[#fcfbf8]/90 backdrop-blur-md mt-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+      <footer className="relative z-10 border-t border-[#2c3a52] bg-[#182235]/95 backdrop-blur-md mt-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#b8b2a6]">
           <div className="flex items-center gap-2">
-            <span className="font-serif-academic font-bold text-[#0f172a]">
+            <span className="font-serif-academic font-bold text-[#f0ece1]">
               CV Reader AI
             </span>
             <span>—</span>
@@ -2406,13 +2447,13 @@ export default function CVReaderApp() {
           <div className="flex items-center gap-5 font-medium">
             <a
               href="#yukleme"
-              className="hover:text-[#1e3a8a] transition-colors"
+              className="hover:text-[#f0ece1] transition-colors"
             >
               {t.footerUploadLink}
             </a>
             <Link
               href="/label"
-              className="hover:text-[#1e3a8a] transition-colors"
+              className="hover:text-[#f0ece1] transition-colors"
             >
               {t.footerLabelLink}
             </Link>
@@ -2424,18 +2465,18 @@ export default function CVReaderApp() {
           MODAL 1: TOPLU CV YÜKLE
          ===================================================================== */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#fcfbf9] rounded-xl border border-[#dedad0] max-w-lg w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-xl">
-            <div className="flex items-center justify-between border-b border-[#e5e0d5] pb-3">
+        <div className="fixed inset-0 z-50 bg-[#141c2b]/65 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#e2dcd0] rounded-xl border border-[#b8b0a0] max-w-lg w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-3">
               <div>
-                <h3 className="font-serif-academic font-bold text-base text-[#0f172a]">
+                <h3 className="font-serif-academic font-bold text-base text-[#121926]">
                   {t.modalUploadTitle}
                 </h3>
-                <p className="text-xs text-slate-600">{t.modalUploadSub}</p>
+                <p className="text-xs text-[#3b4454]">{t.modalUploadSub}</p>
               </div>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
-                className="text-slate-400 hover:text-slate-900 text-lg cursor-pointer"
+                className="text-[#4a5363] hover:text-[#121926] text-lg cursor-pointer"
               >
                 ×
               </button>
@@ -2447,20 +2488,20 @@ export default function CVReaderApp() {
               onDrop={(e) => handleDropFiles(e, true)}
               className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
                 isDragging
-                  ? "border-[#1e3a8a] bg-[#f0f4ff]"
-                  : "border-[#1e3a8a]/50 hover:border-[#1e3a8a] bg-white"
+                  ? "border-[#182235] bg-[#d6cfc0]"
+                  : "border-[#182235]/50 hover:border-[#182235] bg-[#ece7db]"
               }`}
             >
-              <FileUp className="w-9 h-9 text-[#1e3a8a] mx-auto mb-2" />
-              <span className="block font-serif-academic text-sm font-bold text-[#0f172a]">
+              <FileUp className="w-9 h-9 text-[#182235] mx-auto mb-2" />
+              <span className="block font-serif-academic text-sm font-bold text-[#121926]">
                 {isDragging ? t.dropTitleDragging : t.dropTitleEmpty}
               </span>
-              <span className="block text-xs text-slate-600 mt-1 mb-4">
+              <span className="block text-xs text-[#3b4454] mt-1 mb-4">
                 {t.dropSubText}
               </span>
 
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <label className="px-4 py-2 rounded-md bg-[#1e3a8a] hover:bg-[#172e6e] text-white text-xs font-bold cursor-pointer flex items-center gap-1.5">
+                <label className="px-4 py-2 rounded-md bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-bold cursor-pointer flex items-center gap-1.5">
                   <Upload className="w-3.5 h-3.5" />
                   {t.btnSelectFiles}
                   <input
@@ -2472,7 +2513,7 @@ export default function CVReaderApp() {
                   />
                 </label>
 
-                <label className="px-3.5 py-2 rounded-md border border-[#cfc9bc] bg-white hover:border-[#1e3a8a] text-[#0f172a] text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                <label className="px-3.5 py-2 rounded-md border border-[#a8a090] bg-[#d6cfc0] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5">
                   📁 {t.btnSelectFolder}
                   <input
                     type="file"
@@ -2489,7 +2530,7 @@ export default function CVReaderApp() {
             </div>
 
             {isParsingPdf && (
-              <div className="flex items-center gap-2 text-xs text-[#1e3a8a] font-medium bg-[#f0f4ff] p-2.5 rounded">
+              <div className="flex items-center gap-2 text-xs text-[#f0ece1] font-medium bg-[#182235] p-2.5 rounded">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>
                   {translateParseStatus(pdfParseStatus, lang) || t.readingFiles}
@@ -2498,19 +2539,19 @@ export default function CVReaderApp() {
             )}
 
             {pdfParseStatus && !isParsingPdf && (
-              <div className="text-xs font-medium text-[#1e3a8a] bg-[#f0f4ff] border border-[#1e3a8a]/25 p-2.5 rounded">
+              <div className="text-xs font-medium text-[#f0ece1] bg-[#182235] border border-[#2c3a52] p-2.5 rounded">
                 {translateParseStatus(pdfParseStatus, lang)}
               </div>
             )}
 
-            <details className="border border-[#e5e0d5] rounded-md p-3 bg-white">
-              <summary className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+            <details className="border border-[#c4bdb0] rounded-md p-3 bg-[#ece7db]">
+              <summary className="text-xs font-semibold text-[#273142] cursor-pointer select-none">
                 {t.modalManualSummary}
               </summary>
               <form onSubmit={handleAddCV} className="space-y-3 pt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                    <label className="block text-xs font-medium text-[#273142] mb-1">
                       {t.modalNameLabel}
                     </label>
                     <input
@@ -2519,11 +2560,11 @@ export default function CVReaderApp() {
                       value={uploadName}
                       onChange={(e) => setUploadName(e.target.value)}
                       placeholder={t.modalNamePlaceholder}
-                      className="w-full border border-[#cfc9bc] rounded bg-white px-3 py-1.5 text-sm"
+                      className="w-full border border-[#b0a898] rounded bg-[#e2dcd0] px-3 py-1.5 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                    <label className="block text-xs font-medium text-[#273142] mb-1">
                       {t.modalUniLabel}
                     </label>
                     <input
@@ -2531,13 +2572,13 @@ export default function CVReaderApp() {
                       value={uploadUni}
                       onChange={(e) => setUploadUni(e.target.value)}
                       placeholder={t.modalUniPlaceholder}
-                      className="w-full border border-[#cfc9bc] rounded bg-white px-3 py-1.5 text-sm"
+                      className="w-full border border-[#b0a898] rounded bg-[#e2dcd0] px-3 py-1.5 text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="block text-xs font-medium text-[#273142] mb-1">
                     {t.modalCvTextLabel}
                   </label>
                   <textarea
@@ -2546,7 +2587,7 @@ export default function CVReaderApp() {
                     value={uploadRawText}
                     onChange={(e) => setUploadRawText(e.target.value)}
                     placeholder={t.modalCvTextPlaceholder}
-                    className="w-full border border-[#cfc9bc] rounded bg-white p-2.5 text-xs font-mono-academic"
+                    className="w-full border border-[#b0a898] rounded bg-[#e2dcd0] p-2.5 text-xs font-mono-academic"
                   />
                 </div>
 
@@ -2554,7 +2595,7 @@ export default function CVReaderApp() {
                   <button
                     type="submit"
                     disabled={isParsingPdf}
-                    className="px-4 py-1.5 bg-[#1e3a8a] hover:bg-[#172e6e] text-white rounded text-xs font-medium cursor-pointer"
+                    className="px-4 py-1.5 bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] rounded text-xs font-medium cursor-pointer"
                   >
                     {t.modalSubmitBtn}
                   </button>
@@ -2569,15 +2610,15 @@ export default function CVReaderApp() {
           MODAL 2: YENİ ŞİRKET EKLE
          ===================================================================== */}
       {isNewCompanyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#fcfbf9] rounded-xl border border-[#dedad0] max-w-md w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-[#e5e0d5] pb-3">
-              <h3 className="font-serif-academic font-bold text-base text-[#0f172a]">
+        <div className="fixed inset-0 z-50 bg-[#141c2b]/65 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#e2dcd0] rounded-xl border border-[#b8b0a0] max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-3">
+              <h3 className="font-serif-academic font-bold text-base text-[#121926]">
                 {t.newCompTitle}
               </h3>
               <button
                 onClick={() => setIsNewCompanyModalOpen(false)}
-                className="text-slate-400 hover:text-slate-900 text-lg cursor-pointer"
+                className="text-[#4a5363] hover:text-[#121926] text-lg cursor-pointer"
               >
                 ×
               </button>
@@ -2585,7 +2626,7 @@ export default function CVReaderApp() {
 
             <form onSubmit={handleCreateCompany} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-[#273142] mb-1">
                   {t.newCompName}
                 </label>
                 <input
@@ -2593,12 +2634,12 @@ export default function CVReaderApp() {
                   required
                   value={newCompName}
                   onChange={(e) => setNewCompName(e.target.value)}
-                  className="w-full border border-[#cfc9bc] bg-white rounded px-3 py-1.5 text-sm"
+                  className="w-full border border-[#b0a898] bg-[#ece7db] rounded px-3 py-1.5 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-[#273142] mb-1">
                   {t.newCompSkillsLabel}
                 </label>
                 <input
@@ -2606,7 +2647,7 @@ export default function CVReaderApp() {
                   value={newCompSkills}
                   onChange={(e) => setNewCompSkills(e.target.value)}
                   placeholder="C++, Java"
-                  className="w-full border border-[#cfc9bc] bg-white rounded px-3 py-1.5 text-xs"
+                  className="w-full border border-[#b0a898] bg-[#ece7db] rounded px-3 py-1.5 text-xs"
                 />
               </div>
 
@@ -2614,13 +2655,13 @@ export default function CVReaderApp() {
                 <button
                   type="button"
                   onClick={() => setIsNewCompanyModalOpen(false)}
-                  className="px-4 py-1.5 border border-[#cfc9bc] bg-white rounded text-xs cursor-pointer"
+                  className="px-4 py-1.5 border border-[#b0a898] bg-[#ece7db] rounded text-xs cursor-pointer"
                 >
                   {t.cancel}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#1e3a8a] text-white rounded text-xs font-medium cursor-pointer"
+                  className="px-4 py-1.5 bg-[#182235] text-[#f0ece1] rounded text-xs font-medium cursor-pointer"
                 >
                   {t.save}
                 </button>
