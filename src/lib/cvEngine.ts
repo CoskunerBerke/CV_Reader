@@ -842,10 +842,14 @@ export function detectAgeFromCV(rawText: string): {
     };
   }
 
-  // KATMAN 5: Tekil Üniversite Mezuniyet Yılı ("Expected Graduation: 2025", "Inonu University / 2024", "Graduated in 2022")
+  // KATMAN 5: Tekil Üniversite Mezuniyet Yılı ("Expected Graduation: 2025", "Inonu University / 2024", "Graduated in 2022", "Mezuniyet Tarihi: Haziran 2021")
   const uniGradSingleMatch =
-    normText.match(/(?:expected\s*graduation|graduation|mezuniyet|graduated\s*in)\s*[:\-]?\s*(19[8-9]\d|20[0-2]\d)\b/i) ||
-    normText.match(/(?:university|üniversitesi)\s*[\/|]\s*(19[8-9]\d|20[0-2]\d)\b/i);
+    normText.match(
+      /(?:expected\s*graduation|graduation(?:\s*date|\s*year)?|mezuniyet(?:\s*tarihi|\s*yili)?|graduated(?:\s*in)?|class\s*of)\s*[:\-]?\s*(?:[a-zçğiöşü]+\s*|\d{1,2}[\/.\-]\s*)?\b(19[8-9]\d|20[0-2]\d)\b/i
+    ) ||
+    normText.match(
+      /(?:university|üniversitesi)[^\n]{0,45}?[\/|\-–—,(]\s*(?:haziran|temmuz|mayis|eylül|june|july|may|0?\d[\/.])?\s*\b(19[8-9]\d|20[0-2]\d)\b(?!\s*[\-–—\/]\s*\d{4})/i
+    );
   if (uniGradSingleMatch && uniGradSingleMatch[1]) {
     const gradYear = parseInt(uniGradSingleMatch[1], 10);
     const estimatedAge = refYear - (gradYear - 22);
@@ -3040,22 +3044,48 @@ export function extractEducationFromCV(rawText: string): {
   }
 
   // Sözlükte olmayan herhangi bir Türkiye veya yurtdışı üniversitesi için genel yakalayıcı (Örn: "X Üniversitesi" / "University of X")
-  if (bestUni === "Belirtilmemiş") {
-    for (const line of nonEmptyLines) {
-      const mTr = line.match(
-        /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,}){0,3}\s+(?:Üniversitesi|ÜNİVERSİTESİ|University|UNIVERSITY|Institute\s+of\s+Technology))/
-      );
-      const mOf = line.match(
-        /\b(University\s+of\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\b/
-      );
-      const rawFound = (mTr?.[1] || mOf?.[1] || "").trim();
-      if (
-        rawFound &&
-        !/^(?:bir|bu|the|my|our|at|in|from|and|ve|açıköğretim)\b/i.test(rawFound)
-      ) {
-        bestUni = rawFound;
+  for (const line of nonEmptyLines) {
+    const nl = normalizeTr(line).replace(/ı/g, "i");
+    if (
+      /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|sertifika\s*program|erasmus|exchange\s*program|açiköğretim|lisesi|koleji|high\s*school)/i.test(
+        nl
+      )
+    ) {
+      continue;
+    }
+    const hasDictUni = UNIVERSITY_DICTIONARY.some((u) => {
+      u.regex.lastIndex = 0;
+      return u.regex.test(nl);
+    });
+    if (hasDictUni) continue;
+
+    const mTr = line.match(
+      /([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{1,}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,}){0,4}\s+(?:Üniversitesi|ÜNİVERSİTESİ|University|UNIVERSITY|Institute\s+of\s+Technology|Yüksek\s+Teknoloji\s+Enstitüsü))/
+    );
+    const mOf = line.match(
+      /\b(University\s+of\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\b/
+    );
+    const rawFound = (mTr?.[1] || mOf?.[1] || "").trim();
+    if (
+      rawFound &&
+      !/^(?:bir|bu|the|my|our|at|in|from|and|ve|açıköğretim|mezuniyet|lisans|yüksek|doktora|bölüm|fakülte)\b/i.test(
+        rawFound
+      )
+    ) {
+      if (!allFoundUnis.includes(rawFound)) {
         allFoundUnis.push(rawFound);
-        break;
+      }
+      if (bestUni === "Belirtilmemiş") {
+        bestUni = rawFound;
+      }
+      if (/(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b)/i.test(nl)) {
+        phdTaggedUnis.add(rawFound);
+      } else if (/(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\byüksek\s*lisans\b)/i.test(nl)) {
+        masterTaggedUnis.add(rawFound);
+      } else if (/(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’'´]?s?\b|\bmyo\b)/i.test(nl)) {
+        assocTaggedUnis.add(rawFound);
+      } else if (hasStandaloneBscKeyword(nl)) {
+        bscTaggedUnis.add(rawFound);
       }
     }
   }
@@ -3187,43 +3217,55 @@ export function extractEducationFromCV(rawText: string): {
     }
   }
 
-  // Sözlükte olmayan bölümler için genel yakalayıcı (Örn: "... Mühendisliği" / "... Bölümü" / "B.Sc. in ...")
+  // Sözlükte olmayan bölümler için genel yakalayıcı (Örn: "... Mühendisliği" / "... Bölümü" / "B.Sc. in ..." / "Bölüm: X")
   if (bestDept === "Belirtilmemiş") {
     for (const line of nonEmptyLines) {
-      const mDept = line.match(
-        /([A-ZÇĞİÖŞÜa-zçğıöşü]{3,}(?:\s+(?:ve|and|&|-)?\s*[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}){0,3}\s+(?:Mühendisliği|MÜHENDİSLİĞİ|Engineering|ENGINEERING|Bölümü|Programcılığı))/
+      const mExplicitLabel = line.match(
+        /(?:^|[|•·,])\s*(?:Bölüm(?:ü)?|Anabilim\s*Dal[ıi]|Program(?:[ıi])?|Department|Major|Field\s*of\s*Study)\s*[:\-–—]\s*([^|•·\n]{3,50})/i
       );
-      if (mDept?.[1]) {
-        const cand = mDept[1].trim();
-        if (!/^(?:faculty|fakültesi|journal|dergisi|institute|enstitüsü)/i.test(cand)) {
-          bestDept = cand;
-          allFoundDepts.push(cand);
-          break;
-        }
+      const mDept = line.match(
+        /([A-ZÇĞİÖŞÜa-zçğıöşü]{3,}(?:\s+(?:ve|and|&|-)?\s*[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}){0,3}\s+(?:Mühendisliği|MÜHENDİSLİĞİ|Engineering|ENGINEERING|Bölümü|Programcılığı|Öğretmenliği|Yönetimi|İşletmeciliği))/
+      );
+      const cand = (mExplicitLabel?.[1] || mDept?.[1] || "").trim();
+      if (
+        cand &&
+        !/^(?:faculty|fakültesi|journal|dergisi|institute|enstitüsü|üniversitesi|university|proje|insan\s*kaynakları\s*süreç)/i.test(
+          cand
+        )
+      ) {
+        bestDept = cand;
+        if (!allFoundDepts.includes(cand)) allFoundDepts.push(cand);
+        break;
       }
     }
   }
 
-  // Derece satırlarında ("Lisans: Maliye | Pamukkale Üniversitesi", "MSc in X", "University of Y" vb.) yapısal bölüm & üniversite yakalayıcı
-  for (const line of nonEmptyLines) {
+  // Derece & Üniversite satırlarında ("Lisans: Maliye | Pamukkale Üniversitesi", "Pamukkale Üniversitesi | Maliye | 2017 - 2021", "MSc in X" vb.) yapısal bölüm & üniversite yakalayıcı
+  for (let i = 0; i < nonEmptyLines.length; i++) {
+    const line = nonEmptyLines[i];
     const nl = normalizeTr(line).replace(/ı/g, "i");
-    if (/(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|erasmus|exchange\s*program|certificate\s*program|sertifika\s*program)/i.test(nl)) {
+    if (/(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|erasmus|exchange\s*program|certificate\s*program|sertifika\s*program|lisesi|koleji|high\s*school)/i.test(nl)) {
       continue;
     }
     const isAssocLine = /(?:\bön\s*lisans\b|\bönlisans\b|\bon\s*lisans\b|\bassociate[’'´]?s?\b|\bmyo\b)/i.test(nl);
     const isMasterLine = /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(nl);
     const isPhdLine = /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b)/i.test(nl);
     const isBscLine = hasStandaloneBscKeyword(nl);
-    if (!isAssocLine && !isMasterLine && !isPhdLine && !isBscLine) continue;
 
     // Satırda sözlükten bir üniversite eşleşti mi kontrol et
     const hasDictUniOnLine = UNIVERSITY_DICTIONARY.some((u) => {
       u.regex.lastIndex = 0;
       return u.regex.test(nl);
     });
+    const hasAnyUniOnLine =
+      hasDictUniOnLine ||
+      /(?:üniversitesi|university|institute\s+of\s+technology|yüksek\s+teknoloji\s+enstitüsü)/i.test(nl);
+
+    if (!isAssocLine && !isMasterLine && !isPhdLine && !isBscLine && !hasAnyUniOnLine) continue;
+
     if (!hasDictUniOnLine) {
       const mOf = line.match(/\b(University\s+of\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\b/);
-      const mTr = line.match(/([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{2,}(?:\s+[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{2,}){0,3}\s+(?:Üniversitesi|University|Institute\s+of\s+Technology))/);
+      const mTr = line.match(/([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{1,}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,}){0,4}\s+(?:Üniversitesi|University|Institute\s+of\s+Technology))/);
       const rawUni = (mOf?.[1] || mTr?.[1] || "").trim();
       if (rawUni && !/^(?:bir|bu|the|my|our|at|in|from|and|ve|açıköğretim)\b/i.test(rawUni)) {
         if (!allFoundUnis.includes(rawUni)) allFoundUnis.push(rawUni);
@@ -3245,7 +3287,37 @@ export function extractEducationFromCV(rawText: string): {
       const mInDept = line.match(/(?:\bM\.?\s*Sc\.?|\bM\.?\s*S\.?|\bMaster[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bB\.?\s*Sc\.?|\bB\.?\s*S\.?|\bBachelor[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bPh\.?\s*D\.?)\s+in\s+([A-Z][A-Za-z\s&\-]{2,38}?)(?=\s*[,|•(\-–—]|\s+at\b|\s+from\b|$)/);
       // 2) "Lisans: Maliye | Pamukkale Üniversitesi | 2017 - 2021" veya "Yüksek Lisans: X | Y Üniversitesi" kalıbı
       const mColonDept = line.match(/(?:^|[|•·])\s*(?:Ön\s*Lisans|Önlisans|Yüksek\s*Lisans|Doktora|Lisans|Bachelor[’'´]?s?|Master[’'´]?s?|Associate[’'´]?s?|B\.?\s*Sc\.?|M\.?\s*Sc\.?|Ph\.?\s*D\.?)\s*:\s*([^|•·\n]{2,45}?)(?=\s*[|•·(\-–—]|\s+\d{4}|$)/i);
-      const candDept = (mInDept?.[1] || mColonDept?.[1] || "").trim();
+      let candDept = (mInDept?.[1] || mColonDept?.[1] || "").trim();
+
+      // 3) Eğer aynı satırda Üniversite varsa ve `|` / `-` / `/` ile ayrılmış parçalar varsa (Örn: "Pamukkale Üniversitesi | Maliye | 2017 – 2021")
+      if (!candDept && hasAnyUniOnLine && /[|\/•·]|(?:\s[\-–—]\s)/.test(line)) {
+        const segs = line
+          .split(/\s*(?:\||\/|•|·|\s[\-–—]\s)\s*/)
+          .map((s) =>
+            s
+              .replace(
+                /^\s*(?:Ön\s*Lisans|Önlisans|Yüksek\s*Lisans|Doktora|Lisans|Bachelor[’'´]?s?|Master[’'´]?s?|Associate[’'´]?s?|B\.?\s*Sc\.?|M\.?\s*Sc\.?|Ph\.?\s*D\.?)\s*[:,\-]?\s*/i,
+                ""
+              )
+              .replace(
+                /\s*\(\s*(?:Ön\s*Lisans|Önlisans|Yüksek\s*Lisans|Doktora|Lisans|Bachelor[’'´]?s?|Master[’'´]?s?|%\s*\d+\s*İngilizce|İngilizce)\s*\)\s*/gi,
+                ""
+              )
+              .trim()
+          )
+          .filter(Boolean);
+        for (const seg of segs) {
+          if (seg.length < 3 || seg.length > 50) continue;
+          if (/(?:üniversitesi|university|institute|enstitüsü|yüksek\s*okulu|yüksekokulu|myo|fakültesi|faculty|lisesi|koleji)/i.test(seg)) continue;
+          if (/\b(?:19|20)\d{2}\b/.test(seg) || /^(?:devam|present|current|halen|mezun|ongoing|expected)\b/i.test(seg)) continue;
+          if (/(?:gpa|gano|agnot|ortalama|burslu|onur|honor|\d+[.,]\d+|\+)/i.test(seg)) continue;
+          if (/^(?:ön\s*lisans|önlisans|lisans|yüksek\s*lisans|doktora|bachelor[’'´]?s?|master[’'´]?s?|associate[’'´]?s?|ph\.?\s*d\.?|b\.?\s*sc\.?|m\.?\s*sc\.?|eğitim|education)$/i.test(seg)) continue;
+          if (/^(?:istanbul|ankara|izmir|bursa|kocaeli|antalya|eskişehir|adana|konya|gaziantep|kayseri|mersin|samsun|trabzon|sakarya|tekirdağ|manisa|denizli|muğla|diyarbakır|erzurum|türkiye|turkey|italya|italy|almanya|germany)$/i.test(normalizeTr(seg))) continue;
+          candDept = seg;
+          break;
+        }
+      }
+
       if (
         candDept &&
         candDept.length >= 3 &&
@@ -3273,11 +3345,11 @@ export function extractEducationFromCV(rawText: string): {
       degreeCheckText
     );
   const hasMaster =
-    /(?:\bmaster[’'´]?s?\s*(?:degre[e]?|of\s*science|of\s*engineering|of\s*arts|in\b|thesis|course\s*project)|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans(?:\s*eğitimi|\s*derecesi|\s*öğrencisi|\s*tez[i]?|\s*projeleri)?|\(\s*yüksek\s*lisans\s*\)|\bgraduate\s*student\s*pursuing\s*a\s*master|\bpursuing\s*a\s*msc\b)/i.test(
+    /(?:\bmaster[’'´]?s?\s*(?:degre[e]?|of\s*science|of\s*engineering|of\s*arts|in\b|thesis|course\s*project)|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans(?:\s*eğitimi|\s*derecesi|\s*öğrencisi|\s*tez[i]?|\s*projeleri|\s*:)?|\(\s*yüksek\s*lisans\s*\)|\bgraduate\s*student\s*pursuing\s*a\s*master|\bpursuing\s*a\s*msc\b)/i.test(
       degreeCheckText
     );
   const hasPhd =
-    /(?:\bph\.?\s*d\.?(?:\s*in\b|\s*candidate|\s*research|\s*degree|\s*student)\b|\bdoktora(?:\s*eğitimi|\s*öğrencisi|\s*aday[i]|\s*derecesi)\b|\bdoctorate\s*degree\b|\bdoctoral\s*education\b|\bdoing\s*a\s*doctorate\b)/i.test(
+    /(?:\bph\.?\s*d\.?(?:\s*in\b|\s*candidate|\s*research|\s*degree|\s*student|\s*:)\b|\bdoktora(?:\s*eğitimi|\s*öğrencisi|\s*aday[i]|\s*derecesi|\s*:)\b|\bdoctorate\s*degree\b|\bdoctoral\s*education\b|\bdoing\s*a\s*doctorate\b)/i.test(
       degreeCheckText
     );
 
@@ -3286,7 +3358,7 @@ export function extractEducationFromCV(rawText: string): {
     allDegrees.push("Ön Lisans (Associate)");
   }
   // Üniversite/fakülte/mühendislik/bölüm eğitimi olan her adayda Lisans (Bachelor's) mevcuttur (sadece Ön Lisans değilse)
-  if (!hasAssociate || /\b(?:bachelor|b\.?sc|lisans\s*eğitimi|\(\s*lisans\s*\))\b/i.test(degreeCheckText)) {
+  if (!hasAssociate || hasStandaloneBscKeyword(degreeCheckText)) {
     allDegrees.push("Lisans (Bachelor's)");
   }
   if (hasMaster) {
@@ -3347,7 +3419,11 @@ export function extractEducationFromCV(rawText: string): {
   const educationByDegree: EducationByDegreeMap = {};
 
   if (allDegrees.length <= 1) {
-    educationByDegree.bachelor = {
+    const singleKey: DegreeKey =
+      hasAssociate && !allDegrees.includes("Lisans (Bachelor's)")
+        ? "associate"
+        : "bachelor";
+    educationByDegree[singleKey] = {
       university: orderedUnis.length > 0 ? orderedUnis.join(" + ") : bestUni,
       department: orderedDepts.length > 0 ? orderedDepts.join(" + ") : bestDept,
     };
@@ -3360,7 +3436,12 @@ export function extractEducationFromCV(rawText: string): {
         orderedUnis.find((u) => assocTaggedUnis.has(u)) || bestUni;
       const assocDept =
         orderedDepts.find((d) => assocTaggedDepts.has(d)) || bestDept;
-      if (assocDept !== bestDept) usedNonBachelorDepts.add(assocDept);
+      if (assocUni !== bestUni && !bscTaggedUnis.has(assocUni)) {
+        usedPostGradOnlyUnis.add(assocUni);
+      }
+      if (assocDept !== bestDept && !bscTaggedDepts.has(assocDept)) {
+        usedNonBachelorDepts.add(assocDept);
+      }
       educationByDegree.associate = {
         university: assocUni,
         department: assocDept,
