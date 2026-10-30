@@ -3,6 +3,7 @@ import {
   CompanyProfile,
   detectAgeFromCV,
   detectGenderFromCV,
+  extractEducationFromCV,
 } from "./cvEngine";
 
 export const INITIAL_COMPANIES: CompanyProfile[] = [
@@ -41,6 +42,16 @@ export function buildCandidateFromRaw(
 ): CandidateCV {
   const genderRes = detectGenderFromCV(fullName, rawText);
   const ageRes = detectAgeFromCV(rawText);
+  const eduRes = extractEducationFromCV(rawText);
+
+  const finalUni =
+    university && university !== "Belirtilmemiş"
+      ? university
+      : eduRes.university;
+  const finalDeg =
+    eduRes.degree && eduRes.degree !== "Belirtilmemiş"
+      ? eduRes.degree
+      : educationLevel || "Lisans (Bachelor's)";
 
   return {
     id,
@@ -56,8 +67,14 @@ export function buildCandidateFromRaw(
     ageConfidence: ageRes.confidence,
     ageEvidence: ageRes.evidence,
     experienceYears,
-    educationLevel,
-    university,
+    educationLevel: finalDeg,
+    university: finalUni,
+    department: eduRes.department,
+    allUniversities: eduRes.allUniversities,
+    allDepartments: eduRes.allDepartments,
+    allDegrees: eduRes.allDegrees,
+    educationByDegree: eduRes.educationByDegree,
+    educationSummary: eduRes.educationSummary,
     city,
     extractedTags,
     feedbackStatus: {},

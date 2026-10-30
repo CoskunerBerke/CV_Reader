@@ -9,7 +9,14 @@ import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
 
 function getGroundTruthLabels(): Record<
   string,
-  { humanName?: string; humanGender: "Kadın" | "Erkek" | "Belirsiz"; humanAge: number | null }
+  {
+    humanName?: string;
+    humanGender: "Kadın" | "Erkek" | "Belirsiz";
+    humanAge: number | null;
+    humanUniversity?: string | null;
+    humanDepartment?: string | null;
+    humanDegree?: string | null;
+  }
 > {
   try {
     const p = path.join(process.cwd(), "data", "ground-truth-labels.json");
@@ -54,8 +61,12 @@ async function parseSingleBuffer(
   university: string;
   city: string;
   experienceYears: number;
+  hasHumanLabel?: boolean;
   humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
   humanAge?: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
+  humanDegree?: string | null;
 } | null> {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
 
@@ -102,8 +113,12 @@ async function parseSingleBuffer(
     university: meta.university,
     city: meta.city,
     experienceYears: meta.experienceYears,
+    hasHumanLabel: !!matchedLabel,
     humanGender: matchedLabel?.humanGender || null,
-    humanAge: matchedLabel?.humanAge !== undefined ? matchedLabel.humanAge : null,
+    humanAge: matchedLabel !== null ? matchedLabel.humanAge : undefined,
+    humanUniversity: matchedLabel?.humanUniversity || null,
+    humanDepartment: matchedLabel?.humanDepartment || null,
+    humanDegree: matchedLabel?.humanDegree || null,
   };
 }
 

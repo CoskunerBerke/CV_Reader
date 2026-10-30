@@ -5,9 +5,13 @@ import Link from "next/link";
 import {
   CandidateCV,
   CompanyProfile,
+  EvaluatedCandidate,
+  DegreeKey,
+  DegreeEducationEntry,
   evaluateCandidateForCompany,
   parseNaturalLanguageCriteria,
   normalizeTr,
+  hasDegreeSelected,
 } from "@/lib/cvEngine";
 import {
   INITIAL_CANDIDATES,
@@ -27,7 +31,339 @@ import {
   Loader2,
   FileUp,
   Trash2,
+  Download,
+  Table as TableIcon,
+  LayoutList,
+  GraduationCap,
 } from "lucide-react";
+
+const DEGREE_CARDS: {
+  key: DegreeKey;
+  value: string;
+  shortTr: string;
+  shortEn: string;
+  cardTitle: string;
+  uniLabel: string;
+  deptLabel: string;
+}[] = [
+  {
+    key: "associate",
+    value: "Ön Lisans (Associate)",
+    shortTr: "Ön Lisans",
+    shortEn: "Associate",
+    cardTitle: "Ön Lisans Eğitimi (Associate)",
+    uniLabel: "Ön Lisans Üniversitesi",
+    deptLabel: "Ön Lisans Bölümü",
+  },
+  {
+    key: "bachelor",
+    value: "Lisans (Bachelor's)",
+    shortTr: "Lisans",
+    shortEn: "Bachelor's",
+    cardTitle: "Lisans Eğitimi (Bachelor's)",
+    uniLabel: "Lisans Üniversitesi",
+    deptLabel: "Lisans Bölümü",
+  },
+  {
+    key: "master",
+    value: "Yüksek Lisans (Master's)",
+    shortTr: "Yüksek Lisans",
+    shortEn: "Master's",
+    cardTitle: "Yüksek Lisans / Master Eğitimi (Master's)",
+    uniLabel: "Master Üniversitesi",
+    deptLabel: "Master Bölümü",
+  },
+  {
+    key: "phd",
+    value: "Doktora (Ph.D.)",
+    shortTr: "Doktora",
+    shortEn: "Ph.D.",
+    cardTitle: "Doktora Eğitimi (Ph.D.)",
+    uniLabel: "Doktora Üniversitesi",
+    deptLabel: "Doktora Bölümü",
+  },
+];
+
+function getCandidateDegreeMap(
+  cv: CandidateCV
+): Record<DegreeKey, DegreeEducationEntry | null> {
+  const degStr =
+    (cv.allDegrees && cv.allDegrees.length > 0
+      ? cv.allDegrees.join(" + ")
+      : cv.educationLevel) || "Lisans (Bachelor's)";
+  const byDeg = cv.educationByDegree || {};
+  const fallbackUni = cv.university || "Belirtilmemiş";
+  const fallbackDept = cv.department || "Belirtilmemiş";
+
+  const hasAssoc = hasDegreeSelected(degStr, "Ön Lisans (Associate)");
+  const hasBsc =
+    hasDegreeSelected(degStr, "Lisans (Bachelor's)") ||
+    (!hasAssoc &&
+      !hasDegreeSelected(degStr, "Yüksek Lisans (Master's)") &&
+      !hasDegreeSelected(degStr, "Doktora (Ph.D.)"));
+  const hasMsc = hasDegreeSelected(degStr, "Yüksek Lisans (Master's)");
+  const hasPhd = hasDegreeSelected(degStr, "Doktora (Ph.D.)");
+
+  return {
+    associate: hasAssoc
+      ? byDeg.associate || { university: fallbackUni, department: fallbackDept }
+      : null,
+    bachelor: hasBsc
+      ? byDeg.bachelor || { university: fallbackUni, department: fallbackDept }
+      : null,
+    master: hasMsc
+      ? byDeg.master ||
+        byDeg.bachelor || { university: fallbackUni, department: fallbackDept }
+      : null,
+    phd: hasPhd
+      ? byDeg.phd ||
+        byDeg.master ||
+        byDeg.bachelor || { university: fallbackUni, department: fallbackDept }
+      : null,
+  };
+}
+
+function isAgeMissingCase(cv: CandidateCV): boolean {
+  return (
+    cv.detectedAge === null ||
+    cv.ageMethod === "İlk İş Deneyimi Tahmini" ||
+    cv.ageMethod === "Bilinmiyor"
+  );
+}
+
+function escapeXml(str: string): string {
+  return (str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function getExcelColLetter(colIdx0: number): string {
+  let n = colIdx0 + 1;
+  let s = "";
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+async function exportEvaluationsToExcelXlsx(
+  evaluations: EvaluatedCandidate[],
+  companyName: string
+) {
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+
+  const headers = [
+    "Sıra No",
+    "Dosya Adı",
+    "Ad Soyad",
+    "Cinsiyet",
+    "Yaş",
+    "Yaş Tespit Yöntemi",
+    "Eğitim Dereceleri (Özet)",
+    "Ön Lisans (Associate)",
+    "Ön Lisans Üniversitesi",
+    "Ön Lisans Bölümü",
+    "Lisans (Bachelor's)",
+    "Lisans Üniversitesi",
+    "Lisans Bölümü",
+    "Yüksek Lisans (Master's)",
+    "Master Üniversitesi",
+    "Master Bölümü",
+    "Doktora (Ph.D.)",
+    "Doktora Üniversitesi",
+    "Doktora Bölümü",
+    "Tüm Eğitim Özeti (Label Formatı)",
+    "Şehir",
+    "Uyum Skoru (%)",
+    "Aranan Yetenekler",
+  ];
+
+  const colWidths = [
+    9, 28, 24, 12, 22, 26, 36, 14, 28, 28, 14, 32, 32, 16, 30, 32, 14, 28, 32,
+    55, 15, 15, 34,
+  ];
+
+  const rows: (string | number)[][] = evaluations.map((item, idx) => {
+    const cv = item.cv;
+    const degMap = getCandidateDegreeMap(cv);
+    const noAge = isAgeMissingCase(cv);
+    const ageDisplay = noAge
+      ? "Yaş & Üni Tarihi Yok (Belirsiz)"
+      : cv.detectedAge ?? "Belirsiz";
+
+    const degList = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
+    const labelSummaryParts = degList.map((d) => {
+      const info = degMap[d.key]!;
+      return `${d.shortTr}: ${info.university} — ${info.department}`;
+    });
+
+    const skillsSummary =
+      item.skillAssessments.length > 0
+        ? item.skillAssessments
+            .map((sa) => `${sa.skill} (${sa.level})`)
+            .join(", ")
+        : "—";
+
+    return [
+      idx + 1,
+      cv.source || "—",
+      cv.fullName,
+      cv.detectedGender,
+      ageDisplay,
+      noAge ? "Yaş & Üni Tarihi Yok" : cv.ageMethod,
+      degList.map((d) => d.value).join(" + ") || cv.educationLevel,
+      degMap.associate ? "✓ Var" : "—",
+      degMap.associate?.university || "—",
+      degMap.associate?.department || "—",
+      degMap.bachelor ? "✓ Var" : "—",
+      degMap.bachelor?.university || "—",
+      degMap.bachelor?.department || "—",
+      degMap.master ? "✓ Var" : "—",
+      degMap.master?.university || "—",
+      degMap.master?.department || "—",
+      degMap.phd ? "✓ Var" : "—",
+      degMap.phd?.university || "—",
+      degMap.phd?.department || "—",
+      labelSummaryParts.join(" | ") || `${cv.university} — ${cv.department || "—"}`,
+      cv.city || "Belirtilmemiş",
+      item.totalMatchScore,
+      skillsSummary,
+    ];
+  });
+
+  const colsXml = colWidths
+    .map(
+      (w, i) =>
+        `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`
+    )
+    .join("");
+
+  const headerCellsXml = headers
+    .map((h, cIdx) => {
+      const ref = `${getExcelColLetter(cIdx)}1`;
+      return `<c r="${ref}" s="1" t="inlineStr"><is><t>${escapeXml(
+        h
+      )}</t></is></c>`;
+    })
+    .join("");
+
+  const dataRowsXml = rows
+    .map((r, rIdx) => {
+      const rowNum = rIdx + 2;
+      const cells = r
+        .map((val, cIdx) => {
+          const ref = `${getExcelColLetter(cIdx)}${rowNum}`;
+          if (typeof val === "number" && Number.isFinite(val)) {
+            return `<c r="${ref}" s="2"><v>${val}</v></c>`;
+          }
+          return `<c r="${ref}" s="2" t="inlineStr"><is><t>${escapeXml(
+            String(val ?? "")
+          )}</t></is></c>`;
+        })
+        .join("");
+      return `<row r="${rowNum}" ht="22" customHeight="1">${cells}</row>`;
+    })
+    .join("");
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <cols>${colsXml}</cols>
+  <sheetData>
+    <row r="1" ht="26" customHeight="1">${headerCellsXml}</row>
+    ${dataRowsXml}
+  </sheetData>
+</worksheet>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2">
+    <font><sz val="10"/><color rgb="FF18181B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFE4E4E7"/></left>
+      <right style="thin"><color rgb="FFE4E4E7"/></right>
+      <top style="thin"><color rgb="FFE4E4E7"/></top>
+      <bottom style="thin"><color rgb="FFE4E4E7"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="3">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center" wrapText="1"/>
+    </xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="center"/>
+    </xf>
+  </cellXfs>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="CV Analiz Raporu" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+  const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  zip.file("[Content_Types].xml", contentTypesXml);
+  zip.file("_rels/.rels", rootRelsXml);
+  zip.file("xl/workbook.xml", workbookXml);
+  zip.file("xl/_rels/workbook.xml.rels", workbookRelsXml);
+  zip.file("xl/styles.xml", stylesXml);
+  zip.file("xl/worksheets/sheet1.xml", sheetXml);
+
+  const blob = await zip.generateAsync({
+    type: "blob",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const safeComp = (companyName || "CV_Havuzu")
+    .replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, "_");
+  a.href = url;
+  a.download = `CV_Analiz_Raporu_${safeComp}_${evaluations.length}_CV_${dateStr}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function CVReaderApp() {
   // Şirket profilleri
@@ -42,6 +378,7 @@ export default function CVReaderApp() {
   const [showAllCandidates, setShowAllCandidates] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [newSkillInput, setNewSkillInput] = useState<string>("");
+  const [layoutMode, setLayoutMode] = useState<"split" | "table">("split");
 
   // Modallar
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -280,12 +617,12 @@ export default function CVReaderApp() {
         return;
       }
 
-      // Dosyaları sunucu limitlerine (Vercel 4.5MB) asla takılmaması için küçük paketler (en fazla 3 dosya / ~2.5 MB) halinde gönder
+      // Dosyaları sunucu limitlerine (Vercel 4.5MB) asla takılmaması için paketler (en fazla 5 dosya / ~3 MB) halinde gönder
       const batches: File[][] = [];
       let currentBatch: File[] = [];
       let currentBytes = 0;
-      const MAX_FILES_PER_BATCH = 3;
-      const MAX_BYTES_PER_BATCH = 2.5 * 1024 * 1024;
+      const MAX_FILES_PER_BATCH = 5;
+      const MAX_BYTES_PER_BATCH = 3 * 1024 * 1024;
 
       for (const f of expandedFiles) {
         if (
@@ -343,6 +680,7 @@ export default function CVReaderApp() {
                 university: string;
                 city: string;
                 experienceYears: number;
+                hasHumanLabel?: boolean;
                 humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
                 humanAge?: number | null;
               },
@@ -376,6 +714,12 @@ export default function CVReaderApp() {
                 built.ageMethod = "Doğrudan Yaş Beyanı";
                 built.ageConfidence = 100;
                 built.ageEvidence = `Kullanıcı tarafından '${f.humanAge} yaş' olarak etiketlendi ve öğrenildi.`;
+              } else if (f.hasHumanLabel && f.humanAge === null) {
+                built.detectedAge = null;
+                built.ageMethod = "Bilinmiyor";
+                built.ageConfidence = 100;
+                built.ageEvidence =
+                  "CV'de ne doğum tarihi ne de üniversite/eğitim başlangıç yılı yer alıyor (Yaş & Üni Tarihi Yok).";
               }
               return built;
             }
@@ -650,7 +994,7 @@ export default function CVReaderApp() {
             </button>
           </div>
 
-          {/* Sağ: Etiketleme & PDF CV Yükle */}
+          {/* Sağ: Etiketleme, Excel İndir & PDF CV Yükle */}
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/label"
@@ -661,16 +1005,32 @@ export default function CVReaderApp() {
             </Link>
 
             {candidates.length > 0 && (
-              <button
-                onClick={() => {
-                  setCandidates([]);
-                  setSelectedCandidateId("");
-                }}
-                className="px-3 py-1.5 rounded-md border border-zinc-200 hover:border-red-600 hover:text-red-600 text-zinc-600 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Tümünü Temizle
-              </button>
+              <>
+                <button
+                  onClick={() =>
+                    exportEvaluationsToExcelXlsx(
+                      displayedEvaluations.length > 0 ? displayedEvaluations : evaluatedList,
+                      activeCompany.name
+                    )
+                  }
+                  className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Yüklenen tüm CV'lerin Yaş, Cinsiyet ve Derece Bazlı (Ön Lisans / Lisans / Master / Doktora) Üniversite-Bölüm dökümünü Excel (.xlsx) olarak indir"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Excel İndir (.xlsx) ({displayedEvaluations.length > 0 ? displayedEvaluations.length : evaluatedList.length})
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCandidates([]);
+                    setSelectedCandidateId("");
+                  }}
+                  className="px-3 py-1.5 rounded-md border border-zinc-200 hover:border-red-600 hover:text-red-600 text-zinc-600 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Tümünü Temizle
+                </button>
+              </>
             )}
 
             <button
@@ -863,7 +1223,7 @@ export default function CVReaderApp() {
                 CV Dosyalarını, Klasörü veya .ZIP / .RAR Arşivini Bırakın
               </h3>
               <p className="text-xs text-zinc-500 mt-1">
-                Bıraktığınız tüm CV&apos;ler otomatik olarak ayrıştırılıp listeye eklenecektir.
+                30-40+ CV&apos;yi aynı anda bırakabilirsiniz; yaş, cinsiyet ve derece bazlı eğitimleri çıkarılıp Excel&apos;e hazır hale getirilir.
               </p>
             </div>
           </div>
@@ -902,7 +1262,7 @@ export default function CVReaderApp() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDropFiles(e, true)}
-              className={`max-w-md mx-auto block border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${
+              className={`max-w-lg mx-auto block border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${
                 isDragging
                   ? "border-teal-600 bg-teal-50/70 scale-[1.01]"
                   : "border-zinc-300 hover:border-teal-600 bg-zinc-50/50 hover:bg-teal-50/20"
@@ -921,14 +1281,14 @@ export default function CVReaderApp() {
                   <h3 className="text-base font-bold text-zinc-950">
                     {isDragging
                       ? "Dosyaları Buraya Bırakın!"
-                      : "CV Dosyalarını, Klasörü veya .ZIP Arşivini Sürükleyin"}
+                      : "30–40+ CV Dosyasını, Klasörü veya .ZIP Arşivini Sürükleyin"}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Tek veya birden fazla <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> dosyası
-                    ya da doğrudan <strong>klasör</strong> sürükleyip bırakabilirsiniz.
+                    Tek seferde onlarca <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> CV dosyasını
+                    veya klasörü bırakın. Her adayın <strong>Yaş, Cinsiyet, Ön Lisans / Lisans / Yüksek Lisans / Doktora Üniversite &amp; Bölüm</strong> bilgileri otomatik çıkarılır ve tek tıkla <strong>Excel (.xlsx)</strong> olarak indirilir.
                   </p>
                   <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
-                    Bilgisayardan PDF / ZIP / RAR / HTML Seç
+                    Bilgisayardan Çoklu PDF / ZIP / RAR / Klasör Seç
                   </span>
                 </>
               )}
@@ -942,325 +1302,677 @@ export default function CVReaderApp() {
             </label>
           </section>
         ) : (
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* SOL: ADAY LİSTESİ (7 Sütun) */}
-            <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
-              {/* Liste Başlığı */}
-              <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-sm text-zinc-950">
-                    Yüklenen CV&apos;ler ({candidates.length})
-                  </h2>
-                  <span className="text-xs text-teal-700 font-medium">
-                    • {passingCount} Uygun
-                  </span>
+          <div className="space-y-4">
+            {/* ÜST TOPLU İŞLEM & EXCEL EXPORT BARI */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="inline-flex rounded-md border border-zinc-200 bg-zinc-50 p-0.5">
+                  <button
+                    onClick={() => setLayoutMode("split")}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                      layoutMode === "split"
+                        ? "bg-zinc-900 text-white"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    📋 Kart &amp; Detay Görünümü
+                  </button>
+                  <button
+                    onClick={() => setLayoutMode("table")}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      layoutMode === "table"
+                        ? "bg-zinc-900 text-white"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
+                    Toplu Tablo / Excel Önizleme ({displayedEvaluations.length} CV)
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={showAllCandidates}
-                      onChange={(e) => setShowAllCandidates(e.target.checked)}
-                      className="accent-zinc-900 rounded"
-                    />
-                    <span>Elenenleri de göster</span>
-                  </label>
-
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Aday ara..."
-                      className="pl-8 pr-2.5 py-1 border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-900 w-36"
-                    />
-                  </div>
-                </div>
+                <label className="px-3 py-1.5 rounded-md border border-dashed border-teal-600 text-teal-800 bg-teal-50/50 hover:bg-teal-50 text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5 text-teal-600" />
+                  + Daha Fazla CV Ekle
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleDirectFilesUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
 
-              {/* Aday Kartları */}
-              <div className="divide-y divide-zinc-100 max-h-[620px] overflow-y-auto">
-                {displayedEvaluations.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-zinc-500">
-                    Seçili filtrelere uyan aday bulunamadı. &ldquo;Elenenleri de göster&rdquo;
-                    kutucuğunu işaretleyerek yüklediğiniz tüm CV&apos;leri görebilirsiniz.
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() =>
+                    exportEvaluationsToExcelXlsx(displayedEvaluations, activeCompany.name)
+                  }
+                  disabled={displayedEvaluations.length === 0}
+                  className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <Download className="w-4 h-4" />
+                  Excel Olarak İndir (.xlsx) — {displayedEvaluations.length} CV
+                </button>
+              </div>
+            </div>
+
+            {layoutMode === "table" ? (
+              /* ===============================================================
+                 TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ (30-40+ CV İÇİN)
+                 =============================================================== */
+              <section className="bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
+                <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-bold text-sm text-zinc-950">
+                      Toplu CV &amp; Derece Bazlı Eğitim Tablosu ({displayedEvaluations.length} Aday)
+                    </h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Excel (.xlsx) çıktısında yer alacak tüm yaş, cinsiyet ve Ön Lisans / Lisans / Yüksek Lisans / Doktora üniversite-bölüm verileri
+                    </p>
                   </div>
-                ) : (
-                  displayedEvaluations.map((item) => {
-                    const isSelected = selectedEvaluation?.cv.id === item.cv.id;
-                    const isApproved = activeCompany.approvedCandidateIds.includes(item.cv.id);
-                    const isRejected = activeCompany.rejectedCandidateIds.includes(item.cv.id);
 
-                    return (
-                      <div
-                        key={item.cv.id}
-                        onClick={() => setSelectedCandidateId(item.cv.id)}
-                        className={`p-4 transition-colors cursor-pointer flex items-center justify-between gap-4 ${
-                          isSelected
-                            ? "bg-zinc-900 text-white"
-                            : item.passesHardFilters
-                            ? "bg-white hover:bg-zinc-50"
-                            : "bg-zinc-50/70 text-zinc-400 hover:bg-zinc-100"
-                        }`}
-                      >
-                        {/* Sol Bilgi */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm truncate">
-                              {item.cv.fullName}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                isSelected
-                                  ? "bg-zinc-800 text-zinc-200"
-                                  : item.cv.detectedGender === "Kadın"
-                                  ? "bg-teal-50 text-teal-800"
-                                  : "bg-zinc-100 text-zinc-700"
-                              }`}
-                            >
-                              {item.cv.detectedGender}
-                            </span>
-                            <span
-                              className={`text-xs ${
-                                isSelected ? "text-zinc-300" : "text-zinc-500"
-                              }`}
-                            >
-                              •{" "}
-                              {item.cv.detectedAge
-                                ? `${item.cv.detectedAge} Yaş`
-                                : "Yaş Belirtilmemiş"}
-                            </span>
-                          </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showAllCandidates}
+                        onChange={(e) => setShowAllCandidates(e.target.checked)}
+                        className="accent-zinc-900 rounded"
+                      />
+                      <span>Elenenleri de göster</span>
+                    </label>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Tabloda ara..."
+                        className="pl-8 pr-2.5 py-1 border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-900 w-44"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                          {/* Yetenek Etiketleri (Sadece kullanıcının aradığı kelimeler) */}
-                          {item.skillAssessments.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                              {item.skillAssessments.map((sa) => (
+                <div className="overflow-x-auto max-h-[680px]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="bg-zinc-900 text-white sticky top-0 z-10">
+                      <tr>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">#</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Ad Soyad / Dosya</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Cinsiyet</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Yaş</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Eğitim Dereceleri</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Ön Lisans (Üni — Bölüm)</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Lisans (Üni — Bölüm)</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Yüksek Lisans / Master (Üni — Bölüm)</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">Doktora / Ph.D. (Üni — Bölüm)</th>
+                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap text-right">Uyum</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {displayedEvaluations.map((item, idx) => {
+                        const degMap = getCandidateDegreeMap(item.cv);
+                        const activeDegrees = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
+                        const ageMissing = isAgeMissingCase(item.cv);
+
+                        const renderDegreeCell = (slot: DegreeEducationEntry | null) => {
+                          if (!slot) {
+                            return <span className="text-zinc-300">—</span>;
+                          }
+                          return (
+                            <div className="space-y-0.5 min-w-[170px]">
+                              <div className="font-semibold text-zinc-900">{slot.university}</div>
+                              <div className="text-[11px] text-teal-800">{slot.department}</div>
+                            </div>
+                          );
+                        };
+
+                        return (
+                          <tr
+                            key={item.cv.id}
+                            onClick={() => {
+                              setSelectedCandidateId(item.cv.id);
+                              setLayoutMode("split");
+                            }}
+                            className="hover:bg-teal-50/40 cursor-pointer transition-colors align-top"
+                          >
+                            <td className="py-3 px-3 font-mono text-zinc-500">{idx + 1}</td>
+                            <td className="py-3 px-3 min-w-[180px]">
+                              <div className="font-bold text-zinc-950">{item.cv.fullName}</div>
+                              <div className="text-[11px] text-zinc-400 truncate max-w-[210px]">
+                                {item.cv.source}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                  item.cv.detectedGender === "Kadın"
+                                    ? "bg-teal-50 text-teal-800 border border-teal-200"
+                                    : item.cv.detectedGender === "Erkek"
+                                    ? "bg-zinc-100 text-zinc-800 border border-zinc-200"
+                                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                                }`}
+                              >
+                                {item.cv.detectedGender}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {item.cv.detectedAge !== null ? (
+                                <div>
+                                  <span className="font-bold text-zinc-900">
+                                    {item.cv.detectedAge} Yaş
+                                  </span>
+                                  <div className="text-[10px] text-zinc-400">
+                                    {item.cv.ageMethod}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-medium">
+                                  {ageMissing ? "Yaş & Üni Tarihi Yok" : "Belirsiz"}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-wrap gap-1 min-w-[130px]">
+                                {activeDegrees.length > 0 ? (
+                                  activeDegrees.map((d) => (
+                                    <span
+                                      key={d.key}
+                                      className="px-2 py-0.5 rounded bg-teal-50 text-teal-900 border border-teal-200 text-[11px] font-semibold whitespace-nowrap"
+                                    >
+                                      ✓ {d.shortTr}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-zinc-400">Belirtilmemiş</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">{renderDegreeCell(degMap.associate)}</td>
+                            <td className="py-3 px-3">{renderDegreeCell(degMap.bachelor)}</td>
+                            <td className="py-3 px-3">{renderDegreeCell(degMap.master)}</td>
+                            <td className="py-3 px-3">{renderDegreeCell(degMap.phd)}</td>
+                            <td className="py-3 px-3 text-right font-bold text-teal-700 whitespace-nowrap">
+                              %{item.totalMatchScore}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : (
+              <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* SOL: ADAY LİSTESİ (7 Sütun) */}
+                <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
+                  {/* Liste Başlığı */}
+                  <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-semibold text-sm text-zinc-950">
+                        Yüklenen CV&apos;ler ({candidates.length})
+                      </h2>
+                      <span className="text-xs text-teal-700 font-medium">
+                        • {passingCount} Uygun
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={showAllCandidates}
+                          onChange={(e) => setShowAllCandidates(e.target.checked)}
+                          className="accent-zinc-900 rounded"
+                        />
+                        <span>Elenenleri de göster</span>
+                      </label>
+
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Aday ara..."
+                          className="pl-8 pr-2.5 py-1 border border-zinc-200 rounded text-xs focus:outline-none focus:border-zinc-900 w-36"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Aday Kartları */}
+                  <div className="divide-y divide-zinc-100 max-h-[680px] overflow-y-auto">
+                    {displayedEvaluations.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-zinc-500">
+                        Seçili filtrelere uyan aday bulunamadı. &ldquo;Elenenleri de göster&rdquo;
+                        kutucuğunu işaretleyerek yüklediğiniz tüm CV&apos;leri görebilirsiniz.
+                      </div>
+                    ) : (
+                      displayedEvaluations.map((item) => {
+                        const isSelected = selectedEvaluation?.cv.id === item.cv.id;
+                        const isApproved = activeCompany.approvedCandidateIds.includes(item.cv.id);
+                        const isRejected = activeCompany.rejectedCandidateIds.includes(item.cv.id);
+                        const degMap = getCandidateDegreeMap(item.cv);
+                        const activeDegrees = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
+                        const ageMissing = isAgeMissingCase(item.cv);
+
+                        return (
+                          <div
+                            key={item.cv.id}
+                            onClick={() => setSelectedCandidateId(item.cv.id)}
+                            className={`p-4 transition-colors cursor-pointer flex items-start justify-between gap-4 ${
+                              isSelected
+                                ? "bg-zinc-900 text-white"
+                                : item.passesHardFilters
+                                ? "bg-white hover:bg-zinc-50"
+                                : "bg-zinc-50/70 text-zinc-400 hover:bg-zinc-100"
+                            }`}
+                          >
+                            {/* Sol Bilgi */}
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm truncate">
+                                  {item.cv.fullName}
+                                </span>
                                 <span
-                                  key={sa.skill}
-                                  className={`text-[11px] px-2 py-0.5 rounded font-medium ${
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                     isSelected
-                                      ? sa.level === "Uzman / Proje Kanıtlı"
-                                        ? "bg-teal-900/60 text-teal-200 border border-teal-700"
-                                        : sa.level === "Yüzeysel / Sadece Listede"
-                                        ? "bg-amber-900/50 text-amber-200"
-                                        : "bg-red-900/40 text-red-200"
-                                      : sa.level === "Uzman / Proje Kanıtlı"
-                                      ? "bg-zinc-100 text-zinc-800"
-                                      : sa.level === "Yüzeysel / Sadece Listede"
-                                      ? "bg-amber-50 text-amber-800"
-                                      : "bg-red-50 text-red-700"
+                                      ? "bg-zinc-800 text-zinc-200"
+                                      : item.cv.detectedGender === "Kadın"
+                                      ? "bg-teal-50 text-teal-800"
+                                      : "bg-zinc-100 text-zinc-700"
                                   }`}
                                 >
-                                  {sa.skill}:{" "}
-                                  {sa.level === "Uzman / Proje Kanıtlı"
-                                    ? "✓ Biliyor (Projeli)"
-                                    : sa.level === "Orta / Uygulamalı"
-                                    ? "✓ Orta"
-                                    : sa.level === "Yüzeysel / Sadece Listede"
-                                    ? "⚠️ Sadece Adı Geçiyor"
-                                    : "✕ Yok"}
+                                  {item.cv.detectedGender}
                                 </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                                <span
+                                  className={`text-xs ${
+                                    isSelected ? "text-zinc-300" : "text-zinc-500"
+                                  }`}
+                                >
+                                  •{" "}
+                                  {item.cv.detectedAge !== null
+                                    ? `${item.cv.detectedAge} Yaş`
+                                    : ageMissing
+                                    ? "Yaş & Üni Tarihi Yok (Belirsiz)"
+                                    : "Yaş Belirtilmemiş"}
+                                </span>
+                              </div>
 
-                        {/* Sağ: Skor & Uygun/Ele/Sil */}
-                        <div
-                          className="flex items-center gap-3 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="text-right">
-                            <div
-                              className={`text-base font-bold ${
-                                isSelected
-                                  ? "text-white"
-                                  : item.totalMatchScore >= 80
-                                  ? "text-teal-700"
-                                  : "text-zinc-700"
-                              }`}
-                            >
-                              %{item.totalMatchScore}
+                              {/* Derece Bazlı Eğitim Özeti (Label sayfasındaki gibi) */}
+                              {activeDegrees.length > 0 && (
+                                <div className="space-y-1 pt-0.5">
+                                  {activeDegrees.map((deg) => {
+                                    const slot = degMap[deg.key];
+                                    if (!slot) return null;
+                                    return (
+                                      <div
+                                        key={deg.key}
+                                        className={`text-xs flex flex-wrap items-center gap-1.5 ${
+                                          isSelected ? "text-zinc-300" : "text-zinc-600"
+                                        }`}
+                                      >
+                                        <span
+                                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                                            isSelected
+                                              ? "bg-teal-900/70 text-teal-200 border border-teal-700"
+                                              : "bg-teal-50 text-teal-800 border border-teal-200"
+                                          }`}
+                                        >
+                                          {deg.shortTr}
+                                        </span>
+                                        <span
+                                          className={`font-medium ${
+                                            isSelected ? "text-white" : "text-zinc-900"
+                                          }`}
+                                        >
+                                          {slot.university}
+                                        </span>
+                                        <span className={isSelected ? "text-zinc-500" : "text-zinc-400"}>
+                                          —
+                                        </span>
+                                        <span className={isSelected ? "text-teal-300" : "text-teal-800"}>
+                                          {slot.department}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Yetenek Etiketleri (Sadece kullanıcının aradığı kelimeler) */}
+                              {item.skillAssessments.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                  {item.skillAssessments.map((sa) => (
+                                    <span
+                                      key={sa.skill}
+                                      className={`text-[11px] px-2 py-0.5 rounded font-medium ${
+                                        isSelected
+                                          ? sa.level === "Uzman / Proje Kanıtlı"
+                                            ? "bg-teal-900/60 text-teal-200 border border-teal-700"
+                                            : sa.level === "Yüzeysel / Sadece Listede"
+                                            ? "bg-amber-900/50 text-amber-200"
+                                            : "bg-red-900/40 text-red-200"
+                                          : sa.level === "Uzman / Proje Kanıtlı"
+                                          ? "bg-zinc-100 text-zinc-800"
+                                          : sa.level === "Yüzeysel / Sadece Listede"
+                                          ? "bg-amber-50 text-amber-800"
+                                          : "bg-red-50 text-red-700"
+                                      }`}
+                                    >
+                                      {sa.skill}:{" "}
+                                      {sa.level === "Uzman / Proje Kanıtlı"
+                                        ? "✓ Biliyor (Projeli)"
+                                        : sa.level === "Orta / Uygulamalı"
+                                        ? "✓ Orta"
+                                        : sa.level === "Yüzeysel / Sadece Listede"
+                                        ? "⚠️ Sadece Adı Geçiyor"
+                                        : "✕ Yok"}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+
+                            {/* Sağ: Skor & Uygun/Ele/Sil */}
                             <div
-                              className={`text-[10px] ${
-                                isSelected ? "text-zinc-400" : "text-zinc-400"
-                              }`}
+                              className="flex items-center gap-3 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Uyum
+                              <div className="text-right">
+                                <div
+                                  className={`text-base font-bold ${
+                                    isSelected
+                                      ? "text-white"
+                                      : item.totalMatchScore >= 80
+                                      ? "text-teal-700"
+                                      : "text-zinc-700"
+                                  }`}
+                                >
+                                  %{item.totalMatchScore}
+                                </div>
+                                <div
+                                  className={`text-[10px] ${
+                                    isSelected ? "text-zinc-400" : "text-zinc-400"
+                                  }`}
+                                >
+                                  Uyum
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleFeedback(item.cv, "approved")}
+                                  title="Uygun"
+                                  className={`p-1.5 rounded border cursor-pointer ${
+                                    isApproved
+                                      ? "bg-teal-600 text-white border-teal-600"
+                                      : isSelected
+                                      ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
+                                      : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
+                                  }`}
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleFeedback(item.cv, "rejected")}
+                                  title="Ele"
+                                  className={`p-1.5 rounded border cursor-pointer ${
+                                    isRejected
+                                      ? "bg-red-600 text-white border-red-600"
+                                      : isSelected
+                                      ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
+                                      : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
+                                  }`}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCandidate(item.cv.id)}
+                                  title="CV'yi Kaldır"
+                                  className={`p-1.5 rounded border cursor-pointer ${
+                                    isSelected
+                                      ? "border-zinc-700 text-zinc-400 hover:text-red-400"
+                                      : "border-zinc-200 text-zinc-400 hover:text-red-600"
+                                  }`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleFeedback(item.cv, "approved")}
-                              title="Uygun"
-                              className={`p-1.5 rounded border cursor-pointer ${
-                                isApproved
-                                  ? "bg-teal-600 text-white border-teal-600"
-                                  : isSelected
-                                  ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
-                                  : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
-                              }`}
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleFeedback(item.cv, "rejected")}
-                              title="Ele"
-                              className={`p-1.5 rounded border cursor-pointer ${
-                                isRejected
-                                  ? "bg-red-600 text-white border-red-600"
-                                  : isSelected
-                                  ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
-                                  : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
-                              }`}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCandidate(item.cv.id)}
-                              title="CV'yi Kaldır"
-                              className={`p-1.5 rounded border cursor-pointer ${
-                                isSelected
-                                  ? "border-zinc-700 text-zinc-400 hover:text-red-400"
-                                  : "border-zinc-200 text-zinc-400 hover:text-red-600"
-                              }`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* SAĞ: SEÇİLİ ADAYIN SADE ÖZETİ VE CV'Sİ (5 Sütun) */}
-            <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-lg p-5 shadow-xs space-y-5">
-              {selectedEvaluation ? (
-                <>
-                  {/* Aday Başlığı */}
-                  <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-zinc-950">
-                        {selectedEvaluation.cv.fullName}
-                      </h3>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {selectedEvaluation.cv.university} • {selectedEvaluation.cv.city} •{" "}
-                        {selectedEvaluation.cv.source}
-                      </p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 font-bold text-sm">
-                      %{selectedEvaluation.totalMatchScore} Uyum
-                    </span>
-                  </div>
-
-                  {/* Yapay Zeka Tespit Özeti */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase">
-                        Yapay Zeka Tespit Özeti
-                      </span>
-                      <button
-                        onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
-                        disabled={isGeminiLoading}
-                        className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
-                      </button>
-                    </div>
-
-                    {geminiResults[selectedEvaluation.cv.id] && (
-                      <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
-                        <strong>Gemini AI Raporu:</strong> {geminiResults[selectedEvaluation.cv.id]}
-                      </div>
+                        );
+                      })
                     )}
-
-                    {/* Cinsiyet Tespiti */}
-                    <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
-                      <div className="flex items-center justify-between font-semibold text-zinc-900">
-                        <span>Cinsiyet: {selectedEvaluation.cv.detectedGender}</span>
-                        <span className="text-teal-700">
-                          %{selectedEvaluation.cv.genderConfidence} Doğruluk
-                        </span>
-                      </div>
-                      <p className="text-zinc-600">
-                        {selectedEvaluation.cv.genderEvidence
-                          .map((e) => e.signal)
-                          .slice(0, 2)
-                          .join(" + ")}
-                      </p>
-                    </div>
-
-                    {/* Yaş Tespiti */}
-                    <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
-                      <div className="flex items-center justify-between font-semibold text-zinc-900">
-                        <span>
-                          Yaş:{" "}
-                          {selectedEvaluation.cv.detectedAge
-                            ? `${selectedEvaluation.cv.detectedAge} Yaşında`
-                            : "Belirsiz"}
-                        </span>
-                        <span className="text-zinc-500">{selectedEvaluation.cv.ageMethod}</span>
-                      </div>
-                      <p className="text-zinc-600">{selectedEvaluation.cv.ageEvidence}</p>
-                    </div>
-
-                    {/* Yetenek Kanıtları */}
-                    {selectedEvaluation.skillAssessments.map((sa) => (
-                      <div
-                        key={sa.skill}
-                        className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between font-semibold text-zinc-900">
-                          <span className="flex items-center gap-1.5">
-                            {sa.level === "Uzman / Proje Kanıtlı" ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                            ) : (
-                              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                            )}
-                            {sa.skill}
-                          </span>
-                          <span
-                            className={
-                              sa.level === "Uzman / Proje Kanıtlı"
-                                ? "text-teal-700"
-                                : "text-amber-700"
-                            }
-                          >
-                            {sa.level}
-                          </span>
-                        </div>
-                        <p className="text-zinc-600 italic">&ldquo;{sa.evidenceSnippet}&rdquo;</p>
-                      </div>
-                    ))}
                   </div>
-
-                  {/* CV Metni */}
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      Okunan CV Metni
-                    </div>
-                    <pre className="p-3.5 rounded-md bg-zinc-900 text-zinc-200 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                      {selectedEvaluation.cv.rawText}
-                    </pre>
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-zinc-500 py-8 text-center">
-                  Detayları görmek için soldaki listeden bir adaya tıklayın.
                 </div>
-              )}
-            </div>
-          </section>
+
+                {/* SAĞ: SEÇİLİ ADAYIN SADE ÖZETİ VE CV'Sİ (5 Sütun) */}
+                <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-lg p-5 shadow-xs space-y-5">
+                  {selectedEvaluation ? (
+                    (() => {
+                      const degMap = getCandidateDegreeMap(selectedEvaluation.cv);
+                      const activeDegrees = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
+                      const ageMissing = isAgeMissingCase(selectedEvaluation.cv);
+
+                      return (
+                        <>
+                          {/* Aday Başlığı */}
+                          <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
+                            <div>
+                              <h3 className="text-lg font-bold text-zinc-950">
+                                {selectedEvaluation.cv.fullName}
+                              </h3>
+                              <p className="text-xs text-zinc-500 mt-0.5">
+                                {selectedEvaluation.cv.university}
+                                {selectedEvaluation.cv.department &&
+                                selectedEvaluation.cv.department !== "Belirtilmemiş"
+                                  ? ` — ${selectedEvaluation.cv.department}`
+                                  : ""}{" "}
+                                • {selectedEvaluation.cv.city} • {selectedEvaluation.cv.source}
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 font-bold text-sm shrink-0">
+                              %{selectedEvaluation.totalMatchScore} Uyum
+                            </span>
+                          </div>
+
+                          {/* Yapay Zeka Tespit Özeti */}
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-zinc-500 uppercase">
+                                Yapay Zeka Tespit Özeti
+                              </span>
+                              <button
+                                onClick={() => handleRunGeminiAnalysis(selectedEvaluation.cv)}
+                                disabled={isGeminiLoading}
+                                className="text-xs font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                {isGeminiLoading ? "Gemini Analiz Ediyor..." : "Gemini AI ile Doğrula"}
+                              </button>
+                            </div>
+
+                            {geminiResults[selectedEvaluation.cv.id] && (
+                              <div className="p-3 rounded-md bg-teal-50/70 border border-teal-200 text-xs text-teal-950">
+                                <strong>Gemini AI Raporu:</strong>{" "}
+                                {geminiResults[selectedEvaluation.cv.id]}
+                              </div>
+                            )}
+
+                            {/* Cinsiyet Tespiti */}
+                            <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
+                              <div className="flex items-center justify-between font-semibold text-zinc-900">
+                                <span>Cinsiyet: {selectedEvaluation.cv.detectedGender}</span>
+                                <span className="text-teal-700">
+                                  %{selectedEvaluation.cv.genderConfidence} Doğruluk
+                                </span>
+                              </div>
+                              <p className="text-zinc-600">
+                                {selectedEvaluation.cv.genderEvidence
+                                  .map((e) => e.signal)
+                                  .slice(0, 2)
+                                  .join(" + ")}
+                              </p>
+                            </div>
+
+                            {/* Yaş Tespiti */}
+                            <div className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1">
+                              <div className="flex items-center justify-between font-semibold text-zinc-900">
+                                <span>
+                                  Yaş:{" "}
+                                  {selectedEvaluation.cv.detectedAge !== null
+                                    ? `${selectedEvaluation.cv.detectedAge} Yaşında`
+                                    : ageMissing
+                                    ? "Yaş & Üni Tarihi Yok (Belirsiz)"
+                                    : "Belirsiz"}
+                                </span>
+                                <span className="text-zinc-500">
+                                  {selectedEvaluation.cv.ageMethod}
+                                </span>
+                              </div>
+                              <p className="text-zinc-600">{selectedEvaluation.cv.ageEvidence}</p>
+                            </div>
+
+                            {/* Derece Bazlı Eğitim Tespiti (Label Sayfası Formatında) */}
+                            <div className="p-3.5 rounded-md bg-zinc-50 border border-zinc-200/80 text-xs space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-zinc-900 flex items-center gap-1.5">
+                                  <GraduationCap className="w-4 h-4 text-teal-700" />
+                                  Eğitim Dereceleri &amp; Üniversite / Bölüm
+                                </span>
+                                <span className="text-[11px] font-semibold text-teal-700">
+                                  {activeDegrees.length > 0
+                                    ? activeDegrees.map((d) => d.shortTr).join(" + ")
+                                    : "Belirtilmemiş"}
+                                </span>
+                              </div>
+
+                              {/* 4 Derece Göstergesi (Ön Lisans / Lisans / Yüksek Lisans / Doktora) */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                {DEGREE_CARDS.map((deg) => {
+                                  const isHas = degMap[deg.key] !== null;
+                                  return (
+                                    <div
+                                      key={deg.key}
+                                      className={`px-2 py-1.5 rounded border text-center font-semibold text-[11px] ${
+                                        isHas
+                                          ? "bg-teal-600 text-white border-teal-600"
+                                          : "bg-white text-zinc-400 border-zinc-200"
+                                      }`}
+                                    >
+                                      {isHas ? "✓ " : ""}
+                                      {deg.shortTr}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Aktif olan her derece için ayrı Üniversite & Bölüm kartı */}
+                              {activeDegrees.length > 0 ? (
+                                <div className="space-y-2">
+                                  {activeDegrees.map((deg) => {
+                                    const slot = degMap[deg.key];
+                                    if (!slot) return null;
+                                    return (
+                                      <div
+                                        key={deg.key}
+                                        className="p-2.5 rounded-md bg-white border border-teal-200/90 space-y-1.5"
+                                      >
+                                        <div className="flex items-center justify-between border-b border-zinc-100 pb-1">
+                                          <span className="font-bold text-teal-900 text-[11px]">
+                                            🎓 {deg.cardTitle}
+                                          </span>
+                                          <span className="text-[10px] font-medium text-zinc-400">
+                                            {deg.shortEn}
+                                          </span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                                          <div>
+                                            <div className="text-[10px] font-semibold text-zinc-400 uppercase">
+                                              {deg.uniLabel}
+                                            </div>
+                                            <div className="font-semibold text-zinc-900 mt-0.5">
+                                              {slot.university}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div className="text-[10px] font-semibold text-zinc-400 uppercase">
+                                              {deg.deptLabel}
+                                            </div>
+                                            <div className="font-semibold text-teal-800 mt-0.5">
+                                              {slot.department}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-zinc-500">
+                                  CV metninde açık bir üniversite veya bölüm bilgisi tespit edilemedi.
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Yetenek Kanıtları */}
+                            {selectedEvaluation.skillAssessments.map((sa) => (
+                              <div
+                                key={sa.skill}
+                                className="p-3 rounded-md bg-zinc-50 border border-zinc-100 text-xs space-y-1"
+                              >
+                                <div className="flex items-center justify-between font-semibold text-zinc-900">
+                                  <span className="flex items-center gap-1.5">
+                                    {sa.level === "Uzman / Proje Kanıtlı" ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                                    ) : (
+                                      <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                                    )}
+                                    {sa.skill}
+                                  </span>
+                                  <span
+                                    className={
+                                      sa.level === "Uzman / Proje Kanıtlı"
+                                        ? "text-teal-700"
+                                        : "text-amber-700"
+                                    }
+                                  >
+                                    {sa.level}
+                                  </span>
+                                </div>
+                                <p className="text-zinc-600 italic">
+                                  &ldquo;{sa.evidenceSnippet}&rdquo;
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* CV Metni */}
+                          <div>
+                            <div className="text-xs font-semibold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5" />
+                              Okunan CV Metni
+                            </div>
+                            <pre className="p-3.5 rounded-md bg-zinc-900 text-zinc-200 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                              {selectedEvaluation.cv.rawText}
+                            </pre>
+                          </div>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <div className="text-sm text-zinc-500 py-8 text-center">
+                      Detayları görmek için soldaki listeden bir adaya tıklayın.
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
         )}
       </main>
 

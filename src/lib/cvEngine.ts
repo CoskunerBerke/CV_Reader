@@ -33,6 +33,12 @@ export interface CandidateCV {
   experienceYears: number;
   educationLevel: string;
   university: string;
+  department?: string;
+  allUniversities?: string[];
+  allDepartments?: string[];
+  allDegrees?: string[];
+  educationByDegree?: EducationByDegreeMap;
+  educationSummary?: string;
   city: string;
   extractedTags: string[];
   //HR Feedback per company
@@ -1773,6 +1779,126 @@ const UNIVERSITY_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     aliases: ["bits pilani", "birla institute of technology"],
     regex: /\b(?:bits\s*\(?\s*pilani\s*\)?|birla\s*institute\s*of\s*technology)\b/gi,
   },
+  {
+    canonical: "Çankaya Üniversitesi",
+    aliases: ["çankaya üniversitesi", "cankaya university", "çankaya"],
+    regex: /\b(?:[çc]ankaya\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "TOBB Ekonomi ve Teknoloji Üniversitesi (TOBB ETÜ)",
+    aliases: ["tobb etü", "tobb etu", "tobb ekonomi ve teknoloji", "tobb university"],
+    regex: /\b(?:tobb\s*(?:ekonomi\s*ve\s*teknoloji\s*)?(?:üniversitesi|university|et[üu]))\b/gi,
+  },
+  {
+    canonical: "TED Üniversitesi",
+    aliases: ["ted üniversitesi", "ted university", "tedü"],
+    regex: /\b(?:ted\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Atılım Üniversitesi",
+    aliases: ["atılım üniversitesi", "atilim university", "atılım"],
+    regex: /\b(?:at[ıi]l[ıi]m\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Başkent Üniversitesi",
+    aliases: ["başkent üniversitesi", "baskent university", "başkent"],
+    regex: /\b(?:ba[şs]kent\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Ankara Yıldırım Beyazıt Üniversitesi (AYBÜ)",
+    aliases: ["yıldırım beyazıt", "yildirim beyazit", "aybü", "aybu"],
+    regex: /\b(?:(?:ankara\s*)?y[ıi]ld[ıi]r[ıi]m\s*beyaz[ıi]t\s*(?:üniversitesi|university)|ayb[üu])\b/gi,
+  },
+  {
+    canonical: "Gebze Teknik Üniversitesi (GTÜ)",
+    aliases: ["gebze teknik", "gebze technical university", "gtü", "gtu"],
+    regex: /\b(?:gebze\s*(?:teknik|technical|yüksek\s*teknoloji)\s*(?:üniversitesi|university|enstitüsü)|gt[üu])\b/gi,
+  },
+  {
+    canonical: "Sakarya Üniversitesi",
+    aliases: ["sakarya üniversitesi", "sakarya university", "saü"],
+    regex: /\b(?:sakarya\s*(?:uygulamal[ıi]\s*bilimler\s*)?(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Bursa Uludağ Üniversitesi",
+    aliases: ["uludağ üniversitesi", "uludag university", "bursa uludağ"],
+    regex: /\b(?:(?:bursa\s*)?uluda[ğg]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Akdeniz Üniversitesi",
+    aliases: ["akdeniz üniversitesi", "akdeniz university"],
+    regex: /\b(?:akdeniz\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Çukurova Üniversitesi",
+    aliases: ["çukurova üniversitesi", "cukurova university"],
+    regex: /\b(?:[çc]ukurova\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Selçuk Üniversitesi",
+    aliases: ["selçuk üniversitesi", "selcuk university"],
+    regex: /\b(?:sel[çc]uk\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Erciyes Üniversitesi",
+    aliases: ["erciyes üniversitesi", "erciyes university"],
+    regex: /\b(?:erciyes\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Karadeniz Teknik Üniversitesi (KTÜ)",
+    aliases: ["karadeniz teknik", "karadeniz technical university", "ktü"],
+    regex: /\b(?:karadeniz\s*(?:teknik|technical)\s*(?:üniversitesi|university)|kt[üu])\b/gi,
+  },
+  {
+    canonical: "Atatürk Üniversitesi",
+    aliases: ["atatürk üniversitesi", "ataturk university"],
+    regex: /\b(?:atat[üu]rk\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Özyeğin Üniversitesi",
+    aliases: ["özyeğin üniversitesi", "ozyegin university", "özyeğin"],
+    regex: /\b(?:[öo]zye[ğg]in\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Medipol Üniversitesi",
+    aliases: ["medipol üniversitesi", "istanbul medipol", "ankara medipol", "medipol university"],
+    regex: /\b(?:(?:istanbul\s*|ankara\s*)?medipol\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Üsküdar Üniversitesi",
+    aliases: ["üsküdar üniversitesi", "uskudar university"],
+    regex: /\b(?:[üu]sk[üu]dar\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Nişantaşı Üniversitesi",
+    aliases: ["nişantaşı üniversitesi", "nisantasi university"],
+    regex: /\b(?:ni[şs]anta[şs][ıi]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Haliç Üniversitesi",
+    aliases: ["haliç üniversitesi", "halic university"],
+    regex: /\b(?:hali[çc]\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Kültür Üniversitesi",
+    aliases: ["kültür üniversitesi", "istanbul kültür", "kultur university"],
+    regex: /\b(?:(?:istanbul\s*)?k[üu]lt[üu]r\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Gelişim Üniversitesi",
+    aliases: ["gelişim üniversitesi", "istanbul gelişim", "gelisim university"],
+    regex: /\b(?:(?:istanbul\s*)?geli[şs]im\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "İstanbul Arel Üniversitesi",
+    aliases: ["arel üniversitesi", "istanbul arel", "arel university"],
+    regex: /\b(?:(?:istanbul\s*)?arel\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "Galatasaray Üniversitesi",
+    aliases: ["galatasaray üniversitesi", "galatasaray university", "gsü"],
+    regex: /\b(?:galatasaray\s*(?:üniversitesi|university))\b/gi,
+  },
 ];
 
 const DEGREE_DICTIONARY: {
@@ -2227,6 +2353,27 @@ export function extractEducationFromCV(rawText: string): {
     }
   }
 
+  // Sözlükte olmayan herhangi bir Türkiye veya yurtdışı üniversitesi için genel yakalayıcı (Örn: "X Üniversitesi" / "University of X")
+  if (bestUni === "Belirtilmemiş") {
+    for (const line of nonEmptyLines) {
+      const mTr = line.match(
+        /([A-ZÇĞİÖŞÜa-zçğıöşü]{2,}(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]{2,}){0,3}\s+(?:Üniversitesi|ÜNİVERSİTESİ|University|UNIVERSITY|Institute\s+of\s+Technology))/
+      );
+      const mOf = line.match(
+        /\b(University\s+of\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\b/
+      );
+      const rawFound = (mTr?.[1] || mOf?.[1] || "").trim();
+      if (
+        rawFound &&
+        !/^(?:bir|bu|the|my|our|at|in|from|and|ve|açıköğretim)\b/i.test(rawFound)
+      ) {
+        bestUni = rawFound;
+        allFoundUnis.push(rawFound);
+        break;
+      }
+    }
+  }
+
   // 2. BÖLÜM (DEPARTMENT) ADAYLARINI PUANLA (Lisans Bölümü Öncelikli)
   const deptScores = new Map<string, number>();
   const deptFirstIdx = new Map<string, number>();
@@ -2327,6 +2474,23 @@ export function extractEducationFromCV(rawText: string): {
       bestDeptScore = sc;
       bestDept = d;
       bestDeptPos = pos;
+    }
+  }
+
+  // Sözlükte olmayan bölümler için genel yakalayıcı (Örn: "... Mühendisliği" / "... Bölümü" / "B.Sc. in ...")
+  if (bestDept === "Belirtilmemiş") {
+    for (const line of nonEmptyLines) {
+      const mDept = line.match(
+        /([A-ZÇĞİÖŞÜa-zçğıöşü]{3,}(?:\s+(?:ve|and|&|-)?\s*[A-ZÇĞİÖŞÜa-zçğıöşü]{3,}){0,3}\s+(?:Mühendisliği|MÜHENDİSLİĞİ|Engineering|ENGINEERING|Bölümü|Programcılığı))/
+      );
+      if (mDept?.[1]) {
+        const cand = mDept[1].trim();
+        if (!/^(?:faculty|fakültesi|journal|dergisi|institute|enstitüsü)/i.test(cand)) {
+          bestDept = cand;
+          allFoundDepts.push(cand);
+          break;
+        }
+      }
     }
   }
 
