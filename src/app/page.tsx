@@ -1002,31 +1002,93 @@ export default function CVReaderApp() {
 
   return (
     <div
-      className="min-h-screen bg-zinc-50 text-zinc-900"
+      className="relative min-h-screen bg-zinc-950 text-zinc-900 overflow-x-hidden"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={(e) => handleDropFiles(e, true)}
     >
       {/* =====================================================================
-          1. SADE ÜST BAR (HEADER)
+          0. TÜM SAYFAYA YAYILAN SÜREKLİ DÖNGÜDE İŞ MÜLAKATI ARKA PLAN VİDEOSU
          ===================================================================== */}
-      <header className="bg-white border-b border-zinc-200 sticky top-0 z-30">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="w-full h-full object-cover scale-[1.02] filter brightness-[0.85] contrast-[1.05]"
+        >
+          <source src="/videos/interview-bg.mp4" type="video/mp4" />
+          <source
+            src="https://assets.mixkit.co/videos/41695/41695-720.mp4"
+            type="video/mp4"
+          />
+          <source
+            src="https://assets.mixkit.co/videos/23225/23225-720.mp4"
+            type="video/mp4"
+          />
+        </video>
+        {/* Sinematik Kontrast ve Akış Katmanı */}
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/80 via-zinc-950/65 to-zinc-950/88 backdrop-blur-[1.5px]" />
+      </div>
+
+      {/* =====================================================================
+          1. ÜST BAR (NAVBAR — Tek Satır, Sade & Kurumsal)
+         ===================================================================== */}
+      <header className="bg-zinc-950/75 backdrop-blur-md border-b border-white/10 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Sol: Logo */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded bg-zinc-900 text-white flex items-center justify-center font-bold text-xs">
+          {/* Sol: Logo & Başlık */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-8 h-8 rounded bg-white text-zinc-950 flex items-center justify-center font-bold text-xs tracking-tighter">
               CV
             </div>
-            <span className="font-semibold text-base tracking-tight text-zinc-950 whitespace-nowrap">
-              CV Reader AI
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span className="font-semibold text-base tracking-tight text-white whitespace-nowrap">
+                CV Reader AI
+              </span>
+              <span className="hidden sm:inline-block text-white/20">|</span>
+              <span className="hidden sm:inline-block text-xs text-zinc-400 whitespace-nowrap">
+                Kurumsal Özgeçmiş &amp; Akademik Veri Ayrıştırma
+              </span>
+            </div>
           </div>
+
+          {/* Orta: Tek Kelimelik Akıcı Menü Linkleri */}
+          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium text-zinc-300">
+            <a
+              href="#yukleme"
+              className="hover:text-white transition-colors whitespace-nowrap"
+            >
+              Yükleme
+            </a>
+            <a
+              href="#sistem"
+              className="hover:text-white transition-colors whitespace-nowrap"
+            >
+              Sistem
+            </a>
+            <a
+              href="#ozellikler"
+              className="hover:text-white transition-colors whitespace-nowrap"
+            >
+              Özellikler
+            </a>
+            {candidates.length > 0 && (
+              <a
+                href="#sonuclar"
+                className="text-teal-300 hover:text-teal-200 transition-colors whitespace-nowrap"
+              >
+                Sonuçlar ({candidates.length})
+              </a>
+            )}
+          </nav>
 
           {/* Sağ: Etiketleme & Excel İndir */}
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/label"
-              className="px-3 py-1.5 rounded-md border border-zinc-900 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-md border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
               Etiketle &amp; Başarı Ölç
@@ -1041,7 +1103,7 @@ export default function CVReaderApp() {
                       activeCompany.name
                     )
                   }
-                  className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="px-3.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                   title="Yüklenen tüm CV'lerin Yaş, Cinsiyet ve Derece Bazlı (Ön Lisans / Lisans / Master / Doktora) Üniversite-Bölüm dökümünü Excel (.xlsx) olarak indir"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1053,10 +1115,10 @@ export default function CVReaderApp() {
                     setCandidates([]);
                     setSelectedCandidateId("");
                   }}
-                  className="px-3 py-1.5 rounded-md border border-zinc-200 hover:border-red-600 hover:text-red-600 text-zinc-600 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-md border border-white/15 hover:border-red-500/70 hover:text-red-300 text-zinc-300 text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  Tümünü Temizle
+                  Temizle
                 </button>
               </>
             )}
@@ -1064,7 +1126,7 @@ export default function CVReaderApp() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-12">
 
         {/* Tam Ekran Sürükle-Bırak Katmanı (Sayfanın herhangi bir yerine sürüklenince açılır) */}
         {isDragging && (
@@ -1072,7 +1134,7 @@ export default function CVReaderApp() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDropFiles(e, true)}
-            className="fixed inset-0 z-50 bg-teal-950/40 backdrop-blur-[2px] flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-6"
           >
             <div className="bg-white border-2 border-dashed border-teal-600 rounded-2xl p-10 max-w-lg w-full text-center shadow-2xl pointer-events-none">
               <FileUp className="w-12 h-12 text-teal-600 mx-auto mb-3 animate-bounce" />
@@ -1086,94 +1148,141 @@ export default function CVReaderApp() {
           </div>
         )}
 
-        {/* Canlı Yükleme & Analiz Durum Çubuğu */}
-        {(isParsingPdf || pdfParseStatus) && (
+        {/* =====================================================================
+            2. HERO TANITIM VE DOĞRUDAN CV SÜRÜKLE-BIRAK MERKEZİ
+           ===================================================================== */}
+        <section id="yukleme" className="space-y-7 pt-2">
+          {/* Editoryal Başlık ve Değer Önerisi */}
+          <div className="max-w-3xl space-y-3">
+            <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-teal-300/90">
+              01 — KURUMSAL İK OTOMASYONU VE TOPLU ÖZGEÇMİŞ ANALİZİ
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white leading-[1.18]">
+              Onlarca Özgeçmişi Saniyeler İçinde Yapılandırılmış Excel Tablosuna Dönüştürün.
+            </h1>
+            <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-2xl">
+              Masaüstünüzden 30–40+ adet PDF, Word, klasör veya arşivi tek seferde bırakın. Her adayın{" "}
+              <strong className="text-white font-medium">Yaş</strong>,{" "}
+              <strong className="text-white font-medium">Cinsiyet</strong> ve{" "}
+              <strong className="text-white font-medium">
+                Ön Lisans · Lisans · Yüksek Lisans · Doktora
+              </strong>{" "}
+              düzeyindeki üniversite ve bölüm bilgilerini hatasız ayrıştırıp tek tıkla{" "}
+              <strong className="text-teal-300 font-medium">Excel (.xlsx)</strong> olarak dışa aktarın.
+            </p>
+          </div>
+
+          {/* Canlı Yükleme & Analiz Durum Çubuğu */}
+          {(isParsingPdf || pdfParseStatus) && (
+            <div
+              className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md shadow-lg ${
+                pdfParseStatus.startsWith("⚠️")
+                  ? "bg-amber-50/95 border-amber-300 text-amber-950"
+                  : "bg-teal-50/95 border-teal-300 text-teal-950"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {isParsingPdf && <Loader2 className="w-4 h-4 text-teal-600 animate-spin shrink-0" />}
+                <span>{pdfParseStatus || "Dosyalar okunuyor..."}</span>
+              </div>
+              {!isParsingPdf && pdfParseStatus && (
+                <button
+                  onClick={() => setPdfParseStatus("")}
+                  className="text-zinc-500 hover:text-zinc-900 text-sm font-bold px-1 cursor-pointer"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) KARTI */}
           <div
-            className={`rounded-lg border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium ${
-              pdfParseStatus.startsWith("⚠️")
-                ? "bg-amber-50 border-amber-200 text-amber-900"
-                : "bg-teal-50 border-teal-200 text-teal-900"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDropFiles(e, true)}
+            className={`bg-white/95 backdrop-blur-md border-2 border-dashed rounded-2xl transition-all shadow-2xl ${
+              candidates.length === 0 ? "p-7 sm:p-10" : "p-6"
+            } ${
+              isDragging
+                ? "border-teal-500 bg-teal-50/95 scale-[1.005]"
+                : "border-teal-600/60 hover:border-teal-500"
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              {isParsingPdf && <Loader2 className="w-4 h-4 text-teal-600 animate-spin shrink-0" />}
-              <span>{pdfParseStatus || "Dosyalar okunuyor..."}</span>
-            </div>
-            {!isParsingPdf && pdfParseStatus && (
-              <button
-                onClick={() => setPdfParseStatus("")}
-                className="text-zinc-400 hover:text-zinc-700 text-sm font-bold px-1 cursor-pointer"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* =====================================================================
-            3. HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) ALANI
-               (1 CV yüklense de 40 CV yüklense de kaybolmaz, her an sürüklenebilir)
-           ===================================================================== */}
-        <section
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDropFiles(e, true)}
-          className={`bg-white border-2 border-dashed rounded-xl transition-all shadow-xs ${
-            candidates.length === 0 ? "p-10" : "p-5"
-          } ${
-            isDragging
-              ? "border-teal-600 bg-teal-50/80 scale-[1.005]"
-              : "border-teal-500/60 hover:border-teal-600 bg-teal-50/20"
-          }`}
-        >
-          <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-teal-600/10 border border-teal-600/20 flex items-center justify-center shrink-0">
-                {isParsingPdf ? (
-                  <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
-                ) : (
-                  <FileUp className="w-6 h-6 text-teal-700" />
-                )}
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-center lg:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-md">
+                  {isParsingPdf ? (
+                    <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
+                  ) : (
+                    <FileUp className="w-6 h-6 text-teal-400" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-zinc-950">
+                    {isDragging
+                      ? "Dosyaları veya Klasörü Şimdi Buraya Bırakın!"
+                      : candidates.length === 0
+                      ? "30–40+ CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Sürükleyip Bırakın"
+                      : `Yeni CV'leri, Klasörü veya .ZIP Arşivini Buraya Sürükleyip Bırakın (${candidates.length} CV Yüklü)`}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-zinc-600 mt-1 leading-relaxed max-w-2xl">
+                    Masaüstünden <strong>30–40+ adet .PDF, .DOCX, .HTML, .ZIP, .RAR</strong> dosyasını veya doğrudan <strong>klasörü</strong> bu alana sürükleyin. Tüm adaylar tek tabloda birleştirilir ve Excel çıktısına hazır hale getirilir.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-zinc-950">
-                  {isDragging
-                    ? "Dosyaları veya Klasörü Şimdi Buraya Bırakın!"
-                    : candidates.length === 0
-                    ? "30–40+ CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Sürükleyip Bırakın"
-                    : `Yeni CV'leri, Klasörü veya .ZIP Arşivini Buraya Sürükleyip Bırakın (${candidates.length} CV Yüklü)`}
-                </h3>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-                  Masaüstünden <strong>30–40+ adet .PDF, .DOCX, .HTML, .ZIP, .RAR</strong> dosyasını veya doğrudan <strong>klasörü</strong> bu kutunun içine sürükleyin. Otomatik olarak Yaş, Cinsiyet ve Ön Lisans / Lisans / Master / Doktora bilgileri çıkarılır.
-                </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
+                {/* Çoklu Dosya Seç Butonu */}
+                <label className="px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-sm transition-colors whitespace-nowrap shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-teal-400" />
+                  Çoklu Dosya Seç (PDF / ZIP)
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleDirectFilesUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Klasör Seç Butonu */}
+                <label className="px-4 py-2.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-900 text-zinc-800 text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                  📁 Klasör Seç (Toplu)
+                  <input
+                    type="file"
+                    multiple
+                    {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+                    onChange={handleDirectFilesUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
-              {/* Çoklu Dosya Seç Butonu */}
-              <label className="px-4 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap">
-                <Upload className="w-3.5 h-3.5" />
-                Çoklu Dosya Seç (PDF / ZIP)
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={handleDirectFilesUpload}
-                  className="hidden"
-                />
-              </label>
-
-              {/* Klasör Seç Butonu */}
-              <label className="px-3.5 py-2.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-900 text-zinc-800 text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap">
-                📁 Klasör Seç (Toplu)
-                <input
-                  type="file"
-                  multiple
-                  {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
-                  onChange={handleDirectFilesUpload}
-                  className="hidden"
-                />
-              </label>
+            {/* Alt 01-02-03 İş Akışı Şeridi */}
+            <div className="mt-6 pt-5 border-t border-zinc-200/80 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono text-xs font-bold text-teal-700 shrink-0">01</span>
+                <div className="text-xs text-zinc-600">
+                  <strong className="text-zinc-900 block">Toplu Dosya &amp; Klasör Bırakma</strong>
+                  Tek tek seçmeden onlarca PDF, Word veya arşiv dosyasını aynı anda yükleyin.
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono text-xs font-bold text-teal-700 shrink-0">02</span>
+                <div className="text-xs text-zinc-600">
+                  <strong className="text-zinc-900 block">Derece Bazlı Akademik Ayrıştırma</strong>
+                  Ön Lisans, Lisans, Yüksek Lisans ve Doktora üniversite-bölümleri ayrı ayrı eşleşir.
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono text-xs font-bold text-teal-700 shrink-0">03</span>
+                <div className="text-xs text-zinc-600">
+                  <strong className="text-zinc-900 block">Anında Excel (.xlsx) Çıktısı</strong>
+                  Yaş, cinsiyet ve tüm eğitim kırılımlarını düzenli Excel tablosu olarak indirin.
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1182,9 +1291,9 @@ export default function CVReaderApp() {
             4. SONUÇLAR (KART GÖRÜNÜMÜ VEYA TOPLU TABLO / EXCEL ÖNİZLEME)
            ===================================================================== */}
         {candidates.length > 0 && (
-          <div className="space-y-4">
+          <div id="sonuclar" className="space-y-4">
             {/* ÜST TOPLU İŞLEM & EXCEL EXPORT BARI */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xl">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="inline-flex rounded-md border border-zinc-200 bg-zinc-50 p-0.5">
                   <button
@@ -1229,7 +1338,7 @@ export default function CVReaderApp() {
               /* ===============================================================
                  TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ (30-40+ CV İÇİN)
                  =============================================================== */
-              <section className="bg-white border border-zinc-200 rounded-lg overflow-hidden shadow-xs">
+              <section className="bg-white/95 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl">
                 <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-bold text-sm text-zinc-950">
@@ -1706,7 +1815,127 @@ export default function CVReaderApp() {
             )}
           </div>
         )}
+
+        {/* =====================================================================
+            5. SİSTEM MİMARİSİ & PAZARLAMA AKIŞI (Videolu Arka Plan Üzerinde)
+           ===================================================================== */}
+        <section id="sistem" className="pt-6 border-t border-white/15 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-2 max-w-2xl">
+              <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-teal-300/90">
+                02 — ÇALIŞMA MİMARİSİ VE SÜREÇ AKIŞI
+              </div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                İşe Alım ve Mülakat Öncesi Ön Eleme Sürecini Dakikalara İndirin
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-zinc-300 max-w-md leading-relaxed">
+              Yüzlerce sayfalık farklı tasarımlardaki özgeçmişleri tek tek açıp okumak yerine, mülakat masasına oturmadan önce tüm aday havuzunu standart bir veri tablosuna dönüştürün.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="p-6 rounded-xl bg-zinc-950/70 backdrop-blur-md border border-white/15 space-y-3">
+              <div className="text-xs font-mono font-bold text-teal-400">01 / TOPLU VERİ GİRİŞİ</div>
+              <h3 className="text-base font-semibold text-white">
+                Klasör, Arşiv (.ZIP / .RAR) ve Çoklu PDF Desteği
+              </h3>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Kariyer portallarından veya e-posta eklerinden indirdiğiniz 30–40+ adet özgeçmişi klasörden çıkarmadan ya da doğrudan klasör halinde sürükleyip bırakın.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-xl bg-zinc-950/70 backdrop-blur-md border border-white/15 space-y-3">
+              <div className="text-xs font-mono font-bold text-teal-400">02 / ÇOKLU DERECE MOTORU</div>
+              <h3 className="text-base font-semibold text-white">
+                Ön Lisans, Lisans, Yüksek Lisans ve Doktora Ayrımı
+              </h3>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Adayın birden fazla üniversite veya lisansüstü derecesi varsa birbirine karıştırmaz; her kademenin üniversite ve bölümünü kendi başlığı altına ayrı ayrı yazar.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-xl bg-zinc-950/70 backdrop-blur-md border border-white/15 space-y-3">
+              <div className="text-xs font-mono font-bold text-teal-400">03 / STANDART RAPORLAMA</div>
+              <h3 className="text-base font-semibold text-white">
+                Filtrelenebilir Kurumsal Excel (.xlsx) Çıktısı
+              </h3>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Ad soyad, tespit edilen cinsiyet, kronolojik yaş ve tüm akademik dereceler tek tıkla düzenli sütunlara ayrılmış Excel dosyası olarak bilgisayarınıza iner.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================================
+            6. TEKNİK ÖZELLİKLER (01–04 Kurumsal Kırılım)
+           ===================================================================== */}
+        <section id="ozellikler" className="pt-6 border-t border-white/15 space-y-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-teal-300/90">
+              03 — DOĞRULUK VE STANDARTLAR
+            </div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
+              Farklı CV Şablonlarına Karşı Dayanıklı Okuma Motoru
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-xl bg-white/92 backdrop-blur-md border border-white/20 space-y-2">
+              <div className="text-xs font-mono font-bold text-zinc-400">01</div>
+              <h3 className="text-sm font-bold text-zinc-950">Kronolojik Yaş Hesaplama</h3>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Doğum tarihi yazmayan özgeçmişlerde lisans ve lise başlangıç kronolojisinden adayın yaşını otomatik tahmin eder.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-white/92 backdrop-blur-md border border-white/20 space-y-2">
+              <div className="text-xs font-mono font-bold text-zinc-400">02</div>
+              <h3 className="text-sm font-bold text-zinc-950">Yapısal Bölüm Çıkarımı</h3>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Mühendislik, İİBF, Hukuk, Fen-Edebiyat ve MYO dahil tüm Türkçe ve İngilizce bölümleri satır yapısından tanır.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-white/92 backdrop-blur-md border border-white/20 space-y-2">
+              <div className="text-xs font-mono font-bold text-zinc-400">03</div>
+              <h3 className="text-sm font-bold text-zinc-950">Yurtiçi &amp; Yurtdışı Üniversiteler</h3>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Türkiye&apos;deki devlet ve vakıf üniversiteleri ile Avrupa/ABD üniversitelerini ilgili derece kademesiyle eşleştirir.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-white/92 backdrop-blur-md border border-white/20 space-y-2">
+              <div className="text-xs font-mono font-bold text-zinc-400">04</div>
+              <h3 className="text-sm font-bold text-zinc-950">Ground-Truth Öğrenme</h3>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Etiketleme ekranında doğruladığınız aday verileri sistem hafızasına kaydedilir ve sonraki toplu yüklemelerde korunur.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
+
+      {/* =====================================================================
+          ALT BİLGİ (FOOTER)
+         ===================================================================== */}
+      <footer className="relative z-10 border-t border-white/10 bg-zinc-950/80 backdrop-blur-md mt-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-white">CV Reader AI</span>
+            <span>—</span>
+            <span>Kurumsal Özgeçmiş Analizi ve Excel Raporlama Sistemi</span>
+          </div>
+          <div className="flex items-center gap-5">
+            <a href="#yukleme" className="hover:text-white transition-colors">
+              Toplu CV Yükle
+            </a>
+            <Link href="/label" className="hover:text-white transition-colors">
+              Etiketleme &amp; Doğruluk Ölçümü
+            </Link>
+          </div>
+        </div>
+      </footer>
 
       {/* =====================================================================
           MODAL 1: TOPLU CV YÜKLE (30-40+ PDF, WORD, KLASÖR, ZIP, RAR DESTEKLİ)
