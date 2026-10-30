@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import JSZip from "jszip";
@@ -18,15 +19,34 @@ function getGroundTruthLabels(): Record<
     humanDegree?: string | null;
   }
 > {
+  let merged: Record<
+    string,
+    {
+      humanName?: string;
+      humanGender: "Kadın" | "Erkek" | "Belirsiz";
+      humanAge: number | null;
+      humanUniversity?: string | null;
+      humanDepartment?: string | null;
+      humanDegree?: string | null;
+    }
+  > = {};
   try {
     const p = path.join(process.cwd(), "data", "ground-truth-labels.json");
     if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, "utf-8"));
+      merged = { ...merged, ...JSON.parse(fs.readFileSync(p, "utf-8")) };
     }
   } catch {
     // ignore
   }
-  return {};
+  try {
+    const tmpP = path.join(os.tmpdir(), "ground-truth-labels.json");
+    if (fs.existsSync(tmpP)) {
+      merged = { ...merged, ...JSON.parse(fs.readFileSync(tmpP, "utf-8")) };
+    }
+  } catch {
+    // ignore
+  }
+  return merged;
 }
 
 function parseHtmlToCleanText(html: string): string {
@@ -70,12 +90,16 @@ async function parseSingleBuffer(
 } | null> {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
 
-  // Ignore non-CV helper files inside zip archives (e.g. readme.txt, sonuclar.json, .DS_Store)
+  // Ignore non-CV helper files inside zip archives (e.g. readme.txt, sonuclar.json, .DS_Store, ~$temp.docx)
   const lowerBase = fileName.toLowerCase();
   if (
+    lowerBase.startsWith("~$") ||
+    lowerBase.startsWith(".") ||
     lowerBase.includes("readme") ||
     lowerBase.includes("sonuclar") ||
     lowerBase.includes("__macosx") ||
+    lowerBase === "desktop.ini" ||
+    lowerBase === "thumbs.db" ||
     ext === "json"
   ) {
     return null;
@@ -84,14 +108,24 @@ async function parseSingleBuffer(
   let extractedText = "";
 
   if (ext === "pdf") {
-    const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
-    const { text } = await extractText(pdf, { mergePages: false });
-    extractedText = Array.isArray(text) ? text.join("\n\n") : text || "";
+    try {
+      const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
+      const { text } = await extractText(pdf, { mergePages: false });
+      extractedText = Array.isArray(text) ? text.join("\n\n") : text || "";
+    } catch {
+      extractedText = "";
+    }
   } else if (ext === "docx" || ext === "doc") {
-    const result = await mammoth.extractRawText({
-      buffer: Buffer.from(arrayBuffer),
-    });
-    extractedText = result.value || "";
+    try {
+      const result = await mammoth.extractRawText({
+        buffer: Buffer.from(arrayBuffer),
+      });
+      extractedText = result.value || "";
+    } catch {
+      extractedText = new TextDecoder("utf-8", { fatal: false })
+        .decode(arrayBuffer)
+        .replace(/[^\x20-\x7E\xA0-\uFFFF\r\n]/g, " ");
+    }
   } else if (ext === "html" || ext === "htm") {
     const rawHtml = new TextDecoder("utf-8").decode(arrayBuffer);
     extractedText = parseHtmlToCleanText(rawHtml);

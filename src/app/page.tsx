@@ -555,6 +555,10 @@ export default function CVReaderApp() {
     const allowedExts = new Set(["pdf", "docx", "doc", "html", "htm", "txt", "md", "rar"]);
 
     for (const file of inputFiles) {
+      const baseTop = file.name.split(/[\\/]/).pop() || file.name;
+      if (!baseTop || baseTop.startsWith(".") || baseTop.startsWith("~$")) continue;
+      const lowerTop = baseTop.toLowerCase();
+      if (lowerTop === "desktop.ini" || lowerTop === "thumbs.db") continue;
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
       if (ext === "zip") {
         try {
@@ -565,12 +569,14 @@ export default function CVReaderApp() {
           const entries = Object.values(zip.files).filter((e) => !e.dir);
           for (const entry of entries) {
             const baseName = entry.name.split(/[\\/]/).pop() || entry.name;
-            if (!baseName || baseName.startsWith(".")) continue;
+            if (!baseName || baseName.startsWith(".") || baseName.startsWith("~$")) continue;
             const lower = baseName.toLowerCase();
             if (
               lower.includes("readme") ||
               lower.includes("sonuclar") ||
-              lower.includes("__macosx")
+              lower.includes("__macosx") ||
+              lower === "desktop.ini" ||
+              lower === "thumbs.db"
             ) {
               continue;
             }
@@ -680,20 +686,32 @@ export default function CVReaderApp() {
                 hasHumanLabel?: boolean;
                 humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
                 humanAge?: number | null;
+                humanUniversity?: string | null;
+                humanDepartment?: string | null;
+                humanDegree?: string | null;
               },
               idx: number
             ) => {
               const built = buildCandidateFromRaw(
-                `cv-${Date.now()}-${totalParsedCount + idx}`,
+                `cv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${totalParsedCount + idx}`,
                 f.fullName,
                 f.rawText,
                 f.experienceYears,
-                "Lisans",
-                f.university,
+                f.humanDegree || "Lisans",
+                f.humanUniversity || f.university,
                 f.city,
                 activeCompany.requiredSkills,
                 f.fileName
               );
+              if (f.humanUniversity) {
+                built.university = f.humanUniversity;
+              }
+              if (f.humanDepartment) {
+                built.department = f.humanDepartment;
+              }
+              if (f.humanDegree) {
+                built.educationLevel = f.humanDegree;
+              }
               if (f.humanGender) {
                 built.detectedGender = f.humanGender;
                 built.genderConfidence = 100;
