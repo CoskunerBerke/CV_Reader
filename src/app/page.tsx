@@ -763,7 +763,7 @@ export default function CVReaderApp() {
     }
   };
 
-  // Input üzerinden seçildiğinde
+  // Input üzerinden seçildiğinde (Çoklu Dosya veya Klasör)
   const handleDirectFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selected = Array.from(e.target.files);
@@ -771,24 +771,59 @@ export default function CVReaderApp() {
     await processFiles(selected, true);
   };
 
-  // Modal içinde dosya seçildiğinde
+  // Modal içinde dosya seçildiğinde de (1 dosya bile olsa) doğrudan otomatik analiz edip listeye ekle
   const handleModalFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selected = Array.from(e.target.files);
     e.target.value = "";
-    await processFiles(selected, selected.length > 1);
+    await processFiles(selected, true);
   };
 
-  // Tarayıcının sürüklenen dosyayı yeni sekmede açmasını engelle
+  // Tarayıcının sürüklenen dosyayı yeni sekmede açmasını engelle ve pencereye dosya sürüklendiğinde yakala
   useEffect(() => {
-    const preventBrowserDefault = (ev: DragEvent) => {
+    let dragCounter = 0;
+
+    const handleWinDragEnter = (ev: DragEvent) => {
       ev.preventDefault();
+      if (ev.dataTransfer?.types?.includes("Files")) {
+        dragCounter++;
+        setIsDragging(true);
+      }
     };
-    window.addEventListener("dragover", preventBrowserDefault);
-    window.addEventListener("drop", preventBrowserDefault);
+
+    const handleWinDragOver = (ev: DragEvent) => {
+      ev.preventDefault();
+      if (ev.dataTransfer) {
+        ev.dataTransfer.dropEffect = "copy";
+      }
+      if (ev.dataTransfer?.types?.includes("Files")) {
+        setIsDragging(true);
+      }
+    };
+
+    const handleWinDragLeave = (ev: DragEvent) => {
+      ev.preventDefault();
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0 || ev.relatedTarget === null) {
+        setIsDragging(false);
+      }
+    };
+
+    const handleWinDrop = (ev: DragEvent) => {
+      ev.preventDefault();
+      dragCounter = 0;
+      setIsDragging(false);
+    };
+
+    window.addEventListener("dragenter", handleWinDragEnter);
+    window.addEventListener("dragover", handleWinDragOver);
+    window.addEventListener("dragleave", handleWinDragLeave);
+    window.addEventListener("drop", handleWinDrop);
     return () => {
-      window.removeEventListener("dragover", preventBrowserDefault);
-      window.removeEventListener("drop", preventBrowserDefault);
+      window.removeEventListener("dragenter", handleWinDragEnter);
+      window.removeEventListener("dragover", handleWinDragOver);
+      window.removeEventListener("dragleave", handleWinDragLeave);
+      window.removeEventListener("drop", handleWinDrop);
     };
   }, []);
 
@@ -1254,54 +1289,77 @@ export default function CVReaderApp() {
         )}
 
         {/* =====================================================================
-            3. SONUÇLAR VEYA BOŞ DURUMDA DOĞRUDAN PDF YÜKLEME EKRANI
+            3. HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) ALANI
+               (1 CV yüklense de 40 CV yüklense de kaybolmaz, her an sürüklenebilir)
            ===================================================================== */}
-        {candidates.length === 0 ? (
-          <section className="bg-white border border-zinc-200 rounded-lg p-12 text-center shadow-xs">
-            <label
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDropFiles(e, true)}
-              className={`max-w-lg mx-auto block border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${
-                isDragging
-                  ? "border-teal-600 bg-teal-50/70 scale-[1.01]"
-                  : "border-zinc-300 hover:border-teal-600 bg-zinc-50/50 hover:bg-teal-50/20"
-              }`}
-            >
-              {isParsingPdf ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-                  <span className="text-sm font-semibold text-zinc-900">
-                    {pdfParseStatus || "CV dosyaları okunuyor ve analiz ediliyor..."}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <FileUp className="w-10 h-10 text-teal-600 mx-auto mb-3" />
-                  <h3 className="text-base font-bold text-zinc-950">
-                    {isDragging
-                      ? "Dosyaları Buraya Bırakın!"
-                      : "30–40+ CV Dosyasını, Klasörü veya .ZIP Arşivini Sürükleyin"}
-                  </h3>
-                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Tek seferde onlarca <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> CV dosyasını
-                    veya klasörü bırakın. Her adayın <strong>Yaş, Cinsiyet, Ön Lisans / Lisans / Yüksek Lisans / Doktora Üniversite &amp; Bölüm</strong> bilgileri otomatik çıkarılır ve tek tıkla <strong>Excel (.xlsx)</strong> olarak indirilir.
-                  </p>
-                  <span className="inline-block mt-4 px-4 py-2 rounded-md bg-teal-600 text-white text-xs font-medium">
-                    Bilgisayardan Çoklu PDF / ZIP / RAR / Klasör Seç
-                  </span>
-                </>
-              )}
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={handleDirectFilesUpload}
-                className="hidden"
-              />
-            </label>
-          </section>
-        ) : (
+        <section
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDropFiles(e, true)}
+          className={`bg-white border-2 border-dashed rounded-xl transition-all shadow-xs ${
+            candidates.length === 0 ? "p-10" : "p-5"
+          } ${
+            isDragging
+              ? "border-teal-600 bg-teal-50/80 scale-[1.005]"
+              : "border-teal-500/60 hover:border-teal-600 bg-teal-50/20"
+          }`}
+        >
+          <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-teal-600/10 border border-teal-600/20 flex items-center justify-center shrink-0">
+                {isParsingPdf ? (
+                  <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
+                ) : (
+                  <FileUp className="w-6 h-6 text-teal-700" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-zinc-950">
+                  {isDragging
+                    ? "Dosyaları veya Klasörü Şimdi Buraya Bırakın!"
+                    : candidates.length === 0
+                    ? "30–40+ CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Sürükleyip Bırakın"
+                    : `Yeni CV'leri, Klasörü veya .ZIP Arşivini Buraya Sürükleyip Bırakın (${candidates.length} CV Yüklü)`}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  Masaüstünden <strong>30–40+ adet .PDF, .DOCX, .HTML, .ZIP, .RAR</strong> dosyasını veya doğrudan <strong>klasörü</strong> bu kutunun içine sürükleyin. Otomatik olarak Yaş, Cinsiyet ve Ön Lisans / Lisans / Master / Doktora bilgileri çıkarılır.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+              {/* Çoklu Dosya Seç Butonu */}
+              <label className="px-4 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap">
+                <Upload className="w-3.5 h-3.5" />
+                Çoklu Dosya Seç (PDF / ZIP)
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleDirectFilesUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Klasör Seç Butonu */}
+              <label className="px-3.5 py-2.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-900 text-zinc-800 text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                📁 Klasör Seç (Toplu)
+                <input
+                  type="file"
+                  multiple
+                  {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+                  onChange={handleDirectFilesUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================================
+            4. SONUÇLAR (KART GÖRÜNÜMÜ VEYA TOPLU TABLO / EXCEL ÖNİZLEME)
+           ===================================================================== */}
+        {candidates.length > 0 && (
           <div className="space-y-4">
             {/* ÜST TOPLU İŞLEM & EXCEL EXPORT BARI */}
             <div className="bg-white border border-zinc-200 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
@@ -1329,18 +1387,6 @@ export default function CVReaderApp() {
                     Toplu Tablo / Excel Önizleme ({displayedEvaluations.length} CV)
                   </button>
                 </div>
-
-                <label className="px-3 py-1.5 rounded-md border border-dashed border-teal-600 text-teal-800 bg-teal-50/50 hover:bg-teal-50 text-xs font-semibold cursor-pointer flex items-center gap-1.5">
-                  <Upload className="w-3.5 h-3.5 text-teal-600" />
-                  + Daha Fazla CV Ekle
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleDirectFilesUpload}
-                    className="hidden"
-                  />
-                </label>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -1977,7 +2023,7 @@ export default function CVReaderApp() {
       </main>
 
       {/* =====================================================================
-          MODAL 1: YENİ CV YÜKLE (PDF, WORD .DOCX, TXT DESTEKLİ)
+          MODAL 1: TOPLU CV YÜKLE (30-40+ PDF, WORD, KLASÖR, ZIP, RAR DESTEKLİ)
          ===================================================================== */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -1985,10 +2031,10 @@ export default function CVReaderApp() {
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-zinc-950">
-                  PDF / Word / HTML CV Yükle
+                  Toplu CV Yükle (Sürükle &amp; Bırak / Çoklu Dosya / Klasör)
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Tek veya birden fazla PDF (.pdf), Word (.docx) ve HTML (.html) CV seçebilirsiniz
+                  30–40+ adet PDF (.pdf), Word (.docx), HTML, ZIP, RAR veya doğrudan klasör seçtiğiniz anda otomatik eklenir
                 </p>
               </div>
               <button
@@ -2000,39 +2046,56 @@ export default function CVReaderApp() {
             </div>
 
             {/* PDF / DOCX / HTML / ZIP Dosya Seçim ve Sürükle-Bırak Kutusu */}
-            <label
+            <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDropFiles(e, true)}
-              className={`block border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
                 isDragging
                   ? "border-teal-600 bg-teal-100/60"
-                  : "border-teal-500/50 hover:border-teal-600 bg-teal-50/40"
+                  : "border-teal-500/60 hover:border-teal-600 bg-teal-50/40"
               }`}
             >
-              <FileUp className="w-7 h-7 text-teal-600 mx-auto mb-2" />
-              <span className="block text-sm font-semibold text-zinc-900">
+              <FileUp className="w-9 h-9 text-teal-600 mx-auto mb-2" />
+              <span className="block text-sm font-bold text-zinc-950">
                 {isDragging
-                  ? "Dosyaları Buraya Bırakın!"
-                  : "CV Dosyalarını Buraya Sürükleyin veya Tıklayıp Seçin"}
+                  ? "Dosyaları veya Klasörü Buraya Bırakın!"
+                  : "30–40+ CV Dosyasını veya Klasörü Buraya Sürükleyip Bırakın"}
               </span>
-              <span className="block text-xs text-zinc-500 mt-1">
-                Desteklenenler: <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> (Çoklu dosya veya
-                doğrudan .ZIP / .RAR arşivi sürükleyebilirsiniz)
+              <span className="block text-xs text-zinc-500 mt-1 mb-4">
+                Desteklenenler: <strong>.PDF, .DOCX, .HTML, .ZIP, .RAR, .TXT</strong> (Çoklu seçimde veya sürüklediğinizde tek tek onay sormadan hepsi otomatik analiz edilip eklenir)
               </span>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={handleModalFileSelect}
-                className="hidden"
-              />
-            </label>
+
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <label className="px-4 py-2 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" />
+                  Çoklu Dosya Seç (30–40+ CV)
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleModalFileSelect}
+                    className="hidden"
+                  />
+                </label>
+
+                <label className="px-3.5 py-2 rounded-md border border-zinc-300 bg-white hover:border-zinc-900 text-zinc-800 text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                  📁 Klasör Seç (Tüm Klasörü Yükle)
+                  <input
+                    type="file"
+                    multiple
+                    {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+                    onChange={handleModalFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
 
             {isParsingPdf && (
               <div className="flex items-center gap-2 text-xs text-teal-700 font-medium bg-teal-50 p-2.5 rounded">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>PDF içeriği okunuyor...</span>
+                <span>{pdfParseStatus || "CV dosyaları okunuyor..."}</span>
               </div>
             )}
 
@@ -2042,79 +2105,64 @@ export default function CVReaderApp() {
               </div>
             )}
 
-            <form onSubmit={handleAddCV} className="space-y-3 pt-1">
-              <div className="grid grid-cols-2 gap-3">
+            <details className="border border-zinc-200 rounded-md p-3 bg-zinc-50/60">
+              <summary className="text-xs font-semibold text-zinc-600 cursor-pointer select-none">
+                Metin Kopyala / Yapıştır ile Manuel Tek CV Ekle (Opsiyonel)
+              </summary>
+              <form onSubmit={handleAddCV} className="space-y-3 pt-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 mb-1">
+                      Ad Soyad *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={uploadName}
+                      onChange={(e) => setUploadName(e.target.value)}
+                      placeholder="Aday Adı Soyadı"
+                      className="w-full border border-zinc-200 rounded bg-white px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 mb-1">
+                      Üniversite
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadUni}
+                      onChange={(e) => setUploadUni(e.target.value)}
+                      placeholder="Otomatik tespit edilir"
+                      className="w-full border border-zinc-200 rounded bg-white px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-zinc-700 mb-1">
-                    Ad Soyad (PDF&apos;ten Otomatik Gelir) *
+                    CV Metni *
                   </label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={4}
                     required
-                    value={uploadName}
-                    onChange={(e) => setUploadName(e.target.value)}
-                    placeholder="PDF seçince otomatik dolar"
-                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-sm"
+                    value={uploadRawText}
+                    onChange={(e) => setUploadRawText(e.target.value)}
+                    placeholder="CV metnini buraya yapıştırabilirsiniz..."
+                    className="w-full border border-zinc-200 rounded bg-white p-2.5 text-xs font-mono"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">
-                    Üniversite
-                  </label>
-                  <input
-                    type="text"
-                    value={uploadUni}
-                    onChange={(e) => setUploadUni(e.target.value)}
-                    placeholder="Otomatik tespit edilir"
-                    className="w-full border border-zinc-200 rounded px-3 py-1.5 text-sm"
-                  />
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="submit"
+                    disabled={isParsingPdf}
+                    className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded text-xs font-medium cursor-pointer"
+                  >
+                    Metinden Analiz Et ve Ekle
+                  </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-700 mb-1">
-                  Okunan CV Metni *
-                </label>
-                <textarea
-                  rows={5}
-                  required
-                  value={uploadRawText}
-                  onChange={(e) => setUploadRawText(e.target.value)}
-                  placeholder="Yukarıdan PDF seçtiğinizde CV metni buraya otomatik çıkarılır..."
-                  className="w-full border border-zinc-200 rounded p-2.5 text-xs font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-zinc-500 mb-1">
-                  Opsiyonel Gemini API Anahtarı
-                </label>
-                <input
-                  type="password"
-                  value={geminiApiKey}
-                  onChange={(e) => setGeminiApiKey(e.target.value)}
-                  placeholder="AIzaSy... (Boş bırakılabilir)"
-                  className="w-full border border-zinc-200 rounded px-3 py-1.5 text-xs font-mono bg-zinc-50"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
-                  className="px-4 py-1.5 border border-zinc-200 rounded text-xs cursor-pointer"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isParsingPdf}
-                  className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-medium cursor-pointer"
-                >
-                  Analiz Et ve Ekle
-                </button>
-              </div>
-            </form>
+              </form>
+            </details>
           </div>
         </div>
       )}
