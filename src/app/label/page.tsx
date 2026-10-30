@@ -945,53 +945,18 @@ export default function GroundTruthLabelerPage() {
               Ana Uygulama
             </Link>
 
-            {/* KİM ETİKETLİYOR SEÇİCİ (BEN vs ARKADAŞIM) */}
-            <div className="flex items-center bg-zinc-100 p-1 rounded-lg border border-zinc-200">
-              <span className="text-[11px] font-semibold text-zinc-500 px-2 flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" /> Kimsin:
+            {/* TEKİL ETİKETLEME DURUM GÖSTERGESİ */}
+            <div className="flex items-center bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+              <span>
+                Etiketlenen: {items.filter((i) => isRaterFullyDone(i, "ben")).length} /{" "}
+                {items.length} CV
               </span>
-              <button
-                onClick={() => handleSelectRater("ben")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  activeRater === "ben"
-                    ? "bg-zinc-900 text-white shadow-2xs"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`}
-              >
-                📱 Ben ({items.filter((i) => isRaterFullyDone(i, "ben")).length}/
-                {items.length})
-              </button>
-              <button
-                onClick={() => handleSelectRater("arkadasim")}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  activeRater === "arkadasim"
-                    ? "bg-teal-700 text-white shadow-2xs"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`}
-              >
-                💻 Arkadaşım (
-                {items.filter((i) => isRaterFullyDone(i, "arkadasim")).length}/
-                {items.length})
-              </button>
             </div>
           </div>
 
           {/* CANLI GERÇEK BAŞARI KARTLARI */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-2.5 py-1.5 rounded-lg border border-teal-200 bg-teal-50/60 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold flex items-center justify-center gap-1">
-                <Lock className="w-3 h-3" /> Ortak Kesinleşen
-              </div>
-              <div className="text-sm font-extrabold text-teal-950">
-                {stats.agreedCount} CV
-                {stats.conflictCount > 0 && (
-                  <span className="text-red-600 ml-1.5 text-xs">
-                    ({stats.conflictCount} Uyuşmazlık)
-                  </span>
-                )}
-              </div>
-            </div>
-
             <div className="px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-center">
               <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
                 Cinsiyet
@@ -1106,21 +1071,6 @@ export default function GroundTruthLabelerPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-5 space-y-5">
-        {/* İKİNİZİN FARKLI GİRDİĞİ CV UYARISI */}
-        {stats.conflictCount > 0 && (
-          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 flex items-center justify-between gap-3 text-xs text-amber-950">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-              <div>
-                <strong>
-                  Dikkat: {stats.conflictCount} adet CV&apos;de arkadaşınızla farklı yaş/cinsiyet girdiniz!
-                </strong>{" "}
-                Sağdaki <strong>&quot;⚡ Uyuşmazlık ({stats.conflictCount})&quot;</strong> sekmesine tıklayarak farklı girdiğiniz CV&apos;leri tek tıkla görüp ortak karara bağlayabilirsiniz.
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* %90 ALTI UYARI BANNER'I */}
         {stats.totalLabeled > 0 && stats.overallAccuracy < 90 && (
           <div className="bg-red-50 border border-red-300 rounded-lg p-3.5 flex items-center justify-between gap-3 text-xs text-red-900">
@@ -1130,7 +1080,7 @@ export default function GroundTruthLabelerPage() {
                 <strong>
                   Uyarı: AI Gerçek Başarı Yüzdesi %{stats.overallAccuracy} seviyesine (%90 altına) düştü!
                 </strong>{" "}
-                Ortak buluta kaydedilen her etiket sistem tarafından öğrenilmektedir.
+                Buluta kaydedilen her etiket sistem tarafından öğrenilmektedir.
               </div>
             </div>
           </div>
@@ -1138,7 +1088,7 @@ export default function GroundTruthLabelerPage() {
 
         {loading ? (
           <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center text-sm text-zinc-600">
-            53 CV ve ortak bulut verileri yükleniyor...
+            53 CV ve bulut verileri yükleniyor...
           </div>
         ) : !currentItem ? (
           <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center space-y-3">
@@ -1222,7 +1172,7 @@ export default function GroundTruthLabelerPage() {
               )}
             </div>
 
-            {/* SAĞ SÜTUN (5 Sütun): TEK TEK ETİKETLEME, ARKADAŞ KARŞILAŞTIRMASI & AI KARŞILAŞTIRMASI */}
+            {/* SAĞ SÜTUN (5 Sütun): TEKİL ETİKETLEME FORMU */}
             <div className="lg:col-span-5 space-y-4">
               {/* 1. GEZİNME VE FİLTRE KUTUSU */}
               <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-3 shadow-xs">
@@ -1242,15 +1192,8 @@ export default function GroundTruthLabelerPage() {
                     className="flex-1 border border-zinc-200 rounded-md px-2.5 py-1.5 text-xs font-medium bg-zinc-50 truncate"
                   >
                     {filteredItems.map((it, idx) => {
-                      const cStatus = it.humanLabel?.consensusStatus;
-                      const iDidIt = isRaterFullyDone(it, activeRater);
-                      const icon = cStatus === "agreed" && iDidIt
-                        ? "🔒"
-                        : cStatus === "conflict"
-                        ? "⚡"
-                        : iDidIt
-                        ? "✅"
-                        : "⚪";
+                      const iDidIt = isRaterFullyDone(it, "ben");
+                      const icon = iDidIt ? "✅" : "⚪";
                       return (
                         <option key={it.fileName} value={idx}>
                           {icon} #{it.index} - {it.aiName} ({it.fileName})
@@ -1273,12 +1216,12 @@ export default function GroundTruthLabelerPage() {
                   </button>
                 </div>
 
-                {/* Eğer şu anki CV zaten bu kullanıcı tarafından etiketlenmişse tek tıkla kaldığı yere atlama butonu */}
-                {isRaterFullyDone(currentItem, activeRater) &&
+                {/* Eğer şu anki CV zaten etiketlenmişse tek tıkla kaldığı yere atlama butonu */}
+                {isRaterFullyDone(currentItem, "ben") &&
                   stats.myLabeledCount < items.length && (
                     <button
                       type="button"
-                      onClick={() => jumpToFirstUnlabeledForRole(items, activeRater)}
+                      onClick={() => jumpToFirstUnlabeledForRole(items, "ben")}
                       className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                     >
                       ⏭️ Bu CV&apos;yi Zaten Yaptın — Kaldığım Yere (İlk Yapmadığım CV&apos;ye) Atla
@@ -1286,7 +1229,7 @@ export default function GroundTruthLabelerPage() {
                   )}
 
                 {/* Hızlı Filtre Sekmeleri */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
                   <button
                     onClick={() => {
                       setFilterMode("all");
@@ -1313,122 +1256,21 @@ export default function GroundTruthLabelerPage() {
                   >
                     Kalan ({items.length - stats.myLabeledCount})
                   </button>
-                  <button
-                    onClick={() => {
-                      setFilterMode("agreed");
-                      setCurrentIndex(0);
-                    }}
-                    className={`py-1 rounded text-[11px] font-semibold cursor-pointer ${
-                      filterMode === "agreed"
-                        ? "bg-teal-700 text-white"
-                        : "bg-teal-50 text-teal-800 hover:bg-teal-100"
-                    }`}
-                  >
-                    🔒 Ortak ({stats.agreedCount})
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFilterMode("conflict");
-                      setCurrentIndex(0);
-                    }}
-                    className={`py-1 rounded text-[11px] font-semibold cursor-pointer ${
-                      filterMode === "conflict"
-                        ? "bg-amber-600 text-white"
-                        : "bg-amber-50 text-amber-800 hover:bg-amber-100"
-                    }`}
-                  >
-                    ⚡ Uyuşmazlık ({stats.conflictCount})
-                  </button>
                 </div>
               </div>
 
-              {/* 2. BEN VE ARKADAŞIMIN BU CV İÇİN DURUMU (ORTAK KARAR KUTUSU) */}
-              <div className="bg-white border border-zinc-200 rounded-xl p-3.5 space-y-2 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                    Ortak Etiketleme Durumu (Ben &amp; Arkadaşım)
-                  </span>
-                  {currentItem.humanLabel?.consensusStatus === "agreed" && (
-                    <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 text-[11px] font-bold">
-                      🔒 İkiniz Aynı Girdiniz (Kesinleşti)
-                    </span>
-                  )}
-                  {currentItem.humanLabel?.consensusStatus === "conflict" && (
-                    <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[11px] font-bold">
-                      ⚡ Farklı Girdiniz!
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div
-                    className={`p-2.5 rounded-lg border ${
-                      benVote
-                        ? "bg-zinc-900 text-white border-zinc-900"
-                        : "bg-zinc-50 text-zinc-500 border-zinc-200"
-                    }`}
-                  >
-                    <div className="text-[10px] opacity-75 font-semibold">
-                      📱 Ben (Berke):
-                    </div>
-                    <div className="font-bold mt-0.5">
-                      {benVote
-                        ? `${benVote.humanGender} • ${
-                            benVote.humanAge !== null
-                              ? `${benVote.humanAge} Yaş`
-                              : "🚫 Yaş/Üni Tarihi Yok"
-                          }`
-                        : "Henüz girilmedi"}
-                    </div>
-                    {benVote?.humanUniversity && (
-                      <div className="text-[11px] opacity-85 mt-1 truncate">
-                        🎓 {benVote.humanUniversity} — {benVote.humanDepartment || "—"}
-                        {benVote.humanDegree ? ` (${benVote.humanDegree})` : ""}
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    className={`p-2.5 rounded-lg border ${
-                      arkVote
-                        ? "bg-teal-800 text-white border-teal-800"
-                        : "bg-zinc-50 text-zinc-500 border-zinc-200"
-                    }`}
-                  >
-                    <div className="text-[10px] opacity-75 font-semibold">
-                      💻 Arkadaşım:
-                    </div>
-                    <div className="font-bold mt-0.5">
-                      {arkVote
-                        ? `${arkVote.humanGender} • ${
-                            arkVote.humanAge !== null
-                              ? `${arkVote.humanAge} Yaş`
-                              : "🚫 Yaş/Üni Tarihi Yok"
-                          }`
-                        : "Henüz girilmedi"}
-                    </div>
-                    {arkVote?.humanUniversity && (
-                      <div className="text-[11px] opacity-85 mt-1 truncate">
-                        🎓 {arkVote.humanUniversity} — {arkVote.humanDepartment || "—"}
-                        {arkVote.humanDegree ? ` (${arkVote.humanDegree})` : ""}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. SENİN GERÇEK ETİKETİN (GROUND TRUTH GİRİŞ FORMU) */}
+              {/* 2. GERÇEK ETİKET (GROUND TRUTH GİRİŞ FORMU) */}
               <div className="bg-white border-2 border-teal-600 rounded-xl p-4 space-y-4 shadow-xs">
                 <div className="flex items-center justify-between border-b border-zinc-100 pb-2.5">
                   <div>
                     <h2 className="text-sm font-bold text-zinc-950">
-                      1. {activeRater === "ben" ? "📱 Benim Cevabım" : "💻 Arkadaşımın Cevabı"}
+                      CV Etiketleme &amp; Doğrulama
                     </h2>
                     <p className="text-[11px] text-zinc-500">
                       Soldaki CV&apos;ye bakarak Üniversite, Bölüm, Derece (TR/EN), Cinsiyet ve Yaşı onaylayın
                     </p>
                   </div>
-                  {isRaterFullyDone(currentItem, activeRater) && (
+                  {isRaterFullyDone(currentItem, "ben") && (
                     <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[11px] font-bold">
                       ✓ Üni, Bölüm &amp; Derece Tamam
                     </span>
@@ -1755,10 +1597,8 @@ export default function GroundTruthLabelerPage() {
                   >
                     <Check className="w-4 h-4" />
                     {saving
-                      ? "Ortak Buluta Kaydediliyor..."
-                      : `Üni, Bölüm & Derece Dahil Kaydet (${
-                          activeRater === "ben" ? "Ben" : "Arkadaşım"
-                        }) ve Sonrakine Geç`}
+                      ? "Buluta Kaydediliyor..."
+                      : "Üni, Bölüm & Derece Dahil Kaydet ve Sonrakine Geç"}
                   </button>
 
                   {saveMessage && (
@@ -1768,236 +1608,23 @@ export default function GroundTruthLabelerPage() {
                   )}
                 </div>
               </div>
-
-              {/* 4. AI CEVABI İLE SİZİN CEVABINIZIN KARŞILAŞTIRMASI */}
-              <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-2.5 shadow-xs">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                  2. Bu CV İçin AI Cevabı vs. Sizin Cevabınız
-                </h3>
-
-                {/* Eğitim Derecesi (Ön Lisans / Lisans / Master / Doktora) Karşılaştırma Satırı */}
-                <div
-                  className={`p-3 rounded-lg border ${
-                    activeComparison?.degMatch
-                      ? "bg-teal-50/60 border-teal-200"
-                      : "bg-red-50/70 border-red-200"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
-                    <span>
-                      AI Derece:{" "}
-                      <strong className="underline">
-                        {currentItem.aiDegree}
-                      </strong>
-                    </span>
-                    <span>
-                      Sizin Kararınız:{" "}
-                      <strong className="underline">
-                        {activeComparison?.compareDeg}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-600">
-                      Tespit edilen tüm dereceler:{" "}
-                      {(currentItem.aiAllDegrees || []).join(" + ") || "—"}
-                    </span>
-                    {activeComparison?.degMatch ? (
-                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
-                      </span>
-                    ) : (
-                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Üniversite Karşılaştırma Satırı */}
-                <div
-                  className={`p-3 rounded-lg border ${
-                    activeComparison?.uniMatch
-                      ? "bg-teal-50/60 border-teal-200"
-                      : "bg-red-50/70 border-red-200"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
-                    <span>
-                      AI Üniversite:{" "}
-                      <strong className="underline">
-                        {currentItem.aiUniversity}
-                      </strong>
-                    </span>
-                    <span>
-                      Sizin Kararınız:{" "}
-                      <strong className="underline">
-                        {activeComparison?.compareUni}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-600">
-                      {currentItem.aiEducationSummary}
-                    </span>
-                    {activeComparison?.uniMatch ? (
-                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
-                      </span>
-                    ) : (
-                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bölüm Karşılaştırma Satırı */}
-                <div
-                  className={`p-3 rounded-lg border ${
-                    activeComparison?.deptMatch
-                      ? "bg-teal-50/60 border-teal-200"
-                      : "bg-red-50/70 border-red-200"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold">
-                    <span>
-                      AI Bölüm:{" "}
-                      <strong className="underline">
-                        {currentItem.aiDepartment}
-                      </strong>
-                    </span>
-                    <span>
-                      Sizin Kararınız:{" "}
-                      <strong className="underline">
-                        {activeComparison?.compareDept}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-600">
-                      Tespit edilen bölümler:{" "}
-                      {(currentItem.aiAllDepartments || []).join(", ") || "—"}
-                    </span>
-                    {activeComparison?.deptMatch ? (
-                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
-                      </span>
-                    ) : (
-                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Cinsiyet Karşılaştırma Satırı */}
-                <div
-                  className={`p-3 rounded-lg border ${
-                    activeComparison?.genderMatch
-                      ? "bg-teal-50/60 border-teal-200"
-                      : "bg-red-50/70 border-red-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span>
-                      AI Cinsiyet:{" "}
-                      <strong className="underline">{currentItem.aiGender}</strong>
-                    </span>
-                    <span>
-                      Sizin Kararınız:{" "}
-                      <strong className="underline">
-                        {activeComparison?.compareGender}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-600">
-                      {currentItem.aiGenderReason}
-                    </span>
-                    {activeComparison?.genderMatch ? (
-                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> DOĞRU
-                      </span>
-                    ) : (
-                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <XCircle className="w-3.5 h-3.5" /> YANLIŞ
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Yaş Karşılaştırma Satırı */}
-                <div
-                  className={`p-3 rounded-lg border ${
-                    activeComparison?.ageDiff === 0
-                      ? "bg-teal-50/60 border-teal-200"
-                      : activeComparison?.ageDiff !== null &&
-                        activeComparison?.ageDiff !== undefined &&
-                        activeComparison.ageDiff <= 1
-                      ? "bg-amber-50/60 border-amber-200"
-                      : "bg-red-50/70 border-red-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span>
-                      AI Yaş:{" "}
-                      <strong className="underline">
-                        {activeComparison?.isExtraCaseNoDate
-                          ? `Ekstra Case (~${currentItem.aiAge ?? "?"} Yaş)`
-                          : currentItem.aiAge !== null
-                          ? `${currentItem.aiAge} Yaş`
-                          : "Belirsiz"}
-                      </strong>
-                    </span>
-                    <span>
-                      Sizin Kararınız:{" "}
-                      <strong className="underline">
-                        {activeComparison?.compareAge !== null
-                          ? `${activeComparison?.compareAge} Yaş`
-                          : "🚫 Yaş & Üni Tarihi Yok"}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-600">{currentItem.aiAgeReason}</span>
-                    {activeComparison?.ageDiff === 0 ? (
-                      <span className="text-teal-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" />{" "}
-                        {activeComparison?.compareAge === null
-                          ? "EKSTRA CASE DOĞRU"
-                          : "TAM İSABET"}
-                      </span>
-                    ) : activeComparison?.ageDiff === 1 ? (
-                      <span className="text-amber-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        ±1 YAŞ YAKIN
-                      </span>
-                    ) : (
-                      <span className="text-red-700 font-bold flex items-center gap-1 shrink-0 ml-2">
-                        <XCircle className="w-3.5 h-3.5" /> FARK:{" "}
-                        {activeComparison?.ageDiff ?? "?"} YAŞ
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
 
-        {/* ALT TABLO: ETİKETLENEN TÜM CV'LER, BEN VS ARKADAŞIM VE AI KARŞILAŞTIRMA ÖZETİ */}
+        {/* ALT TABLO: ETİKETLENEN TÜM CV'LER VE AI KARŞILAŞTIRMA ÖZETİ */}
         {stats.totalAnyLabeled > 0 && (
           <section className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs">
             <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Brain className="w-4 h-4 text-teal-600" />
                 <h3 className="text-sm font-bold text-zinc-950">
-                  Canlı Ortak Etiketleme Tablosu ({stats.totalAnyLabeled} CV Etiketlendi •{" "}
+                  Canlı Etiketleme Tablosu ({stats.totalAnyLabeled} CV Etiketlendi •{" "}
                   {stats.uniLabeledCount} Üni/Bölüm/Derece Etiketlendi)
                 </h3>
               </div>
               <span className="text-xs text-zinc-500">
-                Telefon ve Evdeki Bilgisayar ortak bulut üzerinden otomatik eşitlenir
+                Kaydedilen tüm etiketler bulut üzerinden otomatik eşitlenir
               </span>
             </div>
 
@@ -2007,8 +1634,7 @@ export default function GroundTruthLabelerPage() {
                   <tr>
                     <th className="py-2.5 px-3 font-semibold">#</th>
                     <th className="py-2.5 px-3 font-semibold">Dosya / Aday</th>
-                    <th className="py-2.5 px-3 font-semibold">📱 Ben (Cinsiyet/Yaş/Üni/Bölüm/Derece)</th>
-                    <th className="py-2.5 px-3 font-semibold">💻 Arkadaşım</th>
+                    <th className="py-2.5 px-3 font-semibold">Kaydedilen Etiket (Cinsiyet / Yaş / Üni / Bölüm / Derece)</th>
                     <th className="py-2.5 px-3 font-semibold">AI Tahmini (Üni / Bölüm / Derece / Yaş)</th>
                     <th className="py-2.5 px-3 font-semibold">AI Sonucu</th>
                   </tr>
@@ -2018,8 +1644,7 @@ export default function GroundTruthLabelerPage() {
                     .filter((it) => it.humanLabel !== null)
                     .map((it) => {
                       const lbl = it.humanLabel!;
-                      const vB = lbl.votes?.ben;
-                      const vA = lbl.votes?.arkadasim;
+                      const vB = lbl.votes?.ben || lbl;
                       const gOk = it.aiGender === lbl.humanGender;
                       const aDiff =
                         lbl.humanAge !== null && it.aiAge !== null
@@ -2067,17 +1692,6 @@ export default function GroundTruthLabelerPage() {
                                 }`
                               : "—"}
                           </td>
-                          <td className="py-2 px-3 font-semibold text-teal-800">
-                            {vA
-                              ? `${vA.humanGender}, ${vA.humanAge ?? "—"}${
-                                  vA.humanUniversity
-                                    ? ` • ${vA.humanUniversity} (${vA.humanDepartment || "—"}${
-                                        vA.humanDegree ? ` • ${vA.humanDegree}` : ""
-                                      })`
-                                    : ""
-                                }`
-                              : "—"}
-                          </td>
                           <td className="py-2 px-3">
                             <span className="font-semibold text-zinc-900">
                               {it.aiUniversity}
@@ -2089,11 +1703,7 @@ export default function GroundTruthLabelerPage() {
                             ({it.aiGender}, {it.aiAge ?? "—"})
                           </td>
                           <td className="py-2 px-3">
-                            {lbl.consensusStatus === "conflict" ? (
-                              <span className="text-amber-700 font-semibold">
-                                Uzlaşma Bekleniyor
-                              </span>
-                            ) : gOk && aOk && uOk && dOk && degOk ? (
+                            {gOk && aOk && uOk && dOk && degOk ? (
                               <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold">
                                 ✓ AI Doğru
                               </span>

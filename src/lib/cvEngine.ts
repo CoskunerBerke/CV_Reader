@@ -1899,6 +1899,41 @@ const UNIVERSITY_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
     aliases: ["galatasaray üniversitesi", "galatasaray university", "gsü"],
     regex: /\b(?:galatasaray\s*(?:üniversitesi|university))\b/gi,
   },
+  {
+    canonical: "Ankara Bilim Üniversitesi",
+    aliases: ["ankara bilim üniversitesi", "ankara bilim university", "ankara science university"],
+    regex: /\b(?:ankara\s*(?:bilim|science)\s*(?:üniversitesi|university))\b/gi,
+  },
+  {
+    canonical: "University of Padova",
+    aliases: ["university of padova", "universita di padova", "padova university", "university of padua", "padova üniversitesi"],
+    regex: /\b(?:university\s*of\s*pad(?:ova|ua)|universit[aà]\s*(?:degli\s*studi\s*)?di\s*padova|padova\s*university)\b/gi,
+  },
+  {
+    canonical: "Politecnico di Milano",
+    aliases: ["politecnico di milano", "polytechnic university of milan"],
+    regex: /\b(?:politecnico\s*di\s*milano|polytechnic\s*university\s*of\s*milan)\b/gi,
+  },
+  {
+    canonical: "Politecnico di Torino",
+    aliases: ["politecnico di torino", "polytechnic university of turin"],
+    regex: /\b(?:politecnico\s*di\s*torino|polytechnic\s*university\s*of\s*turin)\b/gi,
+  },
+  {
+    canonical: "Sapienza University of Rome",
+    aliases: ["sapienza university", "sapienza universita di roma"],
+    regex: /\b(?:sapienza\s*(?:university\s*of\s*rome|universit[aà]\s*di\s*roma))\b/gi,
+  },
+  {
+    canonical: "University of Bologna",
+    aliases: ["university of bologna", "universita di bologna"],
+    regex: /\b(?:university\s*of\s*bologna|universit[aà]\s*di\s*bologna)\b/gi,
+  },
+  {
+    canonical: "Technical University of Munich (TUM)",
+    aliases: ["technical university of munich", "technische universitat munchen", "tum"],
+    regex: /\b(?:technical\s*university\s*of\s*munich|technische\s*universit[aä]t\s*m[üu]nchen)\b/gi,
+  },
 ];
 
 const DEGREE_DICTIONARY: {
@@ -2099,9 +2134,15 @@ const DEPARTMENT_DICTIONARY: { canonical: string; aliases: string[]; regex: RegE
   },
   {
     canonical: "İstatistik ve Veri Bilimi",
-    aliases: ["istatistik veri bilimi", "istatistik-veri bilimi", "veri bilimi", "data science", "statistics and data science"],
+    aliases: ["istatistik veri bilimi", "istatistik-veri bilimi", "statistics and data science"],
     regex:
       /(?:istatistik[\s\-]*veri\s*bilimi)/gi,
+  },
+  {
+    canonical: "Veri Bilimi (Data Science)",
+    aliases: ["veri bilimi", "data science", "msc in data science", "master in data science", "bachelor in data science"],
+    regex:
+      /(?:(?:m\.?\s*sc\.?|m\.?\s*s\.?|master[’'´]?s?(?:\s*of\s*science)?|b\.?\s*sc\.?|b\.?\s*s\.?|bachelor[’'´]?s?(?:\s*of\s*science)?|ph\.?\s*d\.?|degree|department\s*of|yüksek\s*lisans|lisans)\s*(?:in\s*|-\s*|\s*:\s*)?data\s*science\b|\bdata\s*science\s*(?:master|m\.?sc|b\.?sc|department|degree|program|bölümü)|\bveri\s*bilimi\s*(?:bölümü|yüksek\s*lisans|lisans|doktora|anabilim\s*dal[ıi]|program[ıi]))/gi,
   },
   {
     canonical: "Matematik",
@@ -2490,6 +2531,53 @@ export function extractEducationFromCV(rawText: string): {
           allFoundDepts.push(cand);
           break;
         }
+      }
+    }
+  }
+
+  // Derece satırlarında (MSc in X, University of Y vb.) sözlükte yer almayan yurtdışı/özel üniversite veya bölüm varsa kaçırma
+  for (const line of nonEmptyLines) {
+    const nl = normalizeTr(line).replace(/ı/g, "i");
+    if (/(?:society|club|topluluğu|journal\s*of|conference\s*on|symposium|erasmus|exchange\s*program|certificate\s*program)/i.test(nl)) {
+      continue;
+    }
+    const isMasterLine = /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(nl);
+    const isPhdLine = /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b)/i.test(nl);
+    const isBscLine = /(?:\bbachelor[’'´]?s?\b|\bb\.?\s*sc\.?\b|\bb\.?\s*s\.?\s+in\b|\blisans\s*eğitimi\b)/i.test(nl);
+    if (!isMasterLine && !isPhdLine && !isBscLine) continue;
+
+    // Satırda sözlükten bir üniversite eşleşti mi kontrol et
+    const hasDictUniOnLine = UNIVERSITY_DICTIONARY.some((u) => {
+      u.regex.lastIndex = 0;
+      return u.regex.test(nl);
+    });
+    if (!hasDictUniOnLine) {
+      const mOf = line.match(/\b(University\s+of\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\b/);
+      const mTr = line.match(/([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{2,}(?:\s+[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]{2,}){0,3}\s+(?:Üniversitesi|University|Institute\s+of\s+Technology))/);
+      const rawUni = (mOf?.[1] || mTr?.[1] || "").trim();
+      if (rawUni && !/^(?:bir|bu|the|my|our|at|in|from|and|ve|açıköğretim)\b/i.test(rawUni)) {
+        if (!allFoundUnis.includes(rawUni)) allFoundUnis.push(rawUni);
+        if (bestUni === "Belirtilmemiş") bestUni = rawUni;
+        if (isPhdLine && !isBscLine) phdTaggedUnis.add(rawUni);
+        else if (isMasterLine && !isBscLine) masterTaggedUnis.add(rawUni);
+        else if (isBscLine) bscTaggedUnis.add(rawUni);
+      }
+    }
+
+    // Satırda sözlükten bir bölüm eşleşti mi kontrol et
+    const hasDictDeptOnLine = DEPARTMENT_DICTIONARY.some((d) => {
+      d.regex.lastIndex = 0;
+      return d.regex.test(nl);
+    });
+    if (!hasDictDeptOnLine) {
+      const mInDept = line.match(/(?:\bM\.?\s*Sc\.?|\bM\.?\s*S\.?|\bMaster[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bB\.?\s*Sc\.?|\bB\.?\s*S\.?|\bBachelor[’'´]?s?(?:\s+of\s+[A-Za-z]+)?|\bPh\.?\s*D\.?)\s+in\s+([A-Z][A-Za-z\s&\-]{2,38}?)(?=\s*[,|•(\-–—]|\s+at\b|\s+from\b|$)/);
+      const candDept = mInDept?.[1]?.trim();
+      if (candDept && !/^(?:progress|turkey|italy|germany|english)/i.test(candDept)) {
+        if (!allFoundDepts.includes(candDept)) allFoundDepts.push(candDept);
+        if (bestDept === "Belirtilmemiş") bestDept = candDept;
+        if (isPhdLine && !isBscLine) phdTaggedDepts.add(candDept);
+        else if (isMasterLine && !isBscLine) masterTaggedDepts.add(candDept);
+        else if (isBscLine) bscTaggedDepts.add(candDept);
       }
     }
   }

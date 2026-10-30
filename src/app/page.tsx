@@ -430,7 +430,6 @@ export default function CVReaderApp() {
   // Ekranda gösterilecek adaylar
   const displayedEvaluations = useMemo(() => {
     return evaluatedList.filter((item) => {
-      if (!showAllCandidates && !item.passesHardFilters) return false;
       if (searchQuery.trim() !== "") {
         const q = normalizeTr(searchQuery);
         const inName = normalizeTr(item.cv.fullName).includes(q);
@@ -439,7 +438,7 @@ export default function CVReaderApp() {
       }
       return true;
     });
-  }, [evaluatedList, showAllCandidates, searchQuery]);
+  }, [evaluatedList, searchQuery]);
 
   const selectedEvaluation = useMemo(() => {
     return (
@@ -1005,36 +1004,14 @@ export default function CVReaderApp() {
             </span>
           </div>
 
-          {/* Orta: Şirket Seçimi */}
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-zinc-400 hidden sm:block shrink-0" />
-            <select
-              value={activeCompany.id}
-              onChange={(e) => setActiveCompanyId(e.target.value)}
-              className="border border-zinc-200 rounded-md bg-zinc-50 px-3 py-1.5 text-sm font-medium text-zinc-900 focus:outline-none focus:border-zinc-900"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setIsNewCompanyModalOpen(true)}
-              className="px-2.5 py-1.5 border border-zinc-200 rounded-md hover:border-zinc-900 text-xs font-medium text-zinc-700 whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              + Yeni Şirket
-            </button>
-          </div>
-
-          {/* Sağ: Etiketleme, Excel İndir & PDF CV Yükle */}
+          {/* Sağ: Etiketleme & Excel İndir */}
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/label"
               className="px-3 py-1.5 rounded-md border border-zinc-900 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-              Etiketle &amp; Başarı Ölç (53 CV)
+              Etiketle &amp; Başarı Ölç
             </Link>
 
             {candidates.length > 0 && (
@@ -1065,182 +1042,11 @@ export default function CVReaderApp() {
                 </button>
               </>
             )}
-
-            <button
-              onClick={() => {
-                setPdfParseStatus("");
-                setIsUploadModalOpen(true);
-              }}
-              className="px-3.5 py-1.5 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              PDF / CV Yükle
-            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* =====================================================================
-            2. TEK KARTTA SADE FİLTRE PANELİ (CİNSİYET + YAŞ + YETENEKLER)
-           ===================================================================== */}
-        <section className="bg-white border border-zinc-200 rounded-lg p-5 shadow-xs">
-          {/* Hızlı Cümle İle Arama */}
-          <div className="flex flex-col sm:flex-row gap-2 pb-5 border-b border-zinc-100">
-            <input
-              type="text"
-              value={activeCompany.naturalLanguagePrompt}
-              onChange={(e) =>
-                updateActiveCompany((prev) => ({
-                  ...prev,
-                  naturalLanguagePrompt: e.target.value,
-                }))
-              }
-              placeholder="Ne tarz biri arıyorsunuz? Örn: Kadın olsun, 22-32 yaş arası, C++ ve Java bilsin..."
-              className="flex-1 border border-zinc-200 rounded-md bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:outline-none focus:bg-white focus:border-zinc-900"
-            />
-            <button
-              onClick={handleApplyPrompt}
-              className="px-4 py-2 rounded-md bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Cümleden Filtrele
-            </button>
-          </div>
-
-          {/* 3 Net Kriter Yan Yana */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-5">
-            {/* 1. Cinsiyet (Sabit) */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase mb-2">
-                1. Cinsiyet (Sabit Kriter)
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["Kadın", "Erkek", "Farketmez"] as const).map((g) => (
-                  <button
-                    key={g}
-                    onClick={() =>
-                      updateActiveCompany((prev) => ({
-                        ...prev,
-                        targetGender: g,
-                        strictGender: g !== "Farketmez",
-                      }))
-                    }
-                    className={`py-2 rounded-md text-xs font-medium border transition-colors cursor-pointer ${
-                      activeCompany.targetGender === g
-                        ? "bg-zinc-900 text-white border-zinc-900"
-                        : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Yaş Aralığı (Sabit) */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase mb-2">
-                2. Yaş Aralığı (Sabit Kriter)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={18}
-                  max={65}
-                  value={activeCompany.minAge}
-                  onChange={(e) =>
-                    updateActiveCompany((prev) => ({
-                      ...prev,
-                      minAge: Number(e.target.value) || 18,
-                    }))
-                  }
-                  className="w-full border border-zinc-200 rounded-md px-3 py-1.5 text-sm text-center font-medium"
-                />
-                <span className="text-zinc-400 text-sm">—</span>
-                <input
-                  type="number"
-                  min={18}
-                  max={65}
-                  value={activeCompany.maxAge}
-                  onChange={(e) =>
-                    updateActiveCompany((prev) => ({
-                      ...prev,
-                      maxAge: Number(e.target.value) || 45,
-                    }))
-                  }
-                  className="w-full border border-zinc-200 rounded-md px-3 py-1.5 text-sm text-center font-medium"
-                />
-                <span className="text-xs text-zinc-500 shrink-0">Yaş</span>
-              </div>
-            </div>
-
-            {/* 3. Aranan Yetenekler (Şirkete Özel) */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase mb-2">
-                3. Aranan Kelimeler / Yetenekler
-              </label>
-              <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                {activeCompany.requiredSkills.map((sk) => (
-                  <span
-                    key={sk}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-teal-50 text-teal-900 border border-teal-200 text-xs font-medium"
-                  >
-                    {sk}
-                    <button
-                      onClick={() =>
-                        updateActiveCompany((prev) => ({
-                          ...prev,
-                          requiredSkills: prev.requiredSkills.filter((s) => s !== sk),
-                        }))
-                      }
-                      className="text-teal-600 hover:text-teal-950 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-
-                <div className="flex items-center gap-1 flex-1 min-w-[140px]">
-                  <input
-                    type="text"
-                    value={newSkillInput}
-                    onChange={(e) => setNewSkillInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newSkillInput.trim()) {
-                        e.preventDefault();
-                        updateActiveCompany((prev) => ({
-                          ...prev,
-                          requiredSkills: Array.from(
-                            new Set([...prev.requiredSkills, newSkillInput.trim()])
-                          ),
-                        }));
-                        setNewSkillInput("");
-                      }
-                    }}
-                    placeholder="+ Kelime ekle (C++, Java)"
-                    className="w-full border border-zinc-200 rounded px-2.5 py-1 text-xs focus:outline-none focus:border-zinc-900"
-                  />
-                  <button
-                    onClick={() => {
-                      if (!newSkillInput.trim()) return;
-                      updateActiveCompany((prev) => ({
-                        ...prev,
-                        requiredSkills: Array.from(
-                          new Set([...prev.requiredSkills, newSkillInput.trim()])
-                        ),
-                      }));
-                      setNewSkillInput("");
-                    }}
-                    className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded text-xs font-medium cursor-pointer"
-                  >
-                    Ekle
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Tam Ekran Sürükle-Bırak Katmanı (Sayfanın herhangi bir yerine sürüklenince açılır) */}
         {isDragging && (
@@ -1417,15 +1223,6 @@ export default function CVReaderApp() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={showAllCandidates}
-                        onChange={(e) => setShowAllCandidates(e.target.checked)}
-                        className="accent-zinc-900 rounded"
-                      />
-                      <span>Elenenleri de göster</span>
-                    </label>
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -1554,22 +1351,9 @@ export default function CVReaderApp() {
                       <h2 className="font-semibold text-sm text-zinc-950">
                         Yüklenen CV&apos;ler ({candidates.length})
                       </h2>
-                      <span className="text-xs text-teal-700 font-medium">
-                        • {passingCount} Uygun
-                      </span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={showAllCandidates}
-                          onChange={(e) => setShowAllCandidates(e.target.checked)}
-                          className="accent-zinc-900 rounded"
-                        />
-                        <span>Elenenleri de göster</span>
-                      </label>
-
                       <div className="relative">
                         <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
@@ -1587,14 +1371,11 @@ export default function CVReaderApp() {
                   <div className="divide-y divide-zinc-100 max-h-[680px] overflow-y-auto">
                     {displayedEvaluations.length === 0 ? (
                       <div className="p-8 text-center text-sm text-zinc-500">
-                        Seçili filtrelere uyan aday bulunamadı. &ldquo;Elenenleri de göster&rdquo;
-                        kutucuğunu işaretleyerek yüklediğiniz tüm CV&apos;leri görebilirsiniz.
+                        Aramanıza uygun aday bulunamadı.
                       </div>
                     ) : (
                       displayedEvaluations.map((item) => {
                         const isSelected = selectedEvaluation?.cv.id === item.cv.id;
-                        const isApproved = activeCompany.approvedCandidateIds.includes(item.cv.id);
-                        const isRejected = activeCompany.rejectedCandidateIds.includes(item.cv.id);
                         const degMap = getCandidateDegreeMap(item.cv);
                         const activeDegrees = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
                         const ageMissing = isAgeMissingCase(item.cv);
@@ -1606,9 +1387,7 @@ export default function CVReaderApp() {
                             className={`p-4 transition-colors cursor-pointer flex items-start justify-between gap-4 ${
                               isSelected
                                 ? "bg-zinc-900 text-white"
-                                : item.passesHardFilters
-                                ? "bg-white hover:bg-zinc-50"
-                                : "bg-zinc-50/70 text-zinc-400 hover:bg-zinc-100"
+                                : "bg-white hover:bg-zinc-50"
                             }`}
                           >
                             {/* Sol Bilgi */}
@@ -1682,72 +1461,13 @@ export default function CVReaderApp() {
                                   })}
                                 </div>
                               )}
-
-                              {/* Yetenek Etiketleri (Sadece kullanıcının aradığı kelimeler) */}
-                              {item.skillAssessments.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                  {item.skillAssessments.map((sa) => (
-                                    <span
-                                      key={sa.skill}
-                                      className={`text-[11px] px-2 py-0.5 rounded font-medium ${
-                                        isSelected
-                                          ? sa.level === "Uzman / Proje Kanıtlı"
-                                            ? "bg-teal-900/60 text-teal-200 border border-teal-700"
-                                            : sa.level === "Yüzeysel / Sadece Listede"
-                                            ? "bg-amber-900/50 text-amber-200"
-                                            : "bg-red-900/40 text-red-200"
-                                          : sa.level === "Uzman / Proje Kanıtlı"
-                                          ? "bg-zinc-100 text-zinc-800"
-                                          : sa.level === "Yüzeysel / Sadece Listede"
-                                          ? "bg-amber-50 text-amber-800"
-                                          : "bg-red-50 text-red-700"
-                                      }`}
-                                    >
-                                      {sa.skill}:{" "}
-                                      {sa.level === "Uzman / Proje Kanıtlı"
-                                        ? "✓ Biliyor (Projeli)"
-                                        : sa.level === "Orta / Uygulamalı"
-                                        ? "✓ Orta"
-                                        : sa.level === "Yüzeysel / Sadece Listede"
-                                        ? "⚠️ Sadece Adı Geçiyor"
-                                        : "✕ Yok"}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
                             </div>
 
-                            {/* Sağ: Uygun/Ele/Sil */}
+                            {/* Sağ: Sil */}
                             <div
                               className="flex items-center gap-1 shrink-0"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <button
-                                onClick={() => handleFeedback(item.cv, "approved")}
-                                title="Uygun"
-                                className={`p-1.5 rounded border cursor-pointer ${
-                                  isApproved
-                                    ? "bg-teal-600 text-white border-teal-600"
-                                    : isSelected
-                                    ? "border-zinc-700 text-zinc-300 hover:bg-teal-600 hover:text-white"
-                                    : "border-zinc-200 text-zinc-600 hover:border-teal-600 hover:text-teal-600"
-                                }`}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleFeedback(item.cv, "rejected")}
-                                title="Ele"
-                                className={`p-1.5 rounded border cursor-pointer ${
-                                  isRejected
-                                    ? "bg-red-600 text-white border-red-600"
-                                    : isSelected
-                                    ? "border-zinc-700 text-zinc-300 hover:bg-red-600 hover:text-white"
-                                    : "border-zinc-200 text-zinc-600 hover:border-red-600 hover:text-red-600"
-                                }`}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
                               <button
                                 onClick={() => handleDeleteCandidate(item.cv.id)}
                                 title="CV'yi Kaldır"
