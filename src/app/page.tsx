@@ -1471,220 +1471,288 @@ export default function CVReaderApp() {
         )}
 
         {/* =====================================================================
-            2. HERO TANITIM VE DOĞRUDAN CV SÜRÜKLE-BIRAK MERKEZİ
+            2. HERO TANITIM (ADAY YOKKEN) VEYA KOMPAKT AKADEMİK KOMUTA BARI (ADAY YÜKLÜYKEN)
            ===================================================================== */}
-        <section id="yukleme" className="space-y-7 pt-2">
-          {/* Akademik Editoryal Başlık ve Değer Önerisi */}
-          <div className="max-w-3xl space-y-3.5">
-            <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#182235] pl-2.5">
-              {t.heroEyebrow}
+        {candidates.length === 0 ? (
+          <section id="yukleme" className="space-y-7 pt-2">
+            {/* Akademik Editoryal Başlık ve Değer Önerisi */}
+            <div className="max-w-3xl space-y-3.5">
+              <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#182235] pl-2.5">
+                {t.heroEyebrow}
+              </div>
+              <h1 className="font-serif-academic text-2xl sm:text-4xl font-bold tracking-tight text-[#121926] leading-[1.2]">
+                {t.heroTitle}
+              </h1>
+              <p className="text-sm sm:text-base text-[#273142] leading-relaxed max-w-2xl">
+                {t.heroDescStart}
+                <strong className="text-[#121926] font-semibold">
+                  {t.heroAge}
+                </strong>
+                ,{" "}
+                <strong className="text-[#121926] font-semibold">
+                  {t.heroGender}
+                </strong>
+                {t.heroAnd}
+                <strong className="text-[#121926] font-semibold">
+                  {t.heroDegrees}
+                </strong>
+                {t.heroDescMid}
+                <strong className="text-[#182235] font-bold underline decoration-[#182235]/50 underline-offset-4">
+                  {t.heroExcel}
+                </strong>
+                {t.heroDescEnd}
+              </p>
             </div>
-            <h1 className="font-serif-academic text-2xl sm:text-4xl font-bold tracking-tight text-[#121926] leading-[1.2]">
-              {t.heroTitle}
-            </h1>
-            <p className="text-sm sm:text-base text-[#273142] leading-relaxed max-w-2xl">
-              {t.heroDescStart}
-              <strong className="text-[#121926] font-semibold">
-                {t.heroAge}
-              </strong>
-              ,{" "}
-              <strong className="text-[#121926] font-semibold">
-                {t.heroGender}
-              </strong>
-              {t.heroAnd}
-              <strong className="text-[#121926] font-semibold">
-                {t.heroDegrees}
-              </strong>
-              {t.heroDescMid}
-              <strong className="text-[#182235] font-bold underline decoration-[#182235]/50 underline-offset-4">
-                {t.heroExcel}
-              </strong>
-              {t.heroDescEnd}
-            </p>
-          </div>
 
-          {/* Canlı Yükleme & Analiz Durum Çubuğu */}
-          {(isParsingPdf || pdfParseStatus) && (
+            {/* Canlı Yükleme & Analiz Durum Çubuğu */}
+            {(isParsingPdf || pdfParseStatus) && (
+              <div
+                className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md shadow-sm ${
+                  pdfParseStatus.startsWith("⚠️")
+                    ? "bg-[#e8dcc4] border-amber-700/40 text-amber-950"
+                    : "bg-[#182235] border-[#2c3a52] text-[#f0ece1]"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {isParsingPdf && (
+                    <Loader2 className="w-4 h-4 text-[#93c5fd] animate-spin shrink-0" />
+                  )}
+                  <span>
+                    {translateParseStatus(pdfParseStatus, lang) ||
+                      t.readingFiles}
+                  </span>
+                </div>
+                {!isParsingPdf && pdfParseStatus && (
+                  <button
+                    onClick={() => setPdfParseStatus("")}
+                    className="text-[#b8b2a6] hover:text-white text-sm font-bold px-1 cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ANA SAYFA SÜRÜKLE & BIRAK (DRAG & DROP) KARTI — Göz Yormayan Sıcak Taş (`#e2dcd0`) */}
             <div
-              className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md shadow-sm ${
-                pdfParseStatus.startsWith("⚠️")
-                  ? "bg-[#e8dcc4] border-amber-700/40 text-amber-950"
-                  : "bg-[#182235] border-[#2c3a52] text-[#f0ece1]"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropFiles(e, true)}
+              className={`bg-[#e2dcd0]/95 backdrop-blur-md border-2 border-dashed rounded-2xl p-7 sm:p-10 transition-all shadow-xl ${
+                isDragging
+                  ? "border-[#182235] bg-[#d8d1c3] scale-[1.005]"
+                  : "border-[#182235]/50 hover:border-[#182235]"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                {isParsingPdf && (
-                  <Loader2 className="w-4 h-4 text-[#93c5fd] animate-spin shrink-0" />
-                )}
-                <span>
-                  {translateParseStatus(pdfParseStatus, lang) || t.readingFiles}
-                </span>
-              </div>
-              {!isParsingPdf && pdfParseStatus && (
-                <button
-                  onClick={() => setPdfParseStatus("")}
-                  className="text-[#b8b2a6] hover:text-white text-sm font-bold px-1 cursor-pointer"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* HER ZAMAN GÖRÜNÜR SÜRÜKLE & BIRAK (DRAG & DROP) KARTI — Göz Yormayan Sıcak Taş (`#e2dcd0`) */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDropFiles(e, true)}
-            className={`bg-[#e2dcd0]/95 backdrop-blur-md border-2 border-dashed rounded-2xl transition-all shadow-xl ${
-              candidates.length === 0 ? "p-7 sm:p-10" : "p-6"
-            } ${
-              isDragging
-                ? "border-[#182235] bg-[#d8d1c3] scale-[1.005]"
-                : "border-[#182235]/50 hover:border-[#182235]"
-            }`}
-          >
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-center lg:text-left">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-[#182235] text-[#f0ece1] flex items-center justify-center shrink-0 shadow-sm">
-                  {isParsingPdf ? (
-                    <Loader2 className="w-6 h-6 text-[#93c5fd] animate-spin" />
-                  ) : (
-                    <FileUp className="w-6 h-6 text-[#93c5fd]" />
-                  )}
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-center lg:text-left">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-[#182235] text-[#f0ece1] flex items-center justify-center shrink-0 shadow-sm">
+                    {isParsingPdf ? (
+                      <Loader2 className="w-6 h-6 text-[#93c5fd] animate-spin" />
+                    ) : (
+                      <FileUp className="w-6 h-6 text-[#93c5fd]" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="font-serif-academic text-base sm:text-xl font-bold text-[#121926]">
+                      {isDragging ? t.dropTitleDragging : t.dropTitleEmpty}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[#333d4f] mt-1 leading-relaxed max-w-2xl">
+                      {t.dropSubText}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-serif-academic text-base sm:text-xl font-bold text-[#121926]">
-                    {isDragging
-                      ? t.dropTitleDragging
-                      : candidates.length === 0
-                      ? t.dropTitleEmpty
-                      : t.dropTitleLoaded(candidates.length)}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-[#333d4f] mt-1 leading-relaxed max-w-2xl">
-                    {t.dropSubText}
-                  </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
+                  {/* Çoklu Dosya Seç Butonu */}
+                  <label className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-xs transition-colors whitespace-nowrap shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-[#93c5fd]" />
+                    {t.btnSelectFiles}
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={handleDirectFilesUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Klasör Seç Butonu */}
+                  <label className="px-4 py-2.5 rounded-lg border border-[#a8a090] bg-[#d6cfc0] hover:bg-[#cbc3b3] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                    📁 {t.btnSelectFolder}
+                    <input
+                      type="file"
+                      multiple
+                      {...({
+                        webkitdirectory: "",
+                        directory: "",
+                      } as React.InputHTMLAttributes<HTMLInputElement>)}
+                      onChange={handleDirectFilesUpload}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
-                {/* Çoklu Dosya Seç Butonu */}
-                <label className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-xs transition-colors whitespace-nowrap shrink-0">
-                  <Upload className="w-3.5 h-3.5 text-[#93c5fd]" />
-                  {t.btnSelectFiles}
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleDirectFilesUpload}
-                    className="hidden"
-                  />
-                </label>
-
-                {/* Klasör Seç Butonu */}
-                <label className="px-4 py-2.5 rounded-lg border border-[#a8a090] bg-[#d6cfc0] hover:bg-[#cbc3b3] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
-                  📁 {t.btnSelectFolder}
-                  <input
-                    type="file"
-                    multiple
-                    {...({
-                      webkitdirectory: "",
-                      directory: "",
-                    } as React.InputHTMLAttributes<HTMLInputElement>)}
-                    onChange={handleDirectFilesUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            {/* Alt 01-02-03 Akademik İş Akışı Şeridi */}
-            <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
-                  01
-                </span>
-                <div className="text-xs text-[#333d4f]">
-                  <strong className="text-[#121926] font-semibold block">
-                    {t.step1Title}
-                  </strong>
-                  {t.step1Desc}
+              {/* Alt 01-02-03 Akademik İş Akışı Şeridi */}
+              <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+                <div className="flex items-start gap-2.5">
+                  <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
+                    01
+                  </span>
+                  <div className="text-xs text-[#333d4f]">
+                    <strong className="text-[#121926] font-semibold block">
+                      {t.step1Title}
+                    </strong>
+                    {t.step1Desc}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
-                  02
-                </span>
-                <div className="text-xs text-[#333d4f]">
-                  <strong className="text-[#121926] font-semibold block">
-                    {t.step2Title}
-                  </strong>
-                  {t.step2Desc}
+                <div className="flex items-start gap-2.5">
+                  <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
+                    02
+                  </span>
+                  <div className="text-xs text-[#333d4f]">
+                    <strong className="text-[#121926] font-semibold block">
+                      {t.step2Title}
+                    </strong>
+                    {t.step2Desc}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
-                  03
-                </span>
-                <div className="text-xs text-[#333d4f]">
-                  <strong className="text-[#121926] font-semibold block">
-                    {t.step3Title}
-                  </strong>
-                  {t.step3Desc}
+                <div className="flex items-start gap-2.5">
+                  <span className="font-mono-academic text-xs font-bold text-[#182235] shrink-0">
+                    03
+                  </span>
+                  <div className="text-xs text-[#333d4f]">
+                    <strong className="text-[#121926] font-semibold block">
+                      {t.step3Title}
+                    </strong>
+                    {t.step3Desc}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          /* =====================================================================
+             2B & 3. ADAY YÜKLENDİĞİNDE DOĞRUDAN EKRANA GELEN AKADEMİK ÇALIŞMA ALANI
+                     (Kompakt Üst Komuta & Yükleme Barı + Aday Karnesi & Matris)
+             ===================================================================== */
+          <section id="sonuclar" className="space-y-5">
+            {/* KOMPAKT AKADEMİK KOMUTA & YENİ CV SÜRÜKLE-BIRAK BARI */}
+            <div
+              id="yukleme"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropFiles(e, true)}
+              className={`rounded-xl border transition-all shadow-md overflow-hidden ${
+                isDragging
+                  ? "bg-[#d8d1c3] border-2 border-dashed border-[#182235]"
+                  : "bg-[#182235]/95 backdrop-blur-md border-[#2c3a52]"
+              }`}
+            >
+              <div className="p-4 sm:px-5 sm:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Sol: Aktif Havuz Başlığı & Canlı Durum */}
+                <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-[#e2dcd0] text-[#182235] flex items-center justify-center shrink-0 font-mono-academic font-bold text-sm shadow-2xs">
+                    {isParsingPdf ? (
+                      <Loader2 className="w-5 h-5 text-[#182235] animate-spin" />
+                    ) : (
+                      String(candidates.length).padStart(2, "0")
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#93c5fd]">
+                        {lang === "en"
+                          ? "01 — ACADEMIC DOSSIER & EXTRACTION WORKSPACE"
+                          : "01 — AKADEMİK ADAY HAVUZU VE ANALİZ MERKEZİ"}
+                      </span>
+                    </div>
+                    <h1 className="font-serif-academic text-base sm:text-lg font-bold text-[#f0ece1] truncate mt-0.5">
+                      {isParsingPdf || pdfParseStatus
+                        ? translateParseStatus(pdfParseStatus, lang) ||
+                          t.readingFiles
+                        : lang === "en"
+                        ? `${candidates.length} Curriculum Vitae Analyzed — Drag & Drop Any Time to Add More`
+                        : `${candidates.length} Özgeçmiş Analiz Edildi — Yeni Dosya veya Klasörü Doğrudan Sürükleyebilirsiniz`}
+                    </h1>
+                  </div>
+                </div>
 
-        {/* =====================================================================
-            3. SONUÇLAR (KART GÖRÜNÜMÜ VEYA TOPLU TABLO / EXCEL ÖNİZLEME)
-           ===================================================================== */}
-        {candidates.length > 0 && (
-          <div id="sonuclar" className="space-y-4">
-            {/* ÜST TOPLU İŞLEM & EXCEL EXPORT BARI */}
-            <div className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex rounded-md border border-[#b8b0a0] bg-[#d5cec0] p-0.5">
+                {/* Sağ: Hızlı CV Ekleme, Görünüm Seçici ve Excel Çıktısı */}
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {/* Görünüm Değiştirici */}
+                  <div className="inline-flex rounded-lg border border-[#33435e] bg-[#111927] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode("split")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                        layoutMode === "split"
+                          ? "bg-[#e2dcd0] text-[#182235]"
+                          : "text-[#b8b2a6] hover:text-white"
+                      }`}
+                    >
+                      {t.viewSplit}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode("table")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                        layoutMode === "table"
+                          ? "bg-[#e2dcd0] text-[#182235]"
+                          : "text-[#b8b2a6] hover:text-white"
+                      }`}
+                    >
+                      <TableIcon className="w-3.5 h-3.5" />
+                      {t.viewTable(displayedEvaluations.length)}
+                    </button>
+                  </div>
+
+                  {/* + Çoklu Dosya Ekle */}
+                  <label className="px-3 py-1.5 rounded-lg border border-[#3b4d6b] bg-[#212f47] hover:bg-[#2a3b57] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-[#93c5fd]" />
+                    {lang === "en" ? "+ Add Files / ZIP" : "+ Dosya / ZIP Ekle"}
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={handleDirectFilesUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* + Klasör Ekle */}
+                  <label className="px-3 py-1.5 rounded-lg border border-[#3b4d6b] bg-[#1b263b] hover:bg-[#25344f] text-[#d2ccc0] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                    {lang === "en" ? "+ Add Folder" : "+ Klasör Ekle"}
+                    <input
+                      type="file"
+                      multiple
+                      {...({
+                        webkitdirectory: "",
+                        directory: "",
+                      } as React.InputHTMLAttributes<HTMLInputElement>)}
+                      onChange={handleDirectFilesUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Excel İndir */}
                   <button
-                    onClick={() => setLayoutMode("split")}
-                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                      layoutMode === "split"
-                        ? "bg-[#182235] text-[#f0ece1]"
-                        : "text-[#333d4f] hover:text-[#121926]"
-                    }`}
+                    type="button"
+                    onClick={() =>
+                      exportEvaluationsToExcelXlsx(
+                        displayedEvaluations,
+                        activeCompany.name,
+                        lang
+                      )
+                    }
+                    disabled={displayedEvaluations.length === 0}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#e2dcd0] hover:bg-[#ece7dc] disabled:opacity-50 text-[#182235] text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors whitespace-nowrap shrink-0"
                   >
-                    📋 {t.viewSplit}
-                  </button>
-                  <button
-                    onClick={() => setLayoutMode("table")}
-                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                      layoutMode === "table"
-                        ? "bg-[#182235] text-[#f0ece1]"
-                        : "text-[#333d4f] hover:text-[#121926]"
-                    }`}
-                  >
-                    <TableIcon className="w-3.5 h-3.5" />
-                    {t.viewTable(displayedEvaluations.length)}
+                    <Download className="w-3.5 h-3.5" />
+                    {t.btnDownloadExcelFull(displayedEvaluations.length)}
                   </button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() =>
-                    exportEvaluationsToExcelXlsx(
-                      displayedEvaluations,
-                      activeCompany.name,
-                      lang
-                    )
-                  }
-                  disabled={displayedEvaluations.length === 0}
-                  className="px-4 py-2 rounded-md bg-[#182235] hover:bg-[#22304a] disabled:opacity-50 text-[#f0ece1] text-xs font-bold flex items-center gap-2 cursor-pointer shadow-2xs transition-colors"
-                >
-                  <Download className="w-4 h-4 text-[#93c5fd]" />
-                  {t.btnDownloadExcelFull(displayedEvaluations.length)}
-                </button>
               </div>
             </div>
 
@@ -1692,13 +1760,17 @@ export default function CVReaderApp() {
               /* ===============================================================
                  TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ (30-40+ CV İÇİN)
                  =============================================================== */
-              <section className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
+              <div className="bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
                 <div className="p-4 border-b border-[#c4bdb0] flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="font-serif-academic font-bold text-base text-[#121926]">
+                    <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#4a5363]">
+                      {lang === "en"
+                        ? "02 / STRUCTURED ACADEMIC MATRIX"
+                        : "02 / YAPILANDIRILMIŞ AKADEMİK MATRİS"}
+                    </div>
+                    <h2 className="font-serif-academic font-bold text-base text-[#121926] mt-0.5">
                       {t.tableHeading(displayedEvaluations.length)}
                     </h2>
-                    <p className="text-xs text-[#3b4454] mt-0.5">{t.tableSub}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -1709,7 +1781,7 @@ export default function CVReaderApp() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t.searchTablePlaceholder}
-                        className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-48"
+                        className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded-md text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-52"
                       />
                     </div>
                   </div>
@@ -1719,31 +1791,31 @@ export default function CVReaderApp() {
                   <table className="w-full text-left border-collapse text-xs">
                     <thead className="bg-[#182235] text-[#f0ece1] sticky top-0 z-10">
                       <tr>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-mono-academic font-semibold whitespace-nowrap">
                           #
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colNameFile}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colGender}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colAge}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colDegrees}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colAssoc}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colBachelor}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colMaster}
                         </th>
-                        <th className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {t.colPhd}
                         </th>
                       </tr>
@@ -1783,18 +1855,18 @@ export default function CVReaderApp() {
                             }}
                             className="hover:bg-[#d6cfc0] cursor-pointer transition-colors align-top"
                           >
-                            <td className="py-3 px-3 font-mono-academic text-[#4a5363]">
-                              {idx + 1}
+                            <td className="py-3 px-3.5 font-mono-academic text-[#4a5363]">
+                              {String(idx + 1).padStart(2, "0")}
                             </td>
-                            <td className="py-3 px-3 min-w-[180px]">
-                              <div className="font-bold text-[#121926]">
+                            <td className="py-3 px-3.5 min-w-[180px]">
+                              <div className="font-serif-academic font-bold text-sm text-[#121926]">
                                 {item.cv.fullName}
                               </div>
                               <div className="text-[11px] text-[#4a5363] truncate max-w-[210px]">
                                 {item.cv.source}
                               </div>
                             </td>
-                            <td className="py-3 px-3 whitespace-nowrap">
+                            <td className="py-3 px-3.5 whitespace-nowrap">
                               <span
                                 className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                                   item.cv.detectedGender === "Kadın"
@@ -1807,7 +1879,7 @@ export default function CVReaderApp() {
                                 {translateGender(item.cv.detectedGender, lang)}
                               </span>
                             </td>
-                            <td className="py-3 px-3 whitespace-nowrap">
+                            <td className="py-3 px-3.5 whitespace-nowrap">
                               {item.cv.detectedAge !== null ? (
                                 <div>
                                   <span className="font-bold text-[#121926]">
@@ -1828,7 +1900,7 @@ export default function CVReaderApp() {
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-3 px-3.5">
                               <div className="flex flex-wrap gap-1 min-w-[130px]">
                                 {activeDegrees.length > 0 ? (
                                   activeDegrees.map((d) => (
@@ -1836,7 +1908,7 @@ export default function CVReaderApp() {
                                       key={d.key}
                                       className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-semibold whitespace-nowrap"
                                     >
-                                      ✓ {lang === "en" ? d.shortEn : d.shortTr}
+                                      {lang === "en" ? d.shortEn : d.shortTr}
                                     </span>
                                   ))
                                 ) : (
@@ -1846,16 +1918,16 @@ export default function CVReaderApp() {
                                 )}
                               </div>
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-3 px-3.5">
                               {renderDegreeCell(degMap.associate)}
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-3 px-3.5">
                               {renderDegreeCell(degMap.bachelor)}
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-3 px-3.5">
                               {renderDegreeCell(degMap.master)}
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-3 px-3.5">
                               {renderDegreeCell(degMap.phd)}
                             </td>
                           </tr>
@@ -1864,41 +1936,47 @@ export default function CVReaderApp() {
                     </tbody>
                   </table>
                 </div>
-              </section>
+              </div>
             ) : (
-              <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* SOL: ADAY LİSTESİ (7 Sütun) */}
-                <div className="lg:col-span-7 bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-sm">
-                  {/* Liste Başlığı */}
-                  <div className="p-4 border-b border-[#c4bdb0] flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
+              /* ===============================================================
+                 İKİLİ AKADEMİK DOSYA GÖRÜNÜMÜ (SOL: ADAY LİSTESİ, SAĞ: AKADEMİK KARNE)
+                 =============================================================== */
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* SOL SÜTUN: ADAY HAVUZU LİSTESİ (5 Sütun) */}
+                <div className="lg:col-span-5 bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
+                  {/* Liste Üst Başlığı ve Arama */}
+                  <div className="p-4 border-b border-[#c4bdb0] bg-[#dad3c5] flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.16em] text-[#4a5363]">
+                        {lang === "en"
+                          ? "01 / CANDIDATE ROSTER"
+                          : "01 / ADAY LİSTESİ"}
+                      </div>
                       <h2 className="font-serif-academic font-bold text-base text-[#121926]">
                         {t.uploadedCvsTitle(candidates.length)}
                       </h2>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-[#525b6c] absolute left-2.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder={t.searchCandidatePlaceholder}
-                          className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-40"
-                        />
-                      </div>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-[#525b6c] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={t.searchCandidatePlaceholder}
+                        className="pl-8 pr-2.5 py-1.5 bg-[#ece7db] border border-[#b0a898] rounded-md text-xs text-[#121926] focus:outline-none focus:border-[#182235] w-40 sm:w-44"
+                      />
                     </div>
                   </div>
 
-                  {/* Aday Kartları */}
-                  <div className="divide-y divide-[#c4bdb0] max-h-[680px] overflow-y-auto">
+                  {/* Aday Kartları Listesi */}
+                  <div className="divide-y divide-[#c4bdb0] max-h-[720px] overflow-y-auto">
                     {displayedEvaluations.length === 0 ? (
                       <div className="p-8 text-center text-sm text-[#4a5363]">
                         {t.noCandidatesMatch}
                       </div>
                     ) : (
-                      displayedEvaluations.map((item) => {
+                      displayedEvaluations.map((item, idx) => {
                         const isSelected =
                           selectedEvaluation?.cv.id === item.cv.id;
                         const degMap = getCandidateDegreeMap(item.cv);
@@ -1911,135 +1989,104 @@ export default function CVReaderApp() {
                           <div
                             key={item.cv.id}
                             onClick={() => setSelectedCandidateId(item.cv.id)}
-                            className={`p-4 transition-colors cursor-pointer flex items-start justify-between gap-4 ${
+                            className={`p-4 transition-all cursor-pointer flex items-start justify-between gap-3 border-l-4 ${
                               isSelected
-                                ? "bg-[#182235] text-[#f0ece1]"
-                                : "bg-[#e2dcd0] hover:bg-[#d8d1c3]"
+                                ? "bg-[#ece7db] border-l-[#182235]"
+                                : "bg-[#e2dcd0] border-l-transparent hover:bg-[#d8d1c3]"
                             }`}
                           >
-                            {/* Sol Bilgi */}
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span
-                                  className={`font-serif-academic font-bold text-base truncate ${
-                                    isSelected
-                                      ? "text-[#f0ece1]"
-                                      : "text-[#121926]"
-                                  }`}
-                                >
-                                  {item.cv.fullName}
-                                </span>
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                                    isSelected
-                                      ? "bg-[#283652] text-[#d2ccc0]"
-                                      : item.cv.detectedGender === "Kadın"
-                                      ? "bg-[#cfc8b8] text-[#182235]"
-                                      : "bg-[#d4cdc0] text-[#273142]"
-                                  }`}
-                                >
-                                  {translateGender(
-                                    item.cv.detectedGender,
-                                    lang
-                                  )}
-                                </span>
-                                <span
-                                  className={`text-xs font-medium ${
-                                    isSelected
-                                      ? "text-[#b8b2a6]"
-                                      : "text-[#3b4454]"
-                                  }`}
-                                >
-                                  •{" "}
-                                  {item.cv.detectedAge !== null
-                                    ? `${item.cv.detectedAge} ${t.ageUnit}`
-                                    : ageMissing
-                                    ? t.noAgeEduDateLong
-                                    : t.ageNotSpecified}
-                                </span>
-                              </div>
+                            {/* Sol: Sıra No & Aday Özeti */}
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                              <span
+                                className={`font-mono-academic text-xs font-bold px-2 py-1 rounded shrink-0 mt-0.5 ${
+                                  isSelected
+                                    ? "bg-[#182235] text-[#f0ece1]"
+                                    : "bg-[#cfc8b8] text-[#273142]"
+                                }`}
+                              >
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
 
-                              {/* Derece Bazlı Eğitim Özeti */}
-                              {activeDegrees.length > 0 && (
-                                <div className="space-y-1 pt-0.5">
-                                  {activeDegrees.map((deg) => {
-                                    const slot = degMap[deg.key];
-                                    if (!slot) return null;
-                                    return (
-                                      <div
-                                        key={deg.key}
-                                        className={`text-xs flex flex-wrap items-center gap-1.5 ${
-                                          isSelected
-                                            ? "text-[#d2ccc0]"
-                                            : "text-[#273142]"
-                                        }`}
-                                      >
-                                        <span
-                                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
-                                            isSelected
-                                              ? "bg-[#e2dcd0] text-[#182235]"
-                                              : "bg-[#182235] text-[#f0ece1]"
-                                          }`}
-                                        >
-                                          {lang === "en"
-                                            ? deg.shortEn
-                                            : deg.shortTr}
-                                        </span>
-                                        <span
-                                          className={`font-semibold ${
-                                            isSelected
-                                              ? "text-[#f0ece1]"
-                                              : "text-[#121926]"
-                                          }`}
-                                        >
-                                          {translateEduField(
-                                            slot.university,
-                                            lang
-                                          )}
-                                        </span>
-                                        <span
-                                          className={
-                                            isSelected
-                                              ? "text-[#8c8577]"
-                                              : "text-[#635d51]"
-                                          }
-                                        >
-                                          —
-                                        </span>
-                                        <span
-                                          className={`font-medium ${
-                                            isSelected
-                                              ? "text-[#93c5fd]"
-                                              : "text-[#1e3a8a]"
-                                          }`}
-                                        >
-                                          {translateEduField(
-                                            slot.department,
-                                            lang
-                                          )}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
+                              <div className="min-w-0 flex-1 space-y-2">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-serif-academic font-bold text-base text-[#121926] truncate">
+                                      {item.cv.fullName}
+                                    </span>
+                                  </div>
+
+                                  {/* Demografik Etiketler */}
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-[#d4cdc0] border border-[#b8b0a0] text-[#182235] font-semibold">
+                                      {translateGender(
+                                        item.cv.detectedGender,
+                                        lang
+                                      )}
+                                    </span>
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-[#d4cdc0] border border-[#b8b0a0] text-[#273142] font-medium">
+                                      {item.cv.detectedAge !== null
+                                        ? `${item.cv.detectedAge} ${t.ageUnit}`
+                                        : ageMissing
+                                        ? t.noAgeEduDate
+                                        : t.ageNotSpecified}
+                                    </span>
+                                  </div>
                                 </div>
-                              )}
+
+                                {/* Derece Bazlı Eğitim Satırları */}
+                                {activeDegrees.length > 0 ? (
+                                  <div className="space-y-1.5 pt-0.5">
+                                    {activeDegrees.map((deg) => {
+                                      const slot = degMap[deg.key];
+                                      if (!slot) return null;
+                                      return (
+                                        <div
+                                          key={deg.key}
+                                          className="text-xs bg-[#e4dfd3] border border-[#c4bdb0] rounded-md px-2.5 py-1.5 space-y-0.5"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-mono-academic text-[10px] font-bold uppercase tracking-wider text-[#182235]">
+                                              {lang === "en"
+                                                ? deg.shortEn
+                                                : deg.shortTr}
+                                            </span>
+                                            <span className="text-[11px] font-semibold text-[#1e3a8a] truncate">
+                                              {translateEduField(
+                                                slot.department,
+                                                lang
+                                              )}
+                                            </span>
+                                          </div>
+                                          <div className="font-semibold text-[#121926] text-xs truncate">
+                                            {translateEduField(
+                                              slot.university,
+                                              lang
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-[#5a6270] italic">
+                                    {t.notSpecified}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Sağ: Sil */}
+                            {/* Sağ: Adayı Kaldır */}
                             <div
-                              className="flex items-center gap-1 shrink-0"
+                              className="shrink-0"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
+                                type="button"
                                 onClick={() =>
                                   handleDeleteCandidate(item.cv.id)
                                 }
                                 title={t.removeCvTooltip}
-                                className={`p-1.5 rounded border cursor-pointer ${
-                                  isSelected
-                                    ? "border-[#33435e] bg-[#212f47] text-[#b8b2a6] hover:text-red-300"
-                                    : "border-[#b8b0a0] bg-[#d6cfc0] text-[#3b4454] hover:text-red-700"
-                                }`}
+                                className="p-1.5 rounded border border-[#b8b0a0] bg-[#d6cfc0] text-[#3b4454] hover:border-red-800/40 hover:text-red-800 cursor-pointer transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -2051,8 +2098,8 @@ export default function CVReaderApp() {
                   </div>
                 </div>
 
-                {/* SAĞ: SEÇİLİ ADAYIN AKADEMİK ÖZETİ VE CV METNİ (5 Sütun) */}
-                <div className="lg:col-span-5 bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-5 shadow-sm space-y-5">
+                {/* SAĞ SÜTUN: SEÇİLİ ADAY AKADEMİK KARNESİ (7 Sütun) */}
+                <div className="lg:col-span-7 bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
                   {selectedEvaluation ? (
                     (() => {
                       const degMap = getCandidateDegreeMap(
@@ -2066,170 +2113,205 @@ export default function CVReaderApp() {
                       );
 
                       return (
-                        <>
-                          {/* Aday Başlığı */}
-                          <div className="border-b border-[#c4bdb0] pb-4">
-                            <h3 className="font-serif-academic text-xl font-bold text-[#121926]">
-                              {selectedEvaluation.cv.fullName}
-                            </h3>
-                            <p className="text-xs text-[#3b4454] mt-1">
-                              {translateEduField(
-                                selectedEvaluation.cv.university,
-                                lang
-                              )}
-                              {selectedEvaluation.cv.department &&
-                              selectedEvaluation.cv.department !==
-                                "Belirtilmemiş"
-                                ? ` — ${translateEduField(
-                                    selectedEvaluation.cv.department,
-                                    lang
-                                  )}`
-                                : ""}{" "}
-                              •{" "}
-                              {translateEduField(
-                                selectedEvaluation.cv.city,
-                                lang
-                              )}{" "}
-                              • {selectedEvaluation.cv.source}
-                            </p>
-                          </div>
-
-                          {/* Yapay Zeka Tespit Özeti */}
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-mono-academic font-bold text-[#182235] uppercase tracking-wider">
-                                {t.aiSummaryHeading}
-                              </span>
-                            </div>
-
-                            {/* Cinsiyet Tespiti */}
-                            <div className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1">
-                              <div className="font-semibold text-[#121926]">
-                                {t.genderLabel}:{" "}
-                                {translateGender(
-                                  selectedEvaluation.cv.detectedGender,
-                                  lang
-                                )}
+                        <div>
+                          {/* AKADEMİK KARNE ÜST BAŞLIĞI (Koyu Oxford Arduvaz Şerit) */}
+                          <div className="bg-[#182235] text-[#f0ece1] px-5 py-4 border-b border-[#2c3a52] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#93c5fd]">
+                                {lang === "en"
+                                  ? "02 / CANDIDATE ACADEMIC & DEMOGRAPHIC DOSSIER"
+                                  : "02 / ADAY AKADEMİK VE DEMOGRAFİK KARNESİ"}
                               </div>
-                              <p className="text-[#333d4f]">
-                                {selectedEvaluation.cv.genderEvidence
-                                  .map((e) =>
-                                    translateGenderSignal(e.signal, lang)
-                                  )
-                                  .slice(0, 2)
-                                  .join(" + ")}
+                              <h3 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#f0ece1] mt-0.5 truncate">
+                                {selectedEvaluation.cv.fullName}
+                              </h3>
+                              <p className="text-xs text-[#b8b2a6] mt-0.5 truncate">
+                                {translateEduField(
+                                  selectedEvaluation.cv.city,
+                                  lang
+                                )}{" "}
+                                • {selectedEvaluation.cv.source}
                               </p>
                             </div>
 
-                            {/* Yaş Tespiti */}
-                            <div className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1">
-                              <div className="flex items-center justify-between font-semibold text-[#121926]">
-                                <span>
-                                  {t.ageLabel}:{" "}
+                            {/* Sağ: Aktif Derece Rozetleri */}
+                            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                              {activeDegrees.length > 0 ? (
+                                activeDegrees.map((d) => (
+                                  <span
+                                    key={d.key}
+                                    className="px-2.5 py-1 rounded bg-[#e2dcd0] text-[#182235] text-xs font-bold whitespace-nowrap"
+                                  >
+                                    {lang === "en" ? d.shortEn : d.shortTr}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="px-2.5 py-1 rounded bg-[#25344f] text-[#d2ccc0] text-xs font-medium">
+                                  {t.notSpecified}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* AKADEMİK KARNE GÖVDESİ */}
+                          <div className="p-5 space-y-5">
+                            {/* BÖLÜM I: DEMOGRAFİK VE KRONOLOJİK ANALİZ (2 Sütunlu Mimari Kartlar) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                              {/* 01 / Cinsiyet Kartı */}
+                              <div className="p-4 rounded-lg bg-[#ece7db] border border-[#b8b0a0] flex flex-col justify-between space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
+                                    01 / {t.genderLabel}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-bold">
+                                    {translateGender(
+                                      selectedEvaluation.cv.detectedGender,
+                                      lang
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="font-serif-academic text-lg font-bold text-[#121926]">
+                                  {translateGender(
+                                    selectedEvaluation.cv.detectedGender,
+                                    lang
+                                  )}
+                                </div>
+                                <p className="text-xs text-[#333d4f] leading-relaxed border-t border-[#d4cdc0] pt-2">
+                                  {selectedEvaluation.cv.genderEvidence
+                                    .map((e) =>
+                                      translateGenderSignal(e.signal, lang)
+                                    )
+                                    .slice(0, 2)
+                                    .join(" + ")}
+                                </p>
+                              </div>
+
+                              {/* 02 / Kronolojik Yaş Kartı */}
+                              <div className="p-4 rounded-lg bg-[#ece7db] border border-[#b8b0a0] flex flex-col justify-between space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
+                                    02 / {t.ageLabel}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded bg-[#d6cfc0] border border-[#b0a898] text-[#182235] text-[10px] font-bold truncate">
+                                    {translateAgeMethod(
+                                      selectedEvaluation.cv.ageMethod,
+                                      lang
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="font-serif-academic text-lg font-bold text-[#121926]">
                                   {selectedEvaluation.cv.detectedAge !== null
                                     ? `${selectedEvaluation.cv.detectedAge} ${t.ageYearsOld}`
                                     : ageMissing
                                     ? t.noAgeEduDateLong
                                     : t.unspecified}
-                                </span>
-                                <span className="text-[#1e3a8a] text-[11px] font-semibold">
-                                  {translateAgeMethod(
-                                    selectedEvaluation.cv.ageMethod,
+                                </div>
+                                <p className="text-xs text-[#333d4f] leading-relaxed border-t border-[#d4cdc0] pt-2">
+                                  {translateAgeEvidence(
+                                    selectedEvaluation.cv.ageEvidence,
                                     lang
                                   )}
-                                </span>
+                                </p>
                               </div>
-                              <p className="text-[#333d4f]">
-                                {translateAgeEvidence(
-                                  selectedEvaluation.cv.ageEvidence,
-                                  lang
-                                )}
-                              </p>
                             </div>
 
-                            {/* Derece Bazlı Eğitim Tespiti */}
-                            <div className="p-3.5 rounded-lg bg-[#ece7db] border border-[#b8b0a0] text-xs space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-[#121926] flex items-center gap-1.5">
+                            {/* BÖLÜM II: EĞİTİM DERECELERİ & ÜNİVERSİTE / BÖLÜM MATRİSİ */}
+                            <div className="rounded-lg bg-[#ece7db] border border-[#b8b0a0] p-4 space-y-4">
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#cfc8b8] pb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
+                                    03 /
+                                  </span>
                                   <GraduationCap className="w-4 h-4 text-[#182235]" />
-                                  {t.eduSectionTitle}
-                                </span>
-                                <span className="text-[11px] font-bold text-[#182235]">
+                                  <h4 className="font-serif-academic font-bold text-sm text-[#121926]">
+                                    {t.eduSectionTitle}
+                                  </h4>
+                                </div>
+                                <span className="text-xs font-mono-academic font-bold text-[#182235]">
                                   {activeDegrees.length > 0
                                     ? activeDegrees
                                         .map((d) =>
                                           lang === "en" ? d.shortEn : d.shortTr
                                         )
-                                        .join(" + ")
+                                        .join(" · ")
                                     : t.notSpecified}
                                 </span>
                               </div>
 
-                              {/* 4 Derece Göstergesi */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                {DEGREE_CARDS.map((deg) => {
+                              {/* 4 Kademeli Akademik Derece Şeridi */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {DEGREE_CARDS.map((deg, idx) => {
                                   const isHas = degMap[deg.key] !== null;
                                   return (
                                     <div
                                       key={deg.key}
-                                      className={`px-2 py-1.5 rounded border text-center font-semibold text-[11px] ${
+                                      className={`px-3 py-2 rounded-md border text-left transition-colors ${
                                         isHas
-                                          ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
-                                          : "bg-[#ded8c8] text-[#6b7280] border-[#c4bdb0]"
+                                          ? "bg-[#182235] text-[#f0ece1] border-[#182235] shadow-2xs"
+                                          : "bg-[#dfd9ca] text-[#6b7280] border-[#c4bdb0]"
                                       }`}
                                     >
-                                      {isHas ? "✓ " : ""}
-                                      {lang === "en"
-                                        ? deg.shortEn
-                                        : deg.shortTr}
+                                      <div
+                                        className={`text-[10px] font-mono-academic font-bold ${
+                                          isHas
+                                            ? "text-[#93c5fd]"
+                                            : "text-[#857f72]"
+                                        }`}
+                                      >
+                                        0{idx + 1}
+                                      </div>
+                                      <div className="text-xs font-bold mt-0.5 truncate">
+                                        {lang === "en"
+                                          ? deg.shortEn
+                                          : deg.shortTr}
+                                      </div>
                                     </div>
                                   );
                                 })}
                               </div>
 
-                              {/* Aktif olan her derece için ayrı Üniversite & Bölüm kartı */}
+                              {/* Aktif Olan Her Akademik Derece İçin 2 Sütunlu Tablo Kartı */}
                               {activeDegrees.length > 0 ? (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                   {activeDegrees.map((deg) => {
                                     const slot = degMap[deg.key];
                                     if (!slot) return null;
                                     return (
                                       <div
                                         key={deg.key}
-                                        className="p-2.5 rounded-md bg-[#e2dcd0] border border-[#b8b0a0] space-y-1.5"
+                                        className="rounded-lg bg-[#e2dcd0] border border-[#b0a898] overflow-hidden"
                                       >
-                                        <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-1">
-                                          <span className="font-bold text-[#182235] text-[11px]">
-                                            🎓{" "}
+                                        <div className="px-3.5 py-2 bg-[#d6cfc0] border-b border-[#b8b0a0] flex items-center justify-between">
+                                          <span className="font-serif-academic font-bold text-xs text-[#182235]">
                                             {lang === "en"
                                               ? deg.cardTitleEn
                                               : deg.cardTitleTr}
                                           </span>
-                                          <span className="text-[10px] font-medium text-[#4a5363]">
+                                          <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#3b4454]">
                                             {deg.shortEn}
                                           </span>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-                                          <div>
-                                            <div className="text-[10px] font-semibold text-[#4a5363] uppercase">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#c4bdb0]">
+                                          <div className="p-3">
+                                            <div className="text-[10px] font-mono-academic font-bold text-[#4a5363] uppercase tracking-wider">
                                               {lang === "en"
                                                 ? deg.uniLabelEn
                                                 : deg.uniLabelTr}
                                             </div>
-                                            <div className="font-semibold text-[#121926] mt-0.5">
+                                            <div className="font-serif-academic font-bold text-sm text-[#121926] mt-1">
                                               {translateEduField(
                                                 slot.university,
                                                 lang
                                               )}
                                             </div>
                                           </div>
-                                          <div>
-                                            <div className="text-[10px] font-semibold text-[#4a5363] uppercase">
+                                          <div className="p-3">
+                                            <div className="text-[10px] font-mono-academic font-bold text-[#4a5363] uppercase tracking-wider">
                                               {lang === "en"
                                                 ? deg.deptLabelEn
                                                 : deg.deptLabelTr}
                                             </div>
-                                            <div className="font-semibold text-[#1e3a8a] mt-0.5">
+                                            <div className="font-serif-academic font-bold text-sm text-[#1e3a8a] mt-1">
                                               {translateEduField(
                                                 slot.department,
                                                 lang
@@ -2242,66 +2324,76 @@ export default function CVReaderApp() {
                                   })}
                                 </div>
                               ) : (
-                                <p className="text-[#4a5363]">
+                                <p className="text-xs text-[#4a5363]">
                                   {t.noUniDeptDetected}
                                 </p>
                               )}
                             </div>
 
-                            {/* Yetenek Kanıtları */}
-                            {selectedEvaluation.skillAssessments.map((sa) => (
-                              <div
-                                key={sa.skill}
-                                className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1"
-                              >
-                                <div className="flex items-center justify-between font-semibold text-[#121926]">
-                                  <span className="flex items-center gap-1.5">
-                                    {sa.level === "Uzman / Proje Kanıtlı" ? (
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
-                                    ) : (
-                                      <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                                    )}
-                                    {sa.skill}
-                                  </span>
-                                  <span
-                                    className={
-                                      sa.level === "Uzman / Proje Kanıtlı"
-                                        ? "text-[#182235]"
-                                        : "text-amber-800"
-                                    }
-                                  >
-                                    {translateSkillLevel(sa.level, lang)}
-                                  </span>
-                                </div>
-                                <p className="text-[#333d4f] italic">
-                                  &ldquo;{sa.evidenceSnippet}&rdquo;
-                                </p>
+                            {/* Yetenek Kanıtları (Varsa) */}
+                            {selectedEvaluation.skillAssessments.length > 0 && (
+                              <div className="space-y-2">
+                                {selectedEvaluation.skillAssessments.map(
+                                  (sa) => (
+                                    <div
+                                      key={sa.skill}
+                                      className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1"
+                                    >
+                                      <div className="flex items-center justify-between font-semibold text-[#121926]">
+                                        <span className="flex items-center gap-1.5">
+                                          {sa.level ===
+                                          "Uzman / Proje Kanıtlı" ? (
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
+                                          ) : (
+                                            <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                                          )}
+                                          {sa.skill}
+                                        </span>
+                                        <span
+                                          className={
+                                            sa.level === "Uzman / Proje Kanıtlı"
+                                              ? "text-[#182235]"
+                                              : "text-amber-800"
+                                          }
+                                        >
+                                          {translateSkillLevel(sa.level, lang)}
+                                        </span>
+                                      </div>
+                                      <p className="text-[#333d4f] italic">
+                                        &ldquo;{sa.evidenceSnippet}&rdquo;
+                                      </p>
+                                    </div>
+                                  )
+                                )}
                               </div>
-                            ))}
-                          </div>
+                            )}
 
-                          {/* CV Metni (Koyu Oxford Arduvaz Kutusu) */}
-                          <div>
-                            <div className="text-[11px] font-mono-academic font-bold text-[#273142] uppercase mb-2 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-[#182235]" />
-                              {t.rawCvTextHeading}
+                            {/* BÖLÜM III: OKUNAN ÖZGEÇMİŞ METNİ (Koyu Oxford Arduvaz Belge Kutusu) */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-[10px] font-mono-academic font-bold text-[#3b4454] uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                  <span>04 /</span>
+                                  <FileText className="w-3.5 h-3.5 text-[#182235]" />
+                                  <span>{t.rawCvTextHeading}</span>
+                                </div>
+                              </div>
+                              <pre className="p-4 rounded-lg bg-[#182235] border border-[#2c3a52] text-[#e2dcd0] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto shadow-inner">
+                                {selectedEvaluation.cv.rawText}
+                              </pre>
                             </div>
-                            <pre className="p-3.5 rounded-lg bg-[#182235] border border-[#2c3a52] text-[#e2dcd0] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                              {selectedEvaluation.cv.rawText}
-                            </pre>
                           </div>
-                        </>
+                        </div>
                       );
                     })()
                   ) : (
-                    <div className="text-sm text-[#4a5363] py-8 text-center">
+                    <div className="text-sm text-[#4a5363] py-12 text-center">
                       {t.selectCandidatePrompt}
                     </div>
                   )}
                 </div>
-              </section>
+              </div>
             )}
-          </div>
+          </section>
         )}
 
         {/* =====================================================================
