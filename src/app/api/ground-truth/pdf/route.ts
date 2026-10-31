@@ -5,23 +5,62 @@ import JSZip from "jszip";
 
 const LOCAL_ZIP_PATH = "C:\\Users\\berke\\OneDrive\\Masaüstü\\Yeni klasör.zip";
 
+function isAuthorizedPdfRequest(req: NextRequest): boolean {
+  if (req.cookies.get("cv_gizli_label_session")?.value === "authorized_v1") {
+    return true;
+  }
+  if (req.headers.get("x-gizli-label-access") === "internal-gizlilabel-v1") {
+    return true;
+  }
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      if (
+        refUrl.origin === req.nextUrl.origin &&
+        (refUrl.pathname === "/gizlilabel" ||
+          refUrl.pathname.startsWith("/gizlilabel/"))
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+}
+
 export async function GET(req: NextRequest) {
+  if (!isAuthorizedPdfRequest(req)) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
   try {
-    const fileName = req.nextUrl.searchParams.get("file");
-    if (!fileName) {
+    const rawFileParam = req.nextUrl.searchParams.get("file");
+    if (!rawFileParam) {
       return new NextResponse("Missing file parameter", { status: 400 });
+    }
+    const safeFileName = path.basename(rawFileParam);
+    if (
+      !safeFileName ||
+      safeFileName !== rawFileParam ||
+      safeFileName.includes("..") ||
+      !safeFileName.toLowerCase().endsWith(".pdf")
+    ) {
+      return new NextResponse("Not Found", { status: 404 });
     }
 
     // 1. Önce repo içindeki public/cvs/ klasöründen oku (Hem Vercel'de hem Local'de çalışır!)
-    const publicPdfPath = path.join(process.cwd(), "public", "cvs", path.basename(fileName));
+    const publicPdfPath = path.join(process.cwd(), "public", "cvs", safeFileName);
     if (fs.existsSync(publicPdfPath)) {
       const pdfBuf = fs.readFileSync(publicPdfPath);
       return new NextResponse(pdfBuf, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
-          "Cache-Control": "public, max-age=3600",
+          "Content-Disposition": `inline; filename="${encodeURIComponent(safeFileName)}"`,
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+          "X-Frame-Options": "SAMEORIGIN",
         },
       });
     }
@@ -36,7 +75,7 @@ export async function GET(req: NextRequest) {
     const targetEntry = Object.values(zip.files).find((e) => {
       if (e.dir) return false;
       const base = e.name.split(/[\\/]/).pop() || e.name;
-      return base === fileName;
+      return base === safeFileName;
     });
 
     if (!targetEntry) {
@@ -48,8 +87,10 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
-        "Cache-Control": "public, max-age=3600",
+        "Content-Disposition": `inline; filename="${encodeURIComponent(safeFileName)}"`,
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
+        "X-Frame-Options": "SAMEORIGIN",
       },
     });
   } catch (err: unknown) {

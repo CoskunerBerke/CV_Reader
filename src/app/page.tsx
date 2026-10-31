@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import Link from "next/link";
 import {
   CandidateCV,
   CompanyProfile,
@@ -1723,14 +1722,6 @@ export default function CVReaderApp() {
               </button>
             </div>
 
-            <Link
-              href="/label"
-              className="px-3 py-1.5 rounded-md border border-[#384966] bg-[#212f47] hover:bg-[#2a3b57] text-[#f0ece1] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors shadow-2xs"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#93c5fd]" />
-              {t.btnBenchmark}
-            </Link>
-
             {candidates.length > 0 && (
               <>
                 <button
@@ -2936,12 +2927,6 @@ export default function CVReaderApp() {
             >
               {t.footerUploadLink}
             </a>
-            <Link
-              href="/label"
-              className="hover:text-[#f0ece1] transition-colors"
-            >
-              {t.footerLabelLink}
-            </Link>
           </div>
         </div>
       </footer>

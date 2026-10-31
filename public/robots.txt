@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /gizlilabel
+Disallow: /label
+Disallow: /api/
+Disallow: /cvs/

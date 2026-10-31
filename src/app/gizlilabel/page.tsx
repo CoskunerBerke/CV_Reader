@@ -406,6 +406,9 @@ export default function GroundTruthLabelerPage() {
     try {
       const res = await fetch(`/api/ground-truth?t=${Date.now()}`, {
         cache: "no-store",
+        headers: {
+          "x-gizli-label-access": "internal-gizlilabel-v1",
+        },
       });
       const data = await res.json();
       if (data.items) {
@@ -801,7 +804,10 @@ export default function GroundTruthLabelerPage() {
     try {
       const res = await fetch("/api/ground-truth", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-gizli-label-access": "internal-gizlilabel-v1",
+        },
         body: JSON.stringify({
           fileName: currentItem.fileName,
           humanName: inputName.trim() || currentItem.aiName,
@@ -880,20 +886,6 @@ export default function GroundTruthLabelerPage() {
     a.download = "ground-truth-labels.json";
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleClearAllLabels = async () => {
-    const confirmMsg =
-      lang === "en"
-        ? "Are you sure you want to reset ALL ground-truth labels?"
-        : "Tüm etiketleri sıfırlamak istediğinize emin misiniz?";
-    if (!confirm(confirmMsg)) return;
-    await fetch("/api/ground-truth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "clear_all" }),
-    });
-    setItems((prev) => prev.map((it) => ({ ...it, humanLabel: null })));
   };
 
   const activeComparison = useMemo(() => {
@@ -1307,22 +1299,13 @@ export default function GroundTruthLabelerPage() {
             </button>
 
             {stats.totalAnyLabeled > 0 && (
-              <>
-                <button
-                  onClick={handleExportLabelsJson}
-                  title={t.jsonTooltip}
-                  className="px-2.5 py-2 border border-[#33435e] rounded-lg hover:bg-[#2a3b57] text-xs font-semibold text-[#f0ece1] bg-[#212f47] cursor-pointer"
-                >
-                  📥 JSON
-                </button>
-                <button
-                  onClick={handleClearAllLabels}
-                  title={t.resetTooltip}
-                  className="p-2 border border-[#33435e] rounded-lg hover:border-red-400 hover:text-red-300 text-[#d2ccc0] bg-[#212f47] cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              </>
+              <button
+                onClick={handleExportLabelsJson}
+                title={t.jsonTooltip}
+                className="px-2.5 py-2 border border-[#33435e] rounded-lg hover:bg-[#2a3b57] text-xs font-semibold text-[#f0ece1] bg-[#212f47] cursor-pointer"
+              >
+                📥 JSON
+              </button>
             )}
           </div>
         </div>

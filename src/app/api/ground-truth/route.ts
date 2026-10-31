@@ -295,7 +295,35 @@ async function getRawTextsFromZip(): Promise<{ fileName: string; rawText: string
   return items;
 }
 
-export async function GET() {
+function isAuthorizedGizliRequest(req: NextRequest): boolean {
+  if (req.headers.get("x-gizli-label-access") === "internal-gizlilabel-v1") {
+    return true;
+  }
+  if (req.cookies.get("cv_gizli_label_session")?.value === "authorized_v1") {
+    return true;
+  }
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      if (
+        refUrl.origin === req.nextUrl.origin &&
+        (refUrl.pathname === "/gizlilabel" ||
+          refUrl.pathname.startsWith("/gizlilabel/"))
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthorizedGizliRequest(req)) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
   try {
     const [rawItems, savedLabels] = await Promise.all([
       getRawTextsFromZip(),
@@ -331,7 +359,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         totalCount: items.length,
@@ -339,10 +367,19 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "no-store, max-age=0",
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
       }
     );
+    response.cookies.set("cv_gizli_label_session", "authorized_v1", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    return response;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -350,6 +387,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAuthorizedGizliRequest(req)) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
   try {
     const body = await req.json();
     const {
@@ -375,11 +415,6 @@ export async function POST(req: NextRequest) {
     };
 
     const saved = await readCloudAndLocalLabels();
-
-    if (action === "clear_all") {
-      await writeCloudAndLocalLabels({});
-      return NextResponse.json({ success: true, labels: {} });
-    }
 
     if (action === "delete" && fileName) {
       delete saved[fileName];
