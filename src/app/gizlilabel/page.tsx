@@ -317,6 +317,37 @@ export default function GroundTruthLabelerPage() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
+  const [vaultTab, setVaultTab] = useState<"cvs" | "leads">("cvs");
+  const [vaultCvs, setVaultCvs] = useState<
+    {
+      id: string;
+      fileName: string;
+      fullName: string;
+      gender: string;
+      age: number | null;
+      ageMethod: string;
+      hasBachelor: boolean;
+      university: string;
+      department: string;
+      degree: string;
+      educationByDegree?: EducationByDegreeMap;
+      city: string;
+      rawText: string;
+      uploadedAt: string;
+    }[]
+  >([]);
+  const [vaultLeads, setVaultLeads] = useState<
+    {
+      id: string;
+      fullName: string;
+      companyName: string;
+      contactInfo: string;
+      requestedFeature: string;
+      message: string;
+      createdAt: string;
+    }[]
+  >([]);
   const [saving, setSaving] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [filterMode, setFilterMode] = useState<
@@ -404,12 +435,25 @@ export default function GroundTruthLabelerPage() {
     if (!silent) setLoading(true);
     else setSyncing(true);
     try {
-      const res = await fetch(`/api/ground-truth?t=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          "x-gizli-label-access": "internal-gizlilabel-v1",
-        },
-      });
+      const [res, vaultRes] = await Promise.all([
+        fetch(`/api/ground-truth?t=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            "x-gizli-label-access": "internal-gizlilabel-v1",
+          },
+        }),
+        fetch(`/api/vault?t=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            "x-gizli-label-access": "internal-gizlilabel-v1",
+          },
+        }),
+      ]);
+      if (vaultRes.ok) {
+        const vData = await vaultRes.json();
+        if (Array.isArray(vData?.cvs)) setVaultCvs(vData.cvs);
+        if (Array.isArray(vData?.leads)) setVaultLeads(vData.leads);
+      }
       const data = await res.json();
       if (data.items) {
         setItems(data.items);
@@ -1298,6 +1342,14 @@ export default function GroundTruthLabelerPage() {
               />
             </button>
 
+            <button
+              type="button"
+              onClick={() => setIsVaultModalOpen(true)}
+              className="px-3 py-2 border border-[#eab308]/60 rounded-lg bg-[#eab308]/15 hover:bg-[#eab308]/25 text-xs font-bold text-[#fde047] cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+            >
+              📦 CV Kasası ({vaultCvs.length}) & Talepler ({vaultLeads.length})
+            </button>
+
             {stats.totalAnyLabeled > 0 && (
               <button
                 onClick={handleExportLabelsJson}
@@ -1993,6 +2045,212 @@ export default function GroundTruthLabelerPage() {
           </section>
         )}
       </main>
+
+      {/* ZİYARETÇİ CV KASASI VE PREMİUM İLETİŞİM TALEPLERİ MODALI */}
+      {isVaultModalOpen && (
+        <div
+          onClick={() => setIsVaultModalOpen(false)}
+          className="fixed inset-0 z-50 bg-[#141c2b]/75 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#e2dcd0] rounded-2xl border border-[#b8b0a0] max-w-6xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
+          >
+            <div className="bg-[#182235] text-[#f0ece1] px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#2c3a52]">
+              <div>
+                <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#eab308]">
+                  ADMİN ÖZEL VERİ KASASI (TÜM KİLİTLER AÇIK)
+                </div>
+                <h3 className="font-serif-academic font-bold text-lg text-[#f0ece1]">
+                  Ziyaretçilerin Yüklediği CV Kasası ({vaultCvs.length}) & Premium Talepler ({vaultLeads.length})
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVaultTab("cvs")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                    vaultTab === "cvs"
+                      ? "bg-[#e2dcd0] text-[#182235]"
+                      : "bg-[#212f47] text-[#d2ccc0] hover:text-white"
+                  }`}
+                >
+                  📄 Yüklenen CV&apos;ler ({vaultCvs.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVaultTab("leads")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                    vaultTab === "leads"
+                      ? "bg-[#e2dcd0] text-[#182235]"
+                      : "bg-[#212f47] text-[#d2ccc0] hover:text-white"
+                  }`}
+                >
+                  📩 Premium İletişim Talepleri ({vaultLeads.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob(
+                      [
+                        JSON.stringify(
+                          { cvs: vaultCvs, leads: vaultLeads },
+                          null,
+                          2
+                        ),
+                      ],
+                      { type: "application/json;charset=utf-8" }
+                    );
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `cv-vault-full-${new Date()
+                      .toISOString()
+                      .slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#eab308] text-[#182235] text-xs font-bold cursor-pointer hover:bg-[#fde047]"
+                >
+                  📥 Tüm Kasayı İndir (JSON)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsVaultModalOpen(false)}
+                  className="text-[#b8b2a6] hover:text-white text-xl leading-none px-2 cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1">
+              {vaultTab === "cvs" ? (
+                vaultCvs.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-[#4a5363]">
+                    Henüz ziyaretçiler tarafından yüklenen yeni bir CV kaydı bulunmuyor. Ana sayfadan yüklenen tüm CV&apos;ler otomatik olarak burada saklanır.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-[#b8b0a0] rounded-xl bg-[#ece7db]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-[#182235] text-[#f0ece1]">
+                        <tr>
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Tarih</th>
+                          <th className="py-2.5 px-3">Dosya / Ad Soyad</th>
+                          <th className="py-2.5 px-3">Cinsiyet / Yaş</th>
+                          <th className="py-2.5 px-3">Lisans Var mı?</th>
+                          <th className="py-2.5 px-3">Ön Lisans (Açık)</th>
+                          <th className="py-2.5 px-3">Lisans Bölümü (Açık)</th>
+                          <th className="py-2.5 px-3">Yüksek Lisans (Açık)</th>
+                          <th className="py-2.5 px-3">Doktora / Ph.D. (Açık)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#c4bdb0]">
+                        {vaultCvs.map((v, i) => (
+                          <tr key={v.id || i} className="hover:bg-[#dfd9ca]">
+                            <td className="py-2.5 px-3 font-mono-academic">
+                              {i + 1}
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap text-[11px] text-[#4a5363]">
+                              {v.uploadedAt
+                                ? new Date(v.uploadedAt).toLocaleString("tr-TR")
+                                : "—"}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-[#121926]">
+                                {v.fullName}
+                              </div>
+                              <div className="text-[11px] text-[#4a5363]">
+                                {v.fileName}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className="font-semibold text-[#182235]">
+                                {v.gender}
+                              </span>{" "}
+                              • {v.age ?? "Belirsiz"} Yaş
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap font-bold">
+                              {v.hasBachelor ? "✓ Var" : "Yok"}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {v.educationByDegree?.associate
+                                ? `${v.educationByDegree.associate.university} — ${v.educationByDegree.associate.department}`
+                                : "—"}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {v.educationByDegree?.bachelor
+                                ? `${v.educationByDegree.bachelor.university} — ${v.educationByDegree.bachelor.department}`
+                                : `${v.university} — ${v.department}`}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {v.educationByDegree?.master
+                                ? `${v.educationByDegree.master.university} — ${v.educationByDegree.master.department}`
+                                : "—"}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {v.educationByDegree?.phd
+                                ? `${v.educationByDegree.phd.university} — ${v.educationByDegree.phd.department}`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : vaultLeads.length === 0 ? (
+                <div className="p-10 text-center text-sm text-[#4a5363]">
+                  Henüz gönderilmiş bir &ldquo;Premium İçin Bize Ulaşın&rdquo; formu bulunmuyor.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-[#b8b0a0] rounded-xl bg-[#ece7db]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="bg-[#182235] text-[#f0ece1]">
+                      <tr>
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">Tarih</th>
+                        <th className="py-2.5 px-3">Ad Soyad</th>
+                        <th className="py-2.5 px-3">Şirket / Kurum</th>
+                        <th className="py-2.5 px-3">Telefon / E-Posta</th>
+                        <th className="py-2.5 px-3">İstenen Kilitli Alan</th>
+                        <th className="py-2.5 px-3">Mesaj / Not</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#c4bdb0]">
+                      {vaultLeads.map((ld, i) => (
+                        <tr key={ld.id || i} className="hover:bg-[#dfd9ca]">
+                          <td className="py-2.5 px-3 font-mono-academic">
+                            {i + 1}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap text-[11px] text-[#4a5363]">
+                            {ld.createdAt
+                              ? new Date(ld.createdAt).toLocaleString("tr-TR")
+                              : "—"}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-[#121926]">
+                            {ld.fullName}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-[#182235]">
+                            {ld.companyName}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono-academic font-bold text-[#7c470b]">
+                            {ld.contactInfo}
+                          </td>
+                          <td className="py-2.5 px-3">{ld.requestedFeature}</td>
+                          <td className="py-2.5 px-3">{ld.message || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

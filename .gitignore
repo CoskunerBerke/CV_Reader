@@ -29,3 +29,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# runtime uploaded CVs vault
+data/uploaded-cvs-vault.json
+data/uploaded-files/
+Professionals_having_job_interview_6064b669.mp4
+

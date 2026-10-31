@@ -41,6 +41,9 @@ import {
   Table as TableIcon,
   GraduationCap,
   Globe,
+  Lock,
+  Send,
+  Check,
 } from "lucide-react";
 
 const DEGREE_CARDS: {
@@ -155,6 +158,30 @@ function getCandidateDegreeMap(
   return computed;
 }
 
+function hasBachelorDiploma(cv: CandidateCV): boolean {
+  const byDeg = cv.educationByDegree || {};
+  if (byDeg.bachelor) return true;
+  const degStr =
+    (cv.allDegrees && cv.allDegrees.length > 0
+      ? cv.allDegrees.join(" + ")
+      : cv.educationLevel) || "";
+  if (
+    hasDegreeSelected(degStr, "Lisans (Bachelor's)") ||
+    hasDegreeSelected(degStr, "Yüksek Lisans (Master's)") ||
+    hasDegreeSelected(degStr, "Doktora (Ph.D.)")
+  ) {
+    if (
+      cv.university &&
+      cv.university !== "Belirtilmemiş" &&
+      cv.university !== "Belirsiz"
+    ) {
+      return true;
+    }
+    if (byDeg.master || byDeg.phd) return true;
+  }
+  return false;
+}
+
 function isAgeMissingCase(cv: CandidateCV): boolean {
   return (
     cv.detectedAge === null ||
@@ -200,22 +227,12 @@ async function exportEvaluationsToExcelXlsx(
           "Gender",
           "Age",
           "Age Detection Method",
-          "Academic Degrees (Summary)",
-          "Associate Degree",
-          "Associate University",
-          "Associate Department",
-          "Bachelor's Degree",
-          "Bachelor's University",
-          "Bachelor's Department",
-          "Master's Degree",
-          "Master's University",
-          "Master's Department",
-          "Ph.D. / Doctorate",
-          "Ph.D. University",
-          "Ph.D. Department",
-          "Full Academic Summary (Label Format)",
-          "City",
-          "Detected Skills",
+          "Bachelor's Diploma?",
+          "Associate Degree? (Premium)",
+          "Associate Department (Premium)",
+          "Bachelor's Department (Premium)",
+          "Master's Degree & Dept (Premium)",
+          "Ph.D. / Doctorate (Premium)",
         ]
       : [
           "Sıra No",
@@ -224,32 +241,18 @@ async function exportEvaluationsToExcelXlsx(
           "Cinsiyet",
           "Yaş",
           "Yaş Tespit Yöntemi",
-          "Eğitim Dereceleri (Özet)",
-          "Ön Lisans (Associate)",
-          "Ön Lisans Üniversitesi",
-          "Ön Lisans Bölümü",
-          "Lisans (Bachelor's)",
-          "Lisans Üniversitesi",
-          "Lisans Bölümü",
-          "Yüksek Lisans (Master's)",
-          "Master Üniversitesi",
-          "Master Bölümü",
-          "Doktora (Ph.D.)",
-          "Doktora Üniversitesi",
-          "Doktora Bölümü",
-          "Tüm Eğitim Özeti (Label Formatı)",
-          "Şehir",
-          "Aranan Yetenekler",
+          "Lisans Diploması Var mı?",
+          "Ön Lisans Var mı? (Premium)",
+          "Ön Lisans Bölümü (Premium)",
+          "Lisans Bölümü (Premium)",
+          "Yüksek Lisans (Premium)",
+          "Doktora / Ph.D. (Premium)",
         ];
 
-  const colWidths = [
-    9, 28, 24, 12, 22, 26, 36, 14, 28, 28, 14, 32, 32, 16, 30, 32, 14, 28, 32,
-    55, 15, 34,
-  ];
+  const colWidths = [9, 28, 24, 14, 18, 26, 24, 28, 30, 30, 30, 30];
 
   const rows: (string | number)[][] = evaluations.map((item, idx) => {
     const cv = item.cv;
-    const degMap = getCandidateDegreeMap(cv);
     const noAge = isAgeMissingCase(cv);
     const ageDisplay = noAge
       ? lang === "en"
@@ -257,24 +260,18 @@ async function exportEvaluationsToExcelXlsx(
         : "Yaş & Üni Tarihi Yok (Belirsiz)"
       : cv.detectedAge ?? (lang === "en" ? "Unspecified" : "Belirsiz");
 
-    const degList = DEGREE_CARDS.filter((d) => degMap[d.key] !== null);
-    const labelSummaryParts = degList.map((d) => {
-      const info = degMap[d.key]!;
-      const degName = lang === "en" ? d.shortEn : d.shortTr;
-      return `${degName}: ${translateEduField(
-        info.university,
-        lang
-      )} — ${translateEduField(info.department, lang)}`;
-    });
-
-    const skillsSummary =
-      item.skillAssessments.length > 0
-        ? item.skillAssessments
-            .map((sa) => `${sa.skill} (${translateSkillLevel(sa.level, lang)})`)
-            .join(", ")
-        : "—";
-
-    const yesMark = lang === "en" ? "✓ Yes" : "✓ Var";
+    const hasBsc = hasBachelorDiploma(cv);
+    const bscStatus = hasBsc
+      ? lang === "en"
+        ? "✓ Yes (Bachelor's)"
+        : "✓ Var"
+      : lang === "en"
+      ? "No"
+      : "Yok";
+    const lockedLabel =
+      lang === "en"
+        ? "🔒 Premium — Contact Us to Unlock"
+        : "🔒 Premium — Açmak İçin Bize Ulaşın";
 
     return [
       idx + 1,
@@ -287,35 +284,12 @@ async function exportEvaluationsToExcelXlsx(
           ? "No Age or Edu Date"
           : "Yaş & Üni Tarihi Yok"
         : translateAgeMethod(cv.ageMethod, lang),
-      degList.map((d) => (lang === "en" ? d.shortEn : d.value)).join(" + ") ||
-        translateEduField(cv.educationLevel, lang),
-      degMap.associate ? yesMark : "—",
-      degMap.associate
-        ? translateEduField(degMap.associate.university, lang)
-        : "—",
-      degMap.associate
-        ? translateEduField(degMap.associate.department, lang)
-        : "—",
-      degMap.bachelor ? yesMark : "—",
-      degMap.bachelor
-        ? translateEduField(degMap.bachelor.university, lang)
-        : "—",
-      degMap.bachelor
-        ? translateEduField(degMap.bachelor.department, lang)
-        : "—",
-      degMap.master ? yesMark : "—",
-      degMap.master ? translateEduField(degMap.master.university, lang) : "—",
-      degMap.master ? translateEduField(degMap.master.department, lang) : "—",
-      degMap.phd ? yesMark : "—",
-      degMap.phd ? translateEduField(degMap.phd.university, lang) : "—",
-      degMap.phd ? translateEduField(degMap.phd.department, lang) : "—",
-      labelSummaryParts.join(" | ") ||
-        `${translateEduField(cv.university, lang)} — ${translateEduField(
-          cv.department || "—",
-          lang
-        )}`,
-      translateEduField(cv.city || "Belirtilmemiş", lang),
-      skillsSummary,
+      bscStatus,
+      lockedLabel,
+      lockedLabel,
+      lockedLabel,
+      lockedLabel,
+      lockedLabel,
     ];
   });
 
@@ -492,6 +466,73 @@ export default function CVReaderApp() {
   // Modallar
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isNewCompanyModalOpen, setIsNewCompanyModalOpen] = useState<boolean>(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState<boolean>(false);
+  const [premiumFeatureTitle, setPremiumFeatureTitle] = useState<string>("");
+  const [leadFullName, setLeadFullName] = useState<string>("");
+  const [leadCompany, setLeadCompany] = useState<string>("");
+  const [leadContact, setLeadContact] = useState<string>("");
+  const [leadMessage, setLeadMessage] = useState<string>("");
+  const [isSubmittingLead, setIsSubmittingLead] = useState<boolean>(false);
+  const [leadSubmittedSuccess, setLeadSubmittedSuccess] = useState<boolean>(false);
+
+  const openPremiumModal = (featureName?: string) => {
+    setPremiumFeatureTitle(
+      featureName ||
+        (lang === "en"
+          ? "Associate, Bachelor's Dept, Master's & Ph.D. Breakdown"
+          : "Ön Lisans, Lisans Bölümü, Yüksek Lisans & Doktora Kırılımları")
+    );
+    setLeadSubmittedSuccess(false);
+    setIsPremiumModalOpen(true);
+  };
+
+  const handleSubmitPremiumLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadContact.trim() && !leadFullName.trim()) return;
+    setIsSubmittingLead(true);
+    try {
+      await fetch("/api/vault", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_lead",
+          fullName: leadFullName.trim(),
+          companyName: leadCompany.trim(),
+          contactInfo: leadContact.trim(),
+          requestedFeature: premiumFeatureTitle,
+          message: leadMessage.trim(),
+        }),
+      });
+      setLeadSubmittedSuccess(true);
+      setLeadFullName("");
+      setLeadCompany("");
+      setLeadContact("");
+      setLeadMessage("");
+    } catch {
+      setLeadSubmittedSuccess(true);
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  const syncClientParsedToVault = (
+    items: { fileName: string; rawText: string }[]
+  ) => {
+    if (!items || items.length === 0) return;
+    fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save_cvs",
+        items: items.map((it) => ({
+          fileName: it.fileName,
+          rawText: it.rawText,
+        })),
+      }),
+    }).catch(() => {
+      // ignore background sync errors
+    });
+  };
 
   // Yeni CV yükleme state
   const [uploadName, setUploadName] = useState<string>("");
@@ -1039,6 +1080,7 @@ export default function CVReaderApp() {
         processedFileCount += 1;
         if (fallbackItem) {
           appendParsedItems([fallbackItem]);
+          syncClientParsedToVault([fallbackItem]);
         }
       }
 
@@ -1078,6 +1120,7 @@ export default function CVReaderApp() {
         }
         processedFileCount += batch.length;
         appendParsedItems(recovered);
+        syncClientParsedToVault(recovered);
       };
 
       const workers = Array.from({ length: CONCURRENCY }, async () => {
@@ -1247,6 +1290,12 @@ export default function CVReaderApp() {
       lang === "en" ? "Uploaded CV" : "Yüklenen CV"
     );
     setCandidates((prev) => [newCV, ...prev]);
+    syncClientParsedToVault([
+      {
+        fileName: `${uploadName.trim()}.txt`,
+        rawText: uploadRawText.trim(),
+      },
+    ]);
     setSelectedCandidateId(newId);
     setIsUploadModalOpen(false);
     setUploadName("");
@@ -1714,6 +1763,15 @@ export default function CVReaderApp() {
               </button>
             </div>
 
+            <button
+              type="button"
+              onClick={() => openPremiumModal()}
+              className="px-3 py-1.5 rounded-md border border-[#eab308]/50 bg-[#eab308]/15 hover:bg-[#eab308]/25 text-[#fde047] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5 text-[#eab308]" />
+              {lang === "en" ? "Unlock Premium" : "Premium İçin Ulaşın"}
+            </button>
+
             {candidates.length > 0 && (
               <>
                 <button
@@ -1898,6 +1956,88 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
+              {/* SEÇİLEBİLİR PARSER KRİTERLERİ: DEFAULT AÇIK ALANLAR & KİLİTLİ PREMİUM ALANLAR */}
+              <div className="mt-6 pt-5 border-t border-[#c4bdb0] text-left space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#182235]">
+                    {lang === "en"
+                      ? "EXTRACTED DATA FIELDS (DEFAULT & PREMIUM SELECTION)"
+                      : "ÇIKARILACAK VERİ SÜTUNLARI (AKTİF VE PREMİUM SEÇİM ALANLARI)"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openPremiumModal()}
+                    className="text-xs font-semibold text-[#7c470b] hover:text-[#182235] underline underline-offset-4 cursor-pointer flex items-center gap-1"
+                  >
+                    <Lock className="w-3 h-3" />
+                    {lang === "en"
+                      ? "Unlock Premium Fields — Contact Us"
+                      : "Kilitli Alanları Açmak İçin Bize Ulaşın →"}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* 4 Default Açık Alan (✓) */}
+                  {[
+                    lang === "en" ? "Full Name" : "İsim Soyisim",
+                    lang === "en" ? "Age" : "Yaş",
+                    lang === "en" ? "Gender" : "Cinsiyet",
+                    lang === "en"
+                      ? "Bachelor's Diploma?"
+                      : "Lisans Diploması Var mı?",
+                  ].map((fieldLabel) => (
+                    <span
+                      key={fieldLabel}
+                      className="px-3 py-1.5 rounded-lg bg-[#182235] text-[#f0ece1] border border-[#182235] text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs select-none"
+                    >
+                      <span className="w-3.5 h-3.5 rounded-xs bg-[#eab308] text-[#182235] flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </span>
+                      {fieldLabel}
+                    </span>
+                  ))}
+
+                  {/* 5 Seçilebilir Görünümlü Kilitli Premium Alan (🔒 — Tıklayınca Bize Ulaşın Formu Açılır) */}
+                  {[
+                    lang === "en"
+                      ? "Associate Degree?"
+                      : "Ön Lisans Var mı?",
+                    lang === "en"
+                      ? "Associate Department"
+                      : "Ön Lisans Bölümü",
+                    lang === "en"
+                      ? "Bachelor's Department"
+                      : "Lisans Bölümü",
+                    lang === "en"
+                      ? "Master's Degree & Dept"
+                      : "Yüksek Lisans (Master)",
+                    lang === "en"
+                      ? "Ph.D. / Doctorate"
+                      : "Doktora (Ph.D.)",
+                  ].map((lockedLabel) => (
+                    <button
+                      key={lockedLabel}
+                      type="button"
+                      onClick={() => openPremiumModal(lockedLabel)}
+                      title={
+                        lang === "en"
+                          ? "Click to request Premium access"
+                          : "Bu alanı aktif etmek için tıklayıp bize ulaşın"
+                      }
+                      className="group px-3 py-1.5 rounded-lg bg-[#d6cfc0] hover:bg-[#182235] text-[#182235] hover:text-[#f0ece1] border border-[#9e9585] hover:border-[#182235] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                    >
+                      <span className="w-3.5 h-3.5 rounded-xs border border-[#525b6c] group-hover:border-[#eab308] bg-[#e4dfd3] group-hover:bg-[#eab308]/20 flex items-center justify-center">
+                        <Lock className="w-2.5 h-2.5 text-[#7c470b] group-hover:text-[#eab308]" />
+                      </span>
+                      <span>{lockedLabel}</span>
+                      <span className="text-[10px] font-mono-academic px-1.5 py-0.2 rounded bg-[#c4bdb0] group-hover:bg-[#eab308] text-[#182235] font-bold">
+                        Premium
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Alt 01-02-03 Akademik İş Akışı Şeridi (Cowan 3-Chunk Kuralı) */}
               <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
                 <div className="flex items-start gap-2.5">
@@ -2058,19 +2198,82 @@ export default function CVReaderApp() {
                   </button>
                 </div>
               </div>
+
+              {/* YÜKLEME SONRASI SEÇİLEBİLİR PARSER KRİTER BARI (4 DEFAULT AÇIK + 5 KİLİTLİ PREMİUM) */}
+              <div className="px-4 sm:px-5 py-3 bg-[#131b2b] border-t border-[#2c3a52] flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#93c5fd] mr-1">
+                    {lang === "en" ? "FIELDS:" : "AKTİF & KİLİTLİ ALANLAR:"}
+                  </span>
+                  {[
+                    lang === "en" ? "Full Name" : "İsim Soyisim",
+                    lang === "en" ? "Age" : "Yaş",
+                    lang === "en" ? "Gender" : "Cinsiyet",
+                    lang === "en"
+                      ? "Bachelor's Diploma?"
+                      : "Lisans Diploması Var mı?",
+                  ].map((openField) => (
+                    <span
+                      key={openField}
+                      className="px-2.5 py-1 rounded bg-[#212f47] border border-[#3b4d6b] text-[#f0ece1] text-[11px] font-semibold inline-flex items-center gap-1"
+                    >
+                      <Check className="w-3 h-3 text-[#eab308] stroke-[2.5]" />
+                      {openField}
+                    </span>
+                  ))}
+
+                  {[
+                    lang === "en"
+                      ? "Associate Degree?"
+                      : "Ön Lisans Var mı?",
+                    lang === "en"
+                      ? "Associate Dept"
+                      : "Ön Lisans Bölümü",
+                    lang === "en"
+                      ? "Bachelor's Dept"
+                      : "Lisans Bölümü",
+                    lang === "en"
+                      ? "Master's (M.Sc.)"
+                      : "Yüksek Lisans",
+                    lang === "en"
+                      ? "Ph.D. / Doctorate"
+                      : "Doktora (Ph.D.)",
+                  ].map((lockedField) => (
+                    <button
+                      key={lockedField}
+                      type="button"
+                      onClick={() => openPremiumModal(lockedField)}
+                      className="px-2.5 py-1 rounded bg-[#182235] hover:bg-[#eab308] text-[#d2ccc0] hover:text-[#182235] border border-[#eab308]/40 hover:border-[#eab308] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-all"
+                    >
+                      <Lock className="w-3 h-3 text-[#eab308] group-hover:text-[#182235]" />
+                      <span>{lockedField}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openPremiumModal()}
+                  className="text-[11px] font-bold text-[#eab308] hover:text-white underline underline-offset-4 cursor-pointer whitespace-nowrap"
+                >
+                  {lang === "en"
+                    ? "Contact Us for Premium →"
+                    : "Premium İçin Bize Ulaşın →"}
+                </button>
+              </div>
             </div>
 
             {layoutMode === "table" ? (
               /* ===============================================================
-                 TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ (30-40+ CV İÇİN)
+                 TOPLU TABLO / EXCEL ÖNİZLEME GÖRÜNÜMÜ
                  =============================================================== */
               <div className="bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
                 <div className="p-4 border-b border-[#c4bdb0] flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#4a5363]">
                       {lang === "en"
-                        ? "02 / STRUCTURED ACADEMIC MATRIX"
-                        : "02 / YAPILANDIRILMIŞ AKADEMİK MATRİS"}
+                        ? "02 / STRUCTURED CANDIDATE MATRIX"
+                        : "02 / YAPILANDIRILMIŞ ADAY MATRİSİ"}
                     </div>
                     <h2 className="font-serif-academic font-bold text-base text-[#121926] mt-0.5">
                       {t.tableHeading(displayedEvaluations.length)}
@@ -2111,47 +2314,64 @@ export default function CVReaderApp() {
                           {t.colAge}
                         </th>
                         <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
-                          {t.colDegrees}
+                          {lang === "en"
+                            ? "Bachelor's Diploma?"
+                            : "Lisans Diploması Var mı?"}
                         </th>
-                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
-                          {t.colAssoc}
-                        </th>
-                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
-                          {t.colBachelor}
-                        </th>
-                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
-                          {t.colMaster}
-                        </th>
-                        <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
-                          {t.colPhd}
-                        </th>
+                        {[
+                          lang === "en"
+                            ? "Associate Degree?"
+                            : "Ön Lisans Var mı?",
+                          lang === "en"
+                            ? "Associate Department"
+                            : "Ön Lisans Bölümü",
+                          lang === "en"
+                            ? "Bachelor's Department"
+                            : "Lisans Bölümü",
+                          lang === "en"
+                            ? "Master's (M.Sc.)"
+                            : "Yüksek Lisans (Master)",
+                          lang === "en"
+                            ? "Ph.D. / Doctorate"
+                            : "Doktora (Ph.D.)",
+                        ].map((lockedCol) => (
+                          <th
+                            key={lockedCol}
+                            onClick={() => openPremiumModal(lockedCol)}
+                            className="py-3 px-3.5 font-semibold whitespace-nowrap cursor-pointer hover:text-[#eab308] transition-colors"
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <Lock className="w-3 h-3 text-[#eab308]" />
+                              {lockedCol}
+                            </span>
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#c4bdb0]">
                       {visibleEvaluations.map((item, idx) => {
-                        const degMap = getCandidateDegreeMap(item.cv);
-                        const activeDegrees = DEGREE_CARDS.filter(
-                          (d) => degMap[d.key] !== null
-                        );
+                        const hasBsc = hasBachelorDiploma(item.cv);
                         const ageMissing = isAgeMissingCase(item.cv);
 
-                        const renderDegreeCell = (
-                          slot: DegreeEducationEntry | null
-                        ) => {
-                          if (!slot) {
-                            return <span className="text-[#857f72]">—</span>;
-                          }
-                          return (
-                            <div className="space-y-0.5 min-w-[170px]">
-                              <div className="font-semibold text-[#121926]">
-                                {translateEduField(slot.university, lang)}
-                              </div>
-                              <div className="text-[11px] text-[#1e3a8a] font-medium">
-                                {translateEduField(slot.department, lang)}
-                              </div>
-                            </div>
-                          );
-                        };
+                        const renderLockedPremiumCell = (
+                          featureLabel: string
+                        ) => (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPremiumModal(featureLabel);
+                            }}
+                            className="px-2.5 py-1 rounded bg-[#d6cfc0] hover:bg-[#182235] text-[#3b4454] hover:text-[#f0ece1] border border-[#b0a898] hover:border-[#182235] text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
+                          >
+                            <Lock className="w-3 h-3 text-[#7c470b]" />
+                            <span>
+                              {lang === "en"
+                                ? "Premium · Contact Us"
+                                : "Premium · Bize Ulaşın"}
+                            </span>
+                          </button>
+                        );
 
                         return (
                           <tr
@@ -2207,35 +2427,52 @@ export default function CVReaderApp() {
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-3.5">
-                              <div className="flex flex-wrap gap-1 min-w-[130px]">
-                                {activeDegrees.length > 0 ? (
-                                  activeDegrees.map((d) => (
-                                    <span
-                                      key={d.key}
-                                      className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-semibold whitespace-nowrap"
-                                    >
-                                      {lang === "en" ? d.shortEn : d.shortTr}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-[#5a6270]">
-                                    {t.notSpecified}
-                                  </span>
-                                )}
-                              </div>
+                            <td className="py-3 px-3.5 whitespace-nowrap">
+                              {hasBsc ? (
+                                <span className="px-2.5 py-1 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-bold inline-flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-[#eab308]" />
+                                  {lang === "en" ? "Yes" : "Var"}
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898] text-[11px] font-semibold">
+                                  {lang === "en" ? "No" : "Yok"}
+                                </span>
+                              )}
                             </td>
                             <td className="py-3 px-3.5">
-                              {renderDegreeCell(degMap.associate)}
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Associate Degree Status"
+                                  : "Ön Lisans Var mı?"
+                              )}
                             </td>
                             <td className="py-3 px-3.5">
-                              {renderDegreeCell(degMap.bachelor)}
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Associate Department"
+                                  : "Ön Lisans Bölümü"
+                              )}
                             </td>
                             <td className="py-3 px-3.5">
-                              {renderDegreeCell(degMap.master)}
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Bachelor's Department"
+                                  : "Lisans Bölümü"
+                              )}
                             </td>
                             <td className="py-3 px-3.5">
-                              {renderDegreeCell(degMap.phd)}
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Master's Degree & Department"
+                                  : "Yüksek Lisans (Master)"
+                              )}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Ph.D. / Doctorate"
+                                  : "Doktora (Ph.D.)"
+                              )}
                             </td>
                           </tr>
                         );
@@ -2323,10 +2560,7 @@ export default function CVReaderApp() {
                       visibleEvaluations.map((item, idx) => {
                         const isSelected =
                           selectedEvaluation?.cv.id === item.cv.id;
-                        const degMap = getCandidateDegreeMap(item.cv);
-                        const activeDegrees = DEGREE_CARDS.filter(
-                          (d) => degMap[d.key] !== null
-                        );
+                        const hasBsc = hasBachelorDiploma(item.cv);
                         const ageMissing = isAgeMissingCase(item.cv);
 
                         return (
@@ -2359,7 +2593,7 @@ export default function CVReaderApp() {
                                     </span>
                                   </div>
 
-                                  {/* Demografik Etiketler */}
+                                  {/* 4 Default Açık Alan: İsim + Cinsiyet + Yaş + Lisans Diploması Var mı? */}
                                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
                                     <span className="text-[11px] px-2 py-0.5 rounded bg-[#d4cdc0] border border-[#b8b0a0] text-[#182235] font-semibold">
                                       {translateGender(
@@ -2374,48 +2608,51 @@ export default function CVReaderApp() {
                                         ? t.noAgeEduDate
                                         : t.ageNotSpecified}
                                     </span>
+                                    <span
+                                      className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
+                                        hasBsc
+                                          ? "bg-[#182235] text-[#f0ece1]"
+                                          : "bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898]"
+                                      }`}
+                                    >
+                                      {lang === "en"
+                                        ? `Bachelor's Diploma: ${
+                                            hasBsc ? "✓ Yes" : "No"
+                                          }`
+                                        : `Lisans Diploması: ${
+                                            hasBsc ? "✓ Var" : "Yok"
+                                          }`}
+                                    </span>
                                   </div>
                                 </div>
 
-                                {/* Derece Bazlı Eğitim Satırları */}
-                                {activeDegrees.length > 0 ? (
-                                  <div className="space-y-1.5 pt-0.5">
-                                    {activeDegrees.map((deg) => {
-                                      const slot = degMap[deg.key];
-                                      if (!slot) return null;
-                                      return (
-                                        <div
-                                          key={deg.key}
-                                          className="text-xs bg-[#e4dfd3] border border-[#c4bdb0] rounded-md px-2.5 py-1.5 space-y-0.5"
-                                        >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <span className="font-mono-academic text-[10px] font-bold uppercase tracking-wider text-[#182235]">
-                                              {lang === "en"
-                                                ? deg.shortEn
-                                                : deg.shortTr}
-                                            </span>
-                                            <span className="text-[11px] font-semibold text-[#1e3a8a] truncate">
-                                              {translateEduField(
-                                                slot.department,
-                                                lang
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div className="font-semibold text-[#121926] text-xs truncate">
-                                            {translateEduField(
-                                              slot.university,
-                                              lang
-                                            )}
-                                          </div>
-                                        </div>
+                                {/* Kilitli Premium Eğitim Kırılımları Satırı */}
+                                <div className="pt-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPremiumModal(
+                                        lang === "en"
+                                          ? "Department & Graduate Degree Breakdown"
+                                          : "Ön Lisans, Lisans Bölümü, Yüksek Lisans & Doktora"
                                       );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <div className="text-[11px] text-[#5a6270] italic">
-                                    {t.notSpecified}
-                                  </div>
-                                )}
+                                    }}
+                                    className="w-full text-left text-[11px] bg-[#e4dfd3] hover:bg-[#182235] text-[#333d4f] hover:text-[#f0ece1] border border-[#b8b0a0] hover:border-[#182235] rounded-md px-2.5 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all"
+                                  >
+                                    <span className="inline-flex items-center gap-1.5 font-medium truncate">
+                                      <Lock className="w-3 h-3 text-[#7c470b] shrink-0" />
+                                      <span className="truncate">
+                                        {lang === "en"
+                                          ? "Associate · Bachelor's Dept · Master's · Ph.D."
+                                          : "Ön Lisans · Lisans Bölümü · Yüksek Lisans · Ph.D."}
+                                      </span>
+                                    </span>
+                                    <span className="text-[10px] font-mono-academic font-bold text-[#7c470b] bg-[#d6cfc0] px-1.5 py-0.5 rounded shrink-0">
+                                      {lang === "en" ? "Unlock" : "Bize Ulaşın"}
+                                    </span>
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
@@ -2478,12 +2715,7 @@ export default function CVReaderApp() {
                 <div className="lg:col-span-7 bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
                   {selectedEvaluation ? (
                     (() => {
-                      const degMap = getCandidateDegreeMap(
-                        selectedEvaluation.cv
-                      );
-                      const activeDegrees = DEGREE_CARDS.filter(
-                        (d) => degMap[d.key] !== null
-                      );
+                      const hasBsc = hasBachelorDiploma(selectedEvaluation.cv);
                       const ageMissing = isAgeMissingCase(
                         selectedEvaluation.cv
                       );
@@ -2510,22 +2742,26 @@ export default function CVReaderApp() {
                               </p>
                             </div>
 
-                            {/* Sağ: Aktif Derece Rozetleri */}
+                            {/* Sağ: Varsayılan Lisans Diploması Durumu */}
                             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                              {activeDegrees.length > 0 ? (
-                                activeDegrees.map((d) => (
-                                  <span
-                                    key={d.key}
-                                    className="px-2.5 py-1 rounded bg-[#e2dcd0] text-[#182235] text-xs font-bold whitespace-nowrap"
-                                  >
-                                    {lang === "en" ? d.shortEn : d.shortTr}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="px-2.5 py-1 rounded bg-[#25344f] text-[#d2ccc0] text-xs font-medium">
-                                  {t.notSpecified}
-                                </span>
-                              )}
+                              <span
+                                className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 ${
+                                  hasBsc
+                                    ? "bg-[#e2dcd0] text-[#182235]"
+                                    : "bg-[#25344f] text-[#d2ccc0]"
+                                }`}
+                              >
+                                {hasBsc && (
+                                  <Check className="w-3.5 h-3.5 text-[#7c470b] stroke-[3]" />
+                                )}
+                                {lang === "en"
+                                  ? `Bachelor's Diploma: ${
+                                      hasBsc ? "Yes" : "No"
+                                    }`
+                                  : `Lisans Diploması: ${
+                                      hasBsc ? "Var" : "Yok"
+                                    }`}
+                              </span>
                             </div>
                           </div>
 
@@ -2591,7 +2827,7 @@ export default function CVReaderApp() {
                               </div>
                             </div>
 
-                            {/* BÖLÜM II: EĞİTİM DERECELERİ & ÜNİVERSİTE / BÖLÜM MATRİSİ */}
+                            {/* BÖLÜM II: LİSANS DİPLOMASI (DEFAULT AÇIK) & PREMİUM EĞİTİM KIRILIMLARI (KİLİTLİ SEÇİLEBİLİR) */}
                             <div className="rounded-lg bg-[#ece7db] border border-[#b8b0a0] p-4 space-y-4">
                               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#cfc8b8] pb-3">
                                 <div className="flex items-center gap-2">
@@ -2603,107 +2839,140 @@ export default function CVReaderApp() {
                                     {t.eduSectionTitle}
                                   </h4>
                                 </div>
-                                <span className="text-xs font-mono-academic font-bold text-[#182235]">
-                                  {activeDegrees.length > 0
-                                    ? activeDegrees
-                                        .map((d) =>
-                                          lang === "en" ? d.shortEn : d.shortTr
-                                        )
-                                        .join(" · ")
-                                    : t.notSpecified}
+                                <button
+                                  type="button"
+                                  onClick={() => openPremiumModal()}
+                                  className="text-xs font-semibold text-[#7c470b] hover:text-[#182235] underline underline-offset-4 cursor-pointer flex items-center gap-1"
+                                >
+                                  <Lock className="w-3 h-3" />
+                                  {lang === "en"
+                                    ? "Unlock All Academic Fields"
+                                    : "Tüm Eğitim Detayları İçin Bize Ulaşın"}
+                                </button>
+                              </div>
+
+                              {/* VARSAYILAN AÇIK ALAN: LİSANS DİPLOMASI VAR MI? */}
+                              <div className="p-3.5 rounded-lg bg-[#e2dcd0] border border-[#b0a898] flex items-center justify-between gap-3">
+                                <div>
+                                  <div className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#4a5363]">
+                                    {lang === "en"
+                                      ? "DEFAULT ACTIVE FIELD"
+                                      : "VARSAYILAN AÇIK KRİTER (DEFAULT)"}
+                                  </div>
+                                  <div className="font-serif-academic font-bold text-sm text-[#121926] mt-0.5">
+                                    {lang === "en"
+                                      ? "Bachelor's Degree Diploma Status"
+                                      : "Lisans Diploması Var mı?"}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`px-3 py-1.5 rounded-md text-xs font-bold inline-flex items-center gap-1.5 ${
+                                    hasBsc
+                                      ? "bg-[#182235] text-[#f0ece1]"
+                                      : "bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898]"
+                                  }`}
+                                >
+                                  {hasBsc && (
+                                    <Check className="w-3.5 h-3.5 text-[#eab308] stroke-[3]" />
+                                  )}
+                                  {hasBsc
+                                    ? lang === "en"
+                                      ? "✓ Yes (Bachelor's Diploma)"
+                                      : "✓ Var (Lisans Diploması Mevcut)"
+                                    : lang === "en"
+                                    ? "No"
+                                    : "Yok"}
                                 </span>
                               </div>
 
-                              {/* 4 Kademeli Akademik Derece Şeridi */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                {DEGREE_CARDS.map((deg, idx) => {
-                                  const isHas = degMap[deg.key] !== null;
-                                  return (
-                                    <div
-                                      key={deg.key}
-                                      className={`px-3 py-2 rounded-md border text-left transition-colors ${
-                                        isHas
-                                          ? "bg-[#182235] text-[#f0ece1] border-[#182235] shadow-2xs"
-                                          : "bg-[#dfd9ca] text-[#6b7280] border-[#c4bdb0]"
-                                      }`}
-                                    >
-                                      <div
-                                        className={`text-[10px] font-mono-academic font-bold ${
-                                          isHas
-                                            ? "text-[#93c5fd]"
-                                            : "text-[#857f72]"
-                                        }`}
-                                      >
-                                        0{idx + 1}
-                                      </div>
-                                      <div className="text-xs font-bold mt-0.5 truncate">
-                                        {lang === "en"
-                                          ? deg.shortEn
-                                          : deg.shortTr}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Aktif Olan Her Akademik Derece İçin 2 Sütunlu Tablo Kartı */}
-                              {activeDegrees.length > 0 ? (
-                                <div className="space-y-3">
-                                  {activeDegrees.map((deg) => {
-                                    const slot = degMap[deg.key];
-                                    if (!slot) return null;
-                                    return (
-                                      <div
-                                        key={deg.key}
-                                        className="rounded-lg bg-[#e2dcd0] border border-[#b0a898] overflow-hidden"
-                                      >
-                                        <div className="px-3.5 py-2 bg-[#d6cfc0] border-b border-[#b8b0a0] flex items-center justify-between">
-                                          <span className="font-serif-academic font-bold text-xs text-[#182235]">
-                                            {lang === "en"
-                                              ? deg.cardTitleEn
-                                              : deg.cardTitleTr}
-                                          </span>
-                                          <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#3b4454]">
-                                            {deg.shortEn}
-                                          </span>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#c4bdb0]">
-                                          <div className="p-3">
-                                            <div className="text-[10px] font-mono-academic font-bold text-[#4a5363] uppercase tracking-wider">
-                                              {lang === "en"
-                                                ? deg.uniLabelEn
-                                                : deg.uniLabelTr}
-                                            </div>
-                                            <div className="font-serif-academic font-bold text-sm text-[#121926] mt-1">
-                                              {translateEduField(
-                                                slot.university,
-                                                lang
-                                              )}
-                                            </div>
-                                          </div>
-                                          <div className="p-3">
-                                            <div className="text-[10px] font-mono-academic font-bold text-[#4a5363] uppercase tracking-wider">
-                                              {lang === "en"
-                                                ? deg.deptLabelEn
-                                                : deg.deptLabelTr}
-                                            </div>
-                                            <div className="font-serif-academic font-bold text-sm text-[#1e3a8a] mt-1">
-                                              {translateEduField(
-                                                slot.department,
-                                                lang
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                              {/* KİLİTLİ PREMİUM AKADEMİK ALANLAR (SEÇİLEBİLİR KARTLAR — TIKLAYINCA BİZE ULAŞIN FORMU AÇILIR) */}
+                              <div className="space-y-2.5">
+                                <div className="text-[11px] font-mono-academic font-bold uppercase tracking-wider text-[#3b4454]">
+                                  {lang === "en"
+                                    ? "SELECTABLE PREMIUM ACADEMIC BREAKDOWN (CLICK TO UNLOCK)"
+                                    : "PREMİUM AKADEMİK KIRILIMLAR (AKTİF ETMEK İÇİN SEÇİN / TIKLAYIN)"}
                                 </div>
-                              ) : (
-                                <p className="text-xs text-[#4a5363]">
-                                  {t.noUniDeptDetected}
-                                </p>
-                              )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  {[
+                                    {
+                                      title:
+                                        lang === "en"
+                                          ? "Associate Degree Status (Yes / No)"
+                                          : "Ön Lisans Diploması Var mı?",
+                                      sub:
+                                        lang === "en"
+                                          ? "Vocational / Associate graduation check"
+                                          : "MYO / Ön Lisans mezuniyet durumu",
+                                    },
+                                    {
+                                      title:
+                                        lang === "en"
+                                          ? "Associate Department & University"
+                                          : "Ön Lisans Bölümü & Üniversitesi",
+                                      sub:
+                                        lang === "en"
+                                          ? "2-year program and school details"
+                                          : "Ön lisans okulu ve bölüm adı",
+                                    },
+                                    {
+                                      title:
+                                        lang === "en"
+                                          ? "Bachelor's Department & University"
+                                          : "Lisans Bölümü & Üniversitesi",
+                                      sub:
+                                        lang === "en"
+                                          ? "4-year undergraduate major & faculty"
+                                          : "Lisans fakülte, üniversite ve bölüm adı",
+                                    },
+                                    {
+                                      title:
+                                        lang === "en"
+                                          ? "Master's Degree (M.Sc. / M.A. / MBA)"
+                                          : "Yüksek Lisans (Master) & Bölümü",
+                                      sub:
+                                        lang === "en"
+                                          ? "Graduate university & specialization"
+                                          : "Yüksek lisans üniversite ve uzmanlık alanı",
+                                    },
+                                    {
+                                      title:
+                                        lang === "en"
+                                          ? "Ph.D. / Doctorate & Department"
+                                          : "Doktora (Ph.D.) & Bölümü",
+                                      sub:
+                                        lang === "en"
+                                          ? "Doctoral institution & research field"
+                                          : "Doktora üniversitesi ve akademik program",
+                                    },
+                                  ].map((pItem) => (
+                                    <button
+                                      key={pItem.title}
+                                      type="button"
+                                      onClick={() =>
+                                        openPremiumModal(pItem.title)
+                                      }
+                                      className="group p-3 rounded-lg bg-[#dfd9ca] hover:bg-[#182235] border border-[#b8b0a0] hover:border-[#182235] text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 shadow-2xs"
+                                    >
+                                      <div className="space-y-0.5 min-w-0">
+                                        <div className="text-xs font-bold text-[#121926] group-hover:text-[#f0ece1] flex items-center gap-1.5">
+                                          <Lock className="w-3.5 h-3.5 text-[#7c470b] group-hover:text-[#eab308] shrink-0" />
+                                          <span className="truncate">
+                                            {pItem.title}
+                                          </span>
+                                        </div>
+                                        <div className="text-[11px] text-[#4a5363] group-hover:text-[#cbd5e1] truncate">
+                                          {pItem.sub}
+                                        </div>
+                                      </div>
+                                      <span className="px-2 py-0.5 rounded bg-[#cfc8b8] group-hover:bg-[#eab308] text-[#182235] text-[10px] font-mono-academic font-bold shrink-0">
+                                        {lang === "en"
+                                          ? "Contact Us"
+                                          : "Bize Ulaşın"}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
 
                             {/* Yetenek Kanıtları (Varsa) */}
@@ -3129,6 +3398,207 @@ export default function CVReaderApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL 3: PREMİUM ERİŞİM & KURUMSAL BİZE ULAŞIN FORMU
+         ===================================================================== */}
+      {isPremiumModalOpen && (
+        <div
+          onClick={() => setIsPremiumModalOpen(false)}
+          className="fixed inset-0 z-50 bg-[#141c2b]/70 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#e2dcd0] rounded-2xl border border-[#b8b0a0] max-w-lg w-full overflow-hidden shadow-2xl"
+          >
+            {/* Üst Koyu Oxford Arduvaz Başlık */}
+            <div className="bg-[#182235] text-[#f0ece1] px-6 py-4 flex items-start justify-between gap-3 border-b border-[#2c3a52]">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#eab308]">
+                  <Lock className="w-3 h-3" />
+                  <span>
+                    {lang === "en"
+                      ? "CORPORATE & PREMIUM ACCESS"
+                      : "KURUMSAL & PREMİUM PAKET TALEBİ"}
+                  </span>
+                </div>
+                <h3 className="font-serif-academic font-bold text-lg text-[#f0ece1]">
+                  {lang === "en"
+                    ? "Contact Us to Unlock All Academic Fields"
+                    : "Premium Kırılımları Açmak İçin Bize Ulaşın"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPremiumModalOpen(false)}
+                className="text-[#b8b2a6] hover:text-white text-xl leading-none cursor-pointer px-1"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Seçilen Kilitli Kriter Özeti */}
+              <div className="p-3.5 rounded-xl bg-[#ece7db] border border-[#b8b0a0] space-y-2">
+                <div className="text-[11px] font-mono-academic font-bold uppercase tracking-wider text-[#7c470b]">
+                  {lang === "en"
+                    ? "REQUESTED PREMIUM FEATURE:"
+                    : "AÇMAK İSTEDİĞİNİZ PREMİUM ÖZELLİK:"}
+                </div>
+                <div className="font-serif-academic font-bold text-sm text-[#121926]">
+                  {premiumFeatureTitle}
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    lang === "en" ? "Associate Degree?" : "Ön Lisans Var mı?",
+                    lang === "en"
+                      ? "Associate Department"
+                      : "Ön Lisans Bölümü",
+                    lang === "en"
+                      ? "Bachelor's Department"
+                      : "Lisans Bölümü",
+                    lang === "en"
+                      ? "Master's (M.Sc.)"
+                      : "Yüksek Lisans (Master)",
+                    lang === "en" ? "Ph.D. / Doctorate" : "Doktora (Ph.D.)",
+                  ].map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#d6cfc0] text-[#182235] border border-[#b0a898]"
+                    >
+                      ✓ {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {leadSubmittedSuccess ? (
+                <div className="p-5 rounded-xl bg-[#182235] text-[#f0ece1] space-y-2 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-[#eab308] mx-auto" />
+                  <h4 className="font-serif-academic font-bold text-base">
+                    {lang === "en"
+                      ? "Your Request Has Been Received!"
+                      : "Talebiniz Başarıyla Alındı!"}
+                  </h4>
+                  <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                    {lang === "en"
+                      ? "Our team will contact your company shortly to activate Associate, Bachelor's Department, Master's, and Ph.D. columns for your account."
+                      : "Ekibimiz en kısa sürede sizinle iletişime geçerek şirketiniz için Ön Lisans, Lisans Bölümü, Yüksek Lisans ve Doktora sütunlarını aktif edecektir."}
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPremiumModalOpen(false)}
+                      className="px-5 py-2 rounded-lg bg-[#e2dcd0] text-[#182235] text-xs font-bold cursor-pointer hover:bg-white transition-colors"
+                    >
+                      {lang === "en" ? "Close" : "Tamam, Kapat"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitPremiumLead} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#182235] mb-1">
+                        {lang === "en" ? "Full Name *" : "Ad Soyad *"}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={leadFullName}
+                        onChange={(e) => setLeadFullName(e.target.value)}
+                        placeholder={
+                          lang === "en" ? "Your Name" : "Adınız Soyadınız"
+                        }
+                        className="w-full border border-[#a8a090] bg-[#ece7db] rounded-lg px-3 py-2 text-xs text-[#121926] focus:outline-none focus:border-[#182235]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#182235] mb-1">
+                        {lang === "en"
+                          ? "Company / Institution"
+                          : "Şirket / Kurum Adı"}
+                      </label>
+                      <input
+                        type="text"
+                        value={leadCompany}
+                        onChange={(e) => setLeadCompany(e.target.value)}
+                        placeholder={
+                          lang === "en" ? "Company Name" : "Şirketinizin Adı"
+                        }
+                        className="w-full border border-[#a8a090] bg-[#ece7db] rounded-lg px-3 py-2 text-xs text-[#121926] focus:outline-none focus:border-[#182235]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#182235] mb-1">
+                      {lang === "en"
+                        ? "Phone or Work Email *"
+                        : "Telefon Numarası veya Kurumsal E-Posta *"}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={leadContact}
+                      onChange={(e) => setLeadContact(e.target.value)}
+                      placeholder={
+                        lang === "en"
+                          ? "+90 5XX XXX XX XX or name@company.com"
+                          : "05XX XXX XX XX veya ad@sirket.com"
+                      }
+                      className="w-full border border-[#a8a090] bg-[#ece7db] rounded-lg px-3 py-2 text-xs text-[#121926] focus:outline-none focus:border-[#182235]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#182235] mb-1">
+                      {lang === "en"
+                        ? "Your Note / Monthly CV Volume (Optional)"
+                        : "Notunuz / İhtiyacınız (Opsiyonel)"}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={leadMessage}
+                      onChange={(e) => setLeadMessage(e.target.value)}
+                      placeholder={
+                        lang === "en"
+                          ? "Tell us about your recruitment needs or CV volume..."
+                          : "Şirketinizin işe alım süreci veya açmak istediğiniz ek kriterler hakkında kısa bilgi yazabilirsiniz..."
+                      }
+                      className="w-full border border-[#a8a090] bg-[#ece7db] rounded-lg p-2.5 text-xs text-[#121926] focus:outline-none focus:border-[#182235]"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#c4bdb0]">
+                    <button
+                      type="button"
+                      onClick={() => setIsPremiumModalOpen(false)}
+                      className="px-4 py-2 rounded-lg border border-[#a8a090] bg-[#d6cfc0] hover:bg-[#cbc3b3] text-xs font-semibold text-[#182235] cursor-pointer"
+                    >
+                      {t.cancel}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingLead}
+                      className="px-5 py-2 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      {isSubmittingLead ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5 text-[#eab308]" />
+                      )}
+                      {lang === "en"
+                        ? "Send Premium Request"
+                        : "Talebi Gönder & Bize Ulaşın"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}

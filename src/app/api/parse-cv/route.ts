@@ -7,6 +7,10 @@ import mammoth from "mammoth";
 import JSZip from "jszip";
 import { createExtractorFromData } from "node-unrar-js";
 import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
+import {
+  appendUploadedCVsToVault,
+  saveRawUploadedBufferLocally,
+} from "@/lib/cvVault";
 
 type GroundTruthRecord = {
   humanName?: string;
@@ -214,6 +218,7 @@ async function parseSingleBuffer(
   }
 
   const cleanText = extractedText.replace(/\r\n/g, "\n").trim();
+  saveRawUploadedBufferLocally(fileName, Buffer.from(arrayBuffer));
   const meta = extractCandidateMetadataFromText(cleanText, fileName, false);
   const matchedLabel = labels[fileName] || labels[baseOnly] || null;
 
@@ -326,6 +331,17 @@ export async function POST(req: NextRequest) {
       } catch {
         // Dosya okunamazsa diğer dosyalara devam et
       }
+    }
+
+    if (parsedResults.length > 0) {
+      const clientHint = req.headers.get("user-agent") || undefined;
+      await appendUploadedCVsToVault(
+        parsedResults.map((p) => ({
+          fileName: p.fileName,
+          rawText: p.rawText,
+        })),
+        clientHint
+      );
     }
 
     return NextResponse.json({

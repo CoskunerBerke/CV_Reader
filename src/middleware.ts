@@ -35,8 +35,11 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // 3. Protect /api/ground-truth and /api/ground-truth/pdf from unauthorized direct access
-  if (pathname.startsWith("/api/ground-truth")) {
+  // 3. Protect /api/ground-truth and GET /api/vault from unauthorized direct access
+  if (
+    pathname.startsWith("/api/ground-truth") ||
+    (pathname.startsWith("/api/vault") && req.method === "GET")
+  ) {
     const hasSessionCookie =
       req.cookies.get(SESSION_COOKIE_NAME)?.value === SESSION_COOKIE_VALUE;
     const hasInternalHeader =
@@ -83,5 +86,7 @@ export const config = {
     "/gizlilabel/:path*",
     "/api/ground-truth/:path*",
     "/api/ground-truth",
+    "/api/vault",
+    "/api/vault/:path*",
   ],
 };
