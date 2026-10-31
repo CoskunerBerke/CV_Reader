@@ -10,6 +10,7 @@ import {
   getAdminSecurityState,
   updateAdminAllowedIps,
   recordAdminAccessAttempt,
+  clearAdminAccessLogs,
 } from "@/lib/adminSecurity";
 
 function applyAdminAuthCookies(res: NextResponse, currentIp: string) {
@@ -70,12 +71,14 @@ export async function GET(req: NextRequest) {
       replaceAll: false,
       note: `Modem/IP değişimi algılandı; güvenilir cihaz imzasıyla yeni IP (${currentIp}) otomatik tanımlandı.`,
     });
-    const finalState = await recordAdminAccessAttempt(
-      req,
-      "auto_recovered",
-      targetPath,
-      updated
-    );
+    const finalState = isSilent
+      ? updated
+      : await recordAdminAccessAttempt(
+          req,
+          "auto_recovered",
+          targetPath,
+          updated
+        );
 
     const res = NextResponse.json({
       authorized: true,
@@ -89,8 +92,11 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  // Durum 3: Hem IP yabancı hem de güvenilir cihaz imzası yok -> GİRİŞ DENEMESİNİ VE IP'Yİ KAYDET, SONRA 403 DÖNDÜR!
-  await recordAdminAccessAttempt(req, "blocked", targetPath, securityState);
+  // Durum 3: Hem IP yabancı hem de güvenilir cihaz imzası yok ->
+  // Sadece ilk giriş denemesinde (!isSilent) kaydet ve 403 döndür!
+  if (!isSilent) {
+    await recordAdminAccessAttempt(req, "blocked", targetPath, securityState);
+  }
 
   return NextResponse.json(
     {
@@ -195,6 +201,25 @@ export async function POST(req: NextRequest) {
         allowedIps: updated.allowedIps,
         accessLogs: updated.accessLogs,
         note: updated.lastAutoRecoveryNote,
+      });
+    }
+
+    // 4) Giriş denemesi loglarını temizle
+    if (action === "clear_access_logs") {
+      const deviceCookie = req.cookies.get(DEVICE_TRUST_COOKIE)?.value;
+      const hasTrustedDevice = verifyDeviceTrustToken(deviceCookie);
+      const state = await getAdminSecurityState();
+      if (!hasTrustedDevice && !state.allowedIps.includes(currentIp)) {
+        return NextResponse.json({ error: "Yetkisiz işlem." }, { status: 403 });
+      }
+
+      const cleared = await clearAdminAccessLogs();
+      return NextResponse.json({
+        success: true,
+        currentIp,
+        allowedIps: cleared.allowedIps,
+        accessLogs: cleared.accessLogs,
+        note: "IP giriş denemesi kayıtları temizlendi.",
       });
     }
 

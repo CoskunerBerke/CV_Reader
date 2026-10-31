@@ -131,11 +131,30 @@ export function verifyMasterRecoveryKey(inputKey: string): boolean {
   return clean === DEFAULT_MASTER_RECOVERY_KEY;
 }
 
+// Her tekil IP adresini tek bir satırda (en güncel giriş denemesiyle) birleştirir;
+// böylece aynı IP'den gelen arka plan istekleri tabloyu 40-50 satırla şişirmez.
+function deduplicateLogsByUniqueIp(
+  logs: AdminAccessAttemptLog[]
+): AdminAccessAttemptLog[] {
+  const sorted = [...logs].sort((a, b) =>
+    (b.timestamp || "").localeCompare(a.timestamp || "")
+  );
+  const byIp = new Map<string, AdminAccessAttemptLog>();
+  for (const entry of sorted) {
+    if (!entry?.ip) continue;
+    const norm = normalizeIp(entry.ip);
+    if (!byIp.has(norm)) {
+      byIp.set(norm, { ...entry, ip: norm });
+    }
+  }
+  return Array.from(byIp.values()).slice(0, 150);
+}
+
 function readLocalSecurityState(): AdminSecurityState {
   const ipSet = new Set<string>(INITIAL_ALLOWED_IPS);
   let updatedAt = new Date().toISOString();
   let lastAutoRecoveryNote: string | undefined;
-  const logMap = new Map<string, AdminAccessAttemptLog>();
+  const rawLogs: AdminAccessAttemptLog[] = [];
 
   for (const p of [LOCAL_SECURITY_FILE, TMP_SECURITY_FILE]) {
     try {
@@ -155,7 +174,7 @@ function readLocalSecurityState(): AdminSecurityState {
         if (Array.isArray(parsed?.accessLogs)) {
           for (const entry of parsed.accessLogs) {
             if (entry && entry.id && entry.ip) {
-              logMap.set(entry.id, entry);
+              rawLogs.push(entry);
             }
           }
         }
@@ -165,15 +184,11 @@ function readLocalSecurityState(): AdminSecurityState {
     }
   }
 
-  const accessLogs = Array.from(logMap.values())
-    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
-    .slice(0, 250);
-
   return {
     allowedIps: Array.from(ipSet),
     updatedAt,
     lastAutoRecoveryNote,
-    accessLogs,
+    accessLogs: deduplicateLogsByUniqueIp(rawLogs),
   };
 }
 
@@ -199,7 +214,7 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
   const ipSet = new Set<string>(local.allowedIps);
   let latestNote = local.lastAutoRecoveryNote;
   let latestUpdated = local.updatedAt;
-  const logMap = new Map<string, AdminAccessAttemptLog>();
+  let logMap = new Map<string, AdminAccessAttemptLog>();
 
   for (const item of local.accessLogs) {
     logMap.set(item.id, item);
@@ -238,6 +253,8 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
               }
               if (parsed.note) latestNote = parsed.note;
               if (parsed.updatedAt) latestUpdated = parsed.updatedAt;
+            } else if (parsed?.type === "CLEAR_ADMIN_ACCESS_LOGS") {
+              logMap = new Map<string, AdminAccessAttemptLog>();
             } else if (
               parsed?.type === "ADMIN_ACCESS_ATTEMPT_LOG" &&
               parsed?.log?.id
@@ -254,15 +271,13 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
     // fallback to local
   }
 
-  const mergedLogs = Array.from(logMap.values())
-    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
-    .slice(0, 250);
+  const uniqueIpLogs = deduplicateLogsByUniqueIp(Array.from(logMap.values()));
 
   const finalState: AdminSecurityState = {
     allowedIps: Array.from(ipSet),
     updatedAt: latestUpdated,
     lastAutoRecoveryNote: latestNote,
-    accessLogs: mergedLogs,
+    accessLogs: uniqueIpLogs,
   };
   writeLocalSecurityState(finalState);
   return finalState;
@@ -281,18 +296,14 @@ export async function recordAdminAccessAttempt(
   const location = extractClientLocation(req);
   const nowMs = Date.now();
 
-  // Flood koruması:
-  // - Yetkili (authorized) girişlerde aynı IP son 15 dakika içinde zaten kaydedildiyse tekrar yazma
-  // - Yetkisiz / engellenen (blocked) girişlerde aynı IP son 4 saniye içinde kaydedildiyse (React çift render) tekrar yazma, ama her gerçek denemeyi kaydet
-  const recentSame = current.accessLogs.find(
-    (l) => l.ip === ip && l.status === status && l.targetPath === targetPath
+  // Aynı IP adresinden aynı durumla son 30 dakika içinde zaten kayıt alındıysa
+  // buluta tekrar tekrar yazma (1 kişi = 1 IP kaydı).
+  const existingForIp = current.accessLogs.find(
+    (l) => normalizeIp(l.ip) === ip && l.status === status
   );
-  if (recentSame) {
-    const diffMs = nowMs - new Date(recentSame.timestamp).getTime();
-    if (status === "authorized" && diffMs < 15 * 60 * 1000) {
-      return current;
-    }
-    if (status !== "authorized" && diffMs < 4000) {
+  if (existingForIp) {
+    const diffMs = nowMs - new Date(existingForIp.timestamp).getTime();
+    if (diffMs < 30 * 60 * 1000) {
       return current;
     }
   }
@@ -307,7 +318,7 @@ export async function recordAdminAccessAttempt(
     timestamp: new Date(nowMs).toISOString(),
   };
 
-  const nextLogs = [newEntry, ...current.accessLogs].slice(0, 250);
+  const nextLogs = deduplicateLogsByUniqueIp([newEntry, ...current.accessLogs]);
   const nextState: AdminSecurityState = {
     ...current,
     accessLogs: nextLogs,
@@ -315,7 +326,6 @@ export async function recordAdminAccessAttempt(
 
   writeLocalSecurityState(nextState);
 
-  // Buluta da kaydet (Vercel üzerinde kalıcı olması için)
   try {
     await fetch(CLOUD_COMMENTS_URL, {
       method: "POST",
@@ -329,6 +339,39 @@ export async function recordAdminAccessAttempt(
         body: JSON.stringify({
           type: "ADMIN_ACCESS_ATTEMPT_LOG",
           log: newEntry,
+        }),
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    // ignore
+  }
+
+  return nextState;
+}
+
+export async function clearAdminAccessLogs(): Promise<AdminSecurityState> {
+  const current = await getAdminSecurityState();
+  const nextState: AdminSecurityState = {
+    ...current,
+    accessLogs: [],
+    updatedAt: new Date().toISOString(),
+  };
+  writeLocalSecurityState(nextState);
+
+  try {
+    await fetch(CLOUD_COMMENTS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getCloudToken()}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "cv-reader-security-shield",
+      },
+      body: JSON.stringify({
+        body: JSON.stringify({
+          type: "CLEAR_ADMIN_ACCESS_LOGS",
+          updatedAt: nextState.updatedAt,
         }),
       }),
       cache: "no-store",

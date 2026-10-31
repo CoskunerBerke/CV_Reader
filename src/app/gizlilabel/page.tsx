@@ -630,6 +630,7 @@ export default function GroundTruthLabelerPage() {
       const data = await res.json();
       if (res.ok && data?.allowedIps) {
         setAllowedIps(data.allowedIps);
+        if (Array.isArray(data?.accessLogs)) setAccessLogs(data.accessLogs);
         setCustomIpInput("");
         setIpActionMessage(data.note || "Yeni IP eklendi.");
       }
@@ -638,13 +639,38 @@ export default function GroundTruthLabelerPage() {
     }
   };
 
+  const handleClearAccessLogs = async () => {
+    setIpActionMessage("");
+    try {
+      const res = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "clear_access_logs",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAccessLogs(data?.accessLogs || []);
+        setIpActionMessage("IP giriş denemesi kayıtları temizlendi.");
+      }
+    } catch {
+      setIpActionMessage("Kayıtlar temizlenemedi.");
+    }
+  };
+
   useEffect(() => {
     fetchAll(false);
+  }, [fetchAll]);
+
+  // SADECE YETKİLİ ADMİN GİRİŞİNDE 6 SANİYEDE BİR SENKRONİZE ET (404 EKRANINDAKİ YABANCI IP'LERDE ASLA ÇALIŞMAZ)
+  useEffect(() => {
+    if (!isAuthorized) return;
     const timer = setInterval(() => {
       fetchAll(true);
     }, 6000);
     return () => clearInterval(timer);
-  }, [fetchAll]);
+  }, [isAuthorized, fetchAll]);
 
   const filteredItems = useMemo(() => {
     if (filterMode === "my_unlabeled") {
@@ -2592,6 +2618,15 @@ export default function GroundTruthLabelerPage() {
                 </h3>
               </div>
               <div className="flex items-center gap-2">
+                {accessLogs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAccessLogs}
+                    className="px-3 py-1.5 rounded-lg bg-red-900/80 hover:bg-red-800 text-red-100 text-xs font-bold cursor-pointer"
+                  >
+                    🗑️ Kayıtları Temizle
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
