@@ -10,12 +10,10 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
-  FileText,
-  Download,
   Sliders,
   CheckCircle2,
   Eye,
+  BarChart3,
 } from "lucide-react";
 import {
   CRITERIA_CATEGORIES,
@@ -23,6 +21,7 @@ import {
   CriterionDefinition,
   CriterionAccessTier,
   extractAll100ValuesFromCV,
+  cleanCriterionDisplayValue,
 } from "@/lib/criteriaCatalog";
 
 interface BenchmarkCVItem {
@@ -45,22 +44,19 @@ interface BenchmarkCVItem {
   } | null;
 }
 
-const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v1";
-const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v1";
+const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v2";
+const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v2";
 
 export default function HundredCriteriaMatrixPage() {
-  // 1. GÜVENLİK VE WI-FI IP KALKANI DURUMU
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [currentIp, setCurrentIp] = useState<string>("");
-  const [allowedIps, setAllowedIps] = useState<string[]>([]);
   const [autoRecoveredNote, setAutoRecoveredNote] = useState<string>("");
   const [secretClickCount, setSecretClickCount] = useState<number>(0);
   const [recoveryKeyInput, setRecoveryKeyInput] = useState<string>("");
   const [replaceOldIps, setReplaceOldIps] = useState<boolean>(true);
   const [recoveryError, setRecoveryError] = useState<string>("");
 
-  // 2. 100+ KRİTER TANIMLARI VE FİLTRELER
   const [criteriaList, setCriteriaList] =
     useState<CriterionDefinition[]>(INITIAL_100_CRITERIA);
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -72,7 +68,6 @@ export default function HundredCriteriaMatrixPage() {
     "ultra"
   );
 
-  // 3. ADAY CV LİSTESİ VE SEÇİLİ CV İÇİN 100 KRİTER DEĞERLERİ
   const [cvItems, setCvItems] = useState<BenchmarkCVItem[]>([]);
   const [selectedCvIndex, setSelectedCvIndex] = useState<number>(0);
   const [showPdfSplit, setShowPdfSplit] = useState<boolean>(false);
@@ -81,7 +76,6 @@ export default function HundredCriteriaMatrixPage() {
   >({});
   const [savingStatus, setSavingStatus] = useState<string>("");
 
-  // 4. YENİ KRİTER EKLEME MODALI (101, 102...)
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [newCritLabel, setNewCritLabel] = useState<string>("");
   const [newCritDesc, setNewCritDesc] = useState<string>("");
@@ -90,7 +84,6 @@ export default function HundredCriteriaMatrixPage() {
   const [newCritTier, setNewCritTier] =
     useState<CriterionAccessTier>("premium");
 
-  // Güvenlik ve CV Verilerini Yükle
   const verifyIpAndLoadData = useCallback(async () => {
     setAuthChecking(true);
     try {
@@ -110,12 +103,10 @@ export default function HundredCriteriaMatrixPage() {
       }
 
       setIsAuthorized(true);
-      setAllowedIps(authData?.allowedIps || []);
       if (authData?.autoRecovered && authData?.note) {
         setAutoRecoveredNote(authData.note);
       }
 
-      // Kayıtlı özel kriterleri ve 100'lük etiketleri yükle
       try {
         const savedCustom = localStorage.getItem(CUSTOM_CRITERIA_STORAGE_KEY);
         if (savedCustom) {
@@ -132,9 +123,9 @@ export default function HundredCriteriaMatrixPage() {
         // ignore
       }
 
-      // 53 CV'yi yükle
       const cvRes = await fetch(`/api/ground-truth?t=${Date.now()}`, {
         cache: "no-store",
+        headers: { "x-gizli-label-access": "internal-gizlilabel-v1" },
       });
       if (cvRes.ok) {
         const cvData = await cvRes.json();
@@ -145,7 +136,11 @@ export default function HundredCriteriaMatrixPage() {
             const cvIdxParam = params.get("cv");
             if (cvIdxParam !== null) {
               const parsedIdx = parseInt(cvIdxParam, 10);
-              if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < cvData.items.length) {
+              if (
+                !isNaN(parsedIdx) &&
+                parsedIdx >= 0 &&
+                parsedIdx < cvData.items.length
+              ) {
                 setSelectedCvIndex(parsedIdx);
               }
             }
@@ -196,27 +191,52 @@ export default function HundredCriteriaMatrixPage() {
 
   const currentCv = cvItems[selectedCvIndex] || null;
 
-  // Seçili CV için 100 kriterin otomatik veya kaydedilmiş değerlerini hesapla
+  // Seçili CV için 100 kriterin otomatik veya kaydedilmiş değerlerini hesapla (Varsa değeri, yoksa '-')
   const activeCvValues = useMemo(() => {
     if (!currentCv) return {};
     const autoExtracted = extractAll100ValuesFromCV(
       currentCv.rawText,
       currentCv.fileName
     );
-    // Varsa humanLabel ile ilk temel alanları senkronla
     if (currentCv.humanLabel) {
       if (currentCv.humanLabel.humanName) {
-        autoExtracted.c001 = currentCv.humanLabel.humanName;
+        autoExtracted.c001 = cleanCriterionDisplayValue(
+          currentCv.humanLabel.humanName
+        );
       }
       if (currentCv.humanLabel.humanAge !== null) {
         autoExtracted.c002 = String(currentCv.humanLabel.humanAge);
       }
       if (currentCv.humanLabel.humanGender) {
-        autoExtracted.c003 = currentCv.humanLabel.humanGender;
+        autoExtracted.c003 = cleanCriterionDisplayValue(
+          currentCv.humanLabel.humanGender
+        );
+      }
+      if (currentCv.humanLabel.humanUniversity) {
+        const cleanU = cleanCriterionDisplayValue(
+          currentCv.humanLabel.humanUniversity
+        );
+        if (cleanU !== "-") {
+          autoExtracted.c011 = cleanU;
+          autoExtracted.c012 = cleanU;
+        }
+      }
+      if (currentCv.humanLabel.humanDepartment) {
+        const cleanD = cleanCriterionDisplayValue(
+          currentCv.humanLabel.humanDepartment
+        );
+        if (cleanD !== "-") {
+          autoExtracted.c013 = cleanD;
+        }
       }
     }
+
     const savedForFile = cvValuesMap[currentCv.fileName] || {};
-    return { ...autoExtracted, ...savedForFile };
+    const merged: Record<string, string> = { ...autoExtracted };
+    for (const [k, v] of Object.entries(savedForFile)) {
+      merged[k] = v;
+    }
+    return merged;
   }, [currentCv, cvValuesMap]);
 
   const handleUpdateCriterionValue = (critId: string, val: string) => {
@@ -274,7 +294,7 @@ export default function HundredCriteriaMatrixPage() {
       categoryKey: catObj.key,
       categoryLabel: catObj.label,
       label: newCritLabel.trim(),
-      shortDesc: newCritDesc.trim() || "Özel tanımlı değerlendirme kriteri",
+      shortDesc: newCritDesc.trim() || "Varsa değerini yazın, yoksa -",
       tier: newCritTier,
       inputType: "text",
     };
@@ -298,37 +318,97 @@ export default function HundredCriteriaMatrixPage() {
     if (!currentCv) return;
     setSavingStatus("Kaydediliyor...");
     try {
-      const vals = activeCvValues;
+      const normalizedForFile: Record<string, string> = {};
+      for (const crit of criteriaList) {
+        normalizedForFile[crit.id] = cleanCriterionDisplayValue(
+          activeCvValues[crit.id]
+        );
+      }
+
+      setCvValuesMap((prev) => {
+        const next = {
+          ...prev,
+          [currentCv.fileName]: normalizedForFile,
+        };
+        try {
+          localStorage.setItem(CV_100_LABELS_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+
       const parsedAge =
-        vals.c002 && !Number.isNaN(Number(vals.c002))
-          ? Number(vals.c002)
+        normalizedForFile.c002 &&
+        normalizedForFile.c002 !== "-" &&
+        !Number.isNaN(Number(normalizedForFile.c002))
+          ? Number(normalizedForFile.c002)
           : null;
       const genderVal =
-        vals.c003 === "Kadın" || vals.c003 === "Erkek" ? vals.c003 : "Erkek";
+        normalizedForFile.c003 === "Kadın" || normalizedForFile.c003 === "Erkek"
+          ? normalizedForFile.c003
+          : "Erkek";
+
+      const uniToSave =
+        normalizedForFile.c012 !== "-"
+          ? normalizedForFile.c012
+          : normalizedForFile.c011 !== "-"
+          ? normalizedForFile.c011
+          : "-";
+      const deptToSave =
+        normalizedForFile.c013 !== "-" ? normalizedForFile.c013 : "-";
+
+      const degParts: string[] = [];
+      if (
+        normalizedForFile.c016 !== "-" ||
+        normalizedForFile.c017 !== "-" ||
+        normalizedForFile.c018 !== "-"
+      ) {
+        degParts.push("Ön Lisans (Associate)");
+      }
+      if (uniToSave !== "-" || deptToSave !== "-") {
+        degParts.push("Lisans (Bachelor's)");
+      }
+      if (
+        normalizedForFile.c021 !== "-" ||
+        normalizedForFile.c022 !== "-" ||
+        normalizedForFile.c023 !== "-"
+      ) {
+        degParts.push("Yüksek Lisans (Master's)");
+      }
+      if (
+        normalizedForFile.c026 !== "-" ||
+        normalizedForFile.c027 !== "-" ||
+        normalizedForFile.c028 !== "-"
+      ) {
+        degParts.push("Doktora (Ph.D.)");
+      }
+      const degToSave = degParts.length > 0 ? degParts.join(" + ") : "-";
 
       await fetch("/api/ground-truth", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-gizli-label-access": "internal-gizlilabel-v1",
+        },
         body: JSON.stringify({
           fileName: currentCv.fileName,
           rater: "ben",
-          humanName: vals.c001 || currentCv.aiName,
+          humanName:
+            normalizedForFile.c001 !== "-"
+              ? normalizedForFile.c001
+              : currentCv.aiName,
           humanGender: genderVal,
           humanAge: parsedAge,
-          humanUniversity: vals.c012 || currentCv.aiUniversity,
-          humanDepartment: vals.c013 || currentCv.aiDepartment,
-          humanDegree:
-            vals.c026 === "Var"
-              ? "Doktora (Ph.D.)"
-              : vals.c021 === "Var"
-              ? "Yüksek Lisans (Master's)"
-              : vals.c016 === "Var"
-              ? "Ön Lisans (Associate)"
-              : "Lisans (Bachelor's)",
+          humanUniversity: uniToSave,
+          humanDepartment: deptToSave,
+          humanDegree: degToSave,
         }),
       });
 
-      setSavingStatus(`✓ ${currentCv.fileName} için ${criteriaList.length} kriter kaydedildi!`);
+      setSavingStatus(
+        `✓ ${currentCv.fileName} kaydedildi (yok olan alanlar '-' olarak işlendi)`
+      );
       if (goNext && selectedCvIndex < cvItems.length - 1) {
         setSelectedCvIndex((prev) => prev + 1);
       }
@@ -369,12 +449,11 @@ export default function HundredCriteriaMatrixPage() {
   if (authChecking) {
     return (
       <div className="min-h-screen bg-[#141c2b] text-[#f0ece1] flex items-center justify-center text-sm font-mono-academic">
-        Wi-Fi IP Kalkanı kontrol ediliyor...
+        Yükleniyor...
       </div>
     );
   }
 
-  // YETKİSİZ IP İSE GİZLİ 404 EKRANI VE MODEM SIFIRLAMA KURTARMA KAPISI
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-[#141c2b] text-[#f0ece1] flex flex-col items-center justify-center p-6 select-none">
@@ -400,7 +479,6 @@ export default function HundredCriteriaMatrixPage() {
             </Link>
           </div>
 
-          {/* 404 yazısına 3 kez tıklandığında veya ?kurtar=1 ile girildiğinde açılan Modem Sıfırlama Kurtarma Kutusu */}
           {secretClickCount >= 3 && (
             <form
               onSubmit={handleRecoverySubmit}
@@ -408,23 +486,18 @@ export default function HundredCriteriaMatrixPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono-academic font-bold uppercase tracking-wider text-[#eab308]">
-                  🛡️ MODEM SIFIRLAMA / YENİ WI-FI IP KURTARMA
+                  YENİ IP TANIMLAMA
                 </span>
                 <span className="text-[11px] font-mono-academic text-[#93c5fd]">
                   IP: {currentIp}
                 </span>
               </div>
-              <p className="text-xs text-[#cbd5e1] leading-relaxed">
-                Modeminiz sıfırlandıysa veya farklı bir Wi-Fi ağına geçtiyseniz,
-                Kurtarma Anahtarınızı girerek yeni IP adresinizi ({currentIp})
-                güvenli listeye tanımlayın:
-              </p>
               <input
                 type="password"
                 required
                 value={recoveryKeyInput}
                 onChange={(e) => setRecoveryKeyInput(e.target.value)}
-                placeholder="Kurtarma Anahtarı (Master Şifre)"
+                placeholder="Kurtarma Anahtarı"
                 className="w-full px-3 py-2 rounded-lg bg-[#111927] border border-[#3b4d6b] text-xs text-white focus:outline-none focus:border-[#eab308]"
               />
               <label className="flex items-center gap-2 text-xs text-[#cbd5e1] cursor-pointer">
@@ -434,8 +507,8 @@ export default function HundredCriteriaMatrixPage() {
                   onChange={(e) => setReplaceOldIps(e.target.checked)}
                 />
                 <span>
-                  Eski IP&apos;leri sil ve sadece bu yeni Wi-Fi IP adresine (
-                  {currentIp}) kilitle
+                  Eski IP&apos;leri sil ve sadece bu IP adresine ({currentIp})
+                  kilitle
                 </span>
               </label>
               {recoveryError && (
@@ -447,7 +520,7 @@ export default function HundredCriteriaMatrixPage() {
                 type="submit"
                 className="w-full py-2 rounded-lg bg-[#eab308] text-[#182235] text-xs font-bold cursor-pointer hover:bg-[#fde047]"
               >
-                Yeni Wi-Fi IP Adresimi Tanımla ve Aç
+                Yeni IP Adresimi Tanımla ve Aç
               </button>
             </form>
           )}
@@ -458,11 +531,11 @@ export default function HundredCriteriaMatrixPage() {
 
   return (
     <div className="min-h-screen bg-[#cfc8b8] text-[#141c2b]">
-      {/* ÜST KOMUTA BARI */}
+      {/* ÜST BAR */}
       <header className="bg-[#182235] border-b border-[#2c3a52] sticky top-0 z-30 shadow-md">
         <div className="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-          {/* Sol: Navigasyon & Başlık */}
-          <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Sol: Navigasyon */}
+          <div className="flex items-center gap-2 flex-wrap">
             <Link
               href="/gizlilabel"
               className="px-3 py-1.5 rounded-lg border border-[#384966] bg-[#212f47] hover:bg-[#2a3b57] text-xs font-semibold text-[#f0ece1] flex items-center gap-1.5"
@@ -474,27 +547,25 @@ export default function HundredCriteriaMatrixPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#111927] border border-[#33435e]">
               <Sliders className="w-3.5 h-3.5 text-[#eab308]" />
               <span className="font-serif-academic font-bold text-sm text-[#f0ece1]">
-                {counts.total} Seçenekli Kriter & CV Değerlendirme Matrisi
+                {counts.total} Alanlı CV Veri Matrisi
               </span>
             </div>
 
-            <div
-              title={`İzinli IP'ler: ${allowedIps.join(", ")}`}
-              className="px-2.5 py-1 rounded-md bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono-academic flex items-center gap-1.5"
+            <Link
+              href="/gizlilabel/basarilar"
+              className="px-3 py-1.5 rounded-lg border border-[#384966] bg-[#212f47] hover:bg-[#2a3b57] text-xs font-semibold text-[#f0ece1] flex items-center gap-1.5"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Wi-Fi IP Korumalı: {currentIp}</span>
-            </div>
+              <BarChart3 className="w-3.5 h-3.5 text-[#93c5fd]" />
+              Başarılar
+            </Link>
           </div>
 
-          {/* Orta: Aktif CV Seçici (53 CV Arasında Hızlı Geçiş) */}
+          {/* Orta: Aktif CV Seçici */}
           {cvItems.length > 0 && (
             <div className="flex items-center gap-1.5 bg-[#111927] border border-[#33435e] rounded-lg p-1">
               <button
                 type="button"
-                onClick={() =>
-                  setSelectedCvIndex((i) => Math.max(0, i - 1))
-                }
+                onClick={() => setSelectedCvIndex((i) => Math.max(0, i - 1))}
                 disabled={selectedCvIndex === 0}
                 className="p-1.5 rounded hover:bg-[#212f47] text-[#d2ccc0] disabled:opacity-40 cursor-pointer"
               >
@@ -539,15 +610,14 @@ export default function HundredCriteriaMatrixPage() {
             </div>
           )}
 
-          {/* Sağ: Yeni Seçenek Ekle & Kaydet */}
+          {/* Sağ: Yeni Alan Ekle & Kaydet */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
               className="px-3 py-1.5 rounded-lg border border-[#eab308]/60 bg-[#eab308]/15 hover:bg-[#eab308]/25 text-[#fde047] text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />+ Yeni Seçenek Ekle (
-              {counts.total + 1})
+              <Plus className="w-3.5 h-3.5" />+ Alan Ekle ({counts.total + 1})
             </button>
 
             <button
@@ -556,15 +626,14 @@ export default function HundredCriteriaMatrixPage() {
               className="px-3.5 py-1.5 rounded-lg bg-[#e2dcd0] hover:bg-white text-[#182235] text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
-              {counts.total} Kriteri Kaydet & Sonraki CV
+              Kaydet & Sonraki CV
             </button>
           </div>
         </div>
 
-        {/* ALT FİLTRE & KATEGORİ ŞERİDİ (100 SEÇENEĞİ TEK EKRANDA YÖNETMEK İÇİN) */}
+        {/* ALT FİLTRE & KATEGORİ ŞERİDİ */}
         <div className="bg-[#111927] border-t border-[#263349] px-4 py-2">
           <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2.5">
-            {/* 10 Kategori Sekmesi */}
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
               <button
                 type="button"
@@ -598,7 +667,6 @@ export default function HundredCriteriaMatrixPage() {
               })}
             </div>
 
-            {/* Arama & Erişim Kademesi Filtresi */}
             <div className="flex items-center gap-2 shrink-0">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-[#9ca3af] absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -606,8 +674,8 @@ export default function HundredCriteriaMatrixPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="100 seçenek içinde ara (yaş, ne işi, master, sap...)"
-                  className="pl-8 pr-3 py-1 rounded bg-[#182235] border border-[#33435e] text-xs text-[#f0ece1] w-64 focus:outline-none focus:border-[#eab308]"
+                  placeholder="100 alan içinde ara..."
+                  className="pl-8 pr-3 py-1 rounded bg-[#182235] border border-[#33435e] text-xs text-[#f0ece1] w-56 focus:outline-none focus:border-[#eab308]"
                 />
               </div>
 
@@ -657,15 +725,14 @@ export default function HundredCriteriaMatrixPage() {
                 className="px-2.5 py-1 rounded bg-[#182235] border border-[#33435e] text-[11px] text-[#d2ccc0] hover:text-white cursor-pointer"
               >
                 {compactDensity === "ultra"
-                  ? "5 Sütun Kompakt Görünüm"
-                  : "3 Sütun Geniş Görünüm"}
+                  ? "5 Sütun Görünüm"
+                  : "3 Sütun Görünüm"}
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* BİLDİRİM BANNER'I */}
       {(savingStatus || autoRecoveredNote) && (
         <div className="max-w-[1600px] mx-auto px-4 pt-3">
           <div className="px-4 py-2 rounded-lg bg-[#182235] text-[#fde047] text-xs font-semibold flex items-center justify-between">
@@ -684,10 +751,9 @@ export default function HundredCriteriaMatrixPage() {
         </div>
       )}
 
-      {/* ANA İÇERİK: 100 SEÇENEĞİ TEK SAYFAYA SIĞDIRAN YÜKSEK YOĞUNLUKLU MATRİS */}
+      {/* ANA İÇERİK: 100 SEÇENEKLİ MATRİS (VAR/YOK YOK; VARSA DEĞERİ, YOKSA '-') */}
       <main className="max-w-[1600px] mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          {/* OPSİYONEL SOL SÜTUN: PDF ÖNİZLEME (AÇILDIĞINDA 5 SÜTUN KAPLAR) */}
           {showPdfSplit && currentCv && (
             <div className="lg:col-span-5 bg-[#e2dcd0] border border-[#b0a898] rounded-xl overflow-hidden shadow-md sticky top-28">
               <div className="bg-[#182235] text-[#f0ece1] px-3.5 py-2 flex items-center justify-between text-xs">
@@ -712,12 +778,7 @@ export default function HundredCriteriaMatrixPage() {
             </div>
           )}
 
-          {/* SAĞ / TAM EKRAN SÜTUN: 100 SEÇENEKLİ KOMPAKT KRİTER MATRİSİ */}
-          <div
-            className={
-              showPdfSplit ? "lg:col-span-7" : "lg:col-span-12"
-            }
-          >
+          <div className={showPdfSplit ? "lg:col-span-7" : "lg:col-span-12"}>
             <div
               className={`grid gap-2 ${
                 showPdfSplit
@@ -728,9 +789,19 @@ export default function HundredCriteriaMatrixPage() {
               }`}
             >
               {filteredCriteria.map((crit) => {
-                const val = activeCvValues[crit.id] ?? "";
+                const rawVal = activeCvValues[crit.id];
+                const val =
+                  rawVal === undefined
+                    ? "-"
+                    : rawVal === "Var" ||
+                      rawVal === "Yok" ||
+                      rawVal === "Belirtilmemiş" ||
+                      rawVal === "—"
+                    ? "-"
+                    : rawVal;
                 const isDefault = crit.tier === "default";
                 const isPremium = crit.tier === "premium";
+                const hasRealValue = val.trim() !== "" && val.trim() !== "-";
 
                 return (
                   <div
@@ -743,7 +814,6 @@ export default function HundredCriteriaMatrixPage() {
                         : "bg-[#d6cfc0]/70 border-[#b8b0a0] opacity-75"
                     }`}
                   >
-                    {/* Üst Satır: Kriter Kodu, Başlık ve Default/Premium Durum Butonu */}
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
@@ -765,7 +835,6 @@ export default function HundredCriteriaMatrixPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleCriterionTier(crit.id)}
-                        title="Tıklayarak Default (Açık) / Premium (Kilitli) / Gizli durumunu değiştirin"
                         className={`px-1.5 py-0.5 rounded text-[10px] font-mono-academic font-bold shrink-0 cursor-pointer flex items-center gap-0.5 ${
                           isDefault
                             ? "bg-[#182235] text-[#eab308]"
@@ -790,43 +859,26 @@ export default function HundredCriteriaMatrixPage() {
                       </button>
                     </div>
 
-                    {/* Alt Satır: Seçili CV için Değer Girişi / Seçimi */}
                     <div>
-                      {crit.inputType === "select" && crit.options ? (
-                        <select
-                          value={val}
-                          onChange={(e) =>
-                            handleUpdateCriterionValue(crit.id, e.target.value)
-                          }
-                          className={`w-full px-2 py-1 rounded border text-xs font-semibold focus:outline-none ${
-                            val === "Var" ||
-                            val === "Kadın" ||
-                            val === "Erkek" ||
-                            val.startsWith("İleri")
-                              ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
-                              : "bg-[#f3efe6] text-[#121926] border-[#b8b0a0]"
-                          }`}
-                        >
-                          {!crit.options.includes(val) && val && (
-                            <option value={val}>{val}</option>
-                          )}
-                          {crit.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={val}
-                          onChange={(e) =>
-                            handleUpdateCriterionValue(crit.id, e.target.value)
-                          }
-                          placeholder={crit.shortDesc}
-                          className="w-full px-2 py-1 rounded bg-[#f3efe6] border border-[#b8b0a0] text-xs font-semibold text-[#121926] focus:outline-none focus:border-[#182235]"
-                        />
-                      )}
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) =>
+                          handleUpdateCriterionValue(crit.id, e.target.value)
+                        }
+                        onBlur={(e) =>
+                          handleUpdateCriterionValue(
+                            crit.id,
+                            cleanCriterionDisplayValue(e.target.value)
+                          )
+                        }
+                        placeholder="-"
+                        className={`w-full px-2 py-1 rounded border text-xs font-semibold focus:outline-none ${
+                          hasRealValue
+                            ? "bg-[#182235] text-[#f0ece1] border-[#182235]"
+                            : "bg-[#f3efe6] text-[#4a5363] border-[#b8b0a0]"
+                        }`}
+                      />
                     </div>
                   </div>
                 );
@@ -836,7 +888,7 @@ export default function HundredCriteriaMatrixPage() {
         </div>
       </main>
 
-      {/* YENİ SEÇENEK / KRİTER EKLEME MODALI */}
+      {/* YENİ SEÇENEK EKLEME MODALI */}
       {isAddModalOpen && (
         <div
           onClick={() => setIsAddModalOpen(false)}
@@ -848,7 +900,7 @@ export default function HundredCriteriaMatrixPage() {
           >
             <div className="flex items-center justify-between border-b border-[#c4bdb0] pb-3">
               <h3 className="font-serif-academic font-bold text-base text-[#121926]">
-                + Yeni Değerlendirme Seçeneği Ekle (#{counts.total + 1})
+                + Yeni Alan Ekle (#{counts.total + 1})
               </h3>
               <button
                 type="button"
@@ -862,14 +914,14 @@ export default function HundredCriteriaMatrixPage() {
             <form onSubmit={handleAddCustomCriterion} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-[#182235] mb-1">
-                  Seçenek / Kriter Adı *
+                  Alan / Kriter Adı *
                 </label>
                 <input
                   type="text"
                   required
                   value={newCritLabel}
                   onChange={(e) => setNewCritLabel(e.target.value)}
-                  placeholder="Örn: Vardiya Amirliği Deneyimi, Forklift Ehliyeti..."
+                  placeholder="Örn: Vardiya Amirliği, Forklift Belgesi..."
                   className="w-full px-3 py-2 rounded-lg bg-[#ece7db] border border-[#a8a090] text-xs text-[#121926]"
                 />
               </div>
@@ -913,13 +965,13 @@ export default function HundredCriteriaMatrixPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-[#182235] mb-1">
-                  Kısa Açıklama
+                  Açıklama
                 </label>
                 <input
                   type="text"
                   value={newCritDesc}
                   onChange={(e) => setNewCritDesc(e.target.value)}
-                  placeholder="Kısa açıklama..."
+                  placeholder="Varsa değeri yazılır, yoksa - konulur"
                   className="w-full px-3 py-2 rounded-lg bg-[#ece7db] border border-[#a8a090] text-xs text-[#121926]"
                 />
               </div>
@@ -936,7 +988,7 @@ export default function HundredCriteriaMatrixPage() {
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-[#182235] text-[#f0ece1] text-xs font-bold cursor-pointer"
                 >
-                  Listeye Ekle
+                  Ekle
                 </button>
               </div>
             </form>

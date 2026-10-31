@@ -226,13 +226,13 @@ async function exportEvaluationsToExcelXlsx(
           "Full Name",
           "Gender",
           "Age",
-          "Age Detection Method",
-          "Bachelor's Diploma?",
-          "Associate Degree? (Premium)",
-          "Associate Department (Premium)",
+          "Bachelor's University",
+          "Associate Degree (Premium)",
           "Bachelor's Department (Premium)",
-          "Master's Degree & Dept (Premium)",
+          "Master's Degree (Premium)",
           "Ph.D. / Doctorate (Premium)",
+          "Profession / Role (Premium)",
+          "Experience & Skills (Premium)",
         ]
       : [
           "Sıra No",
@@ -240,51 +240,47 @@ async function exportEvaluationsToExcelXlsx(
           "Ad Soyad",
           "Cinsiyet",
           "Yaş",
-          "Yaş Tespit Yöntemi",
-          "Lisans Diploması Var mı?",
-          "Ön Lisans Var mı? (Premium)",
-          "Ön Lisans Bölümü (Premium)",
+          "Lisans Üniversitesi",
+          "Ön Lisans (Premium)",
           "Lisans Bölümü (Premium)",
           "Yüksek Lisans (Premium)",
           "Doktora / Ph.D. (Premium)",
+          "Meslek / Pozisyon (Premium)",
+          "Deneyim, Dil & Yazılım (Premium)",
         ];
 
-  const colWidths = [9, 28, 24, 14, 18, 26, 24, 28, 30, 30, 30, 30];
+  const colWidths = [9, 28, 24, 14, 12, 28, 28, 30, 30, 30, 30, 32];
 
   const rows: (string | number)[][] = evaluations.map((item, idx) => {
     const cv = item.cv;
     const noAge = isAgeMissingCase(cv);
-    const ageDisplay = noAge
-      ? lang === "en"
-        ? "No Age or Edu Date (Unspecified)"
-        : "Yaş & Üni Tarihi Yok (Belirsiz)"
-      : cv.detectedAge ?? (lang === "en" ? "Unspecified" : "Belirsiz");
+    const ageDisplay = noAge ? "-" : cv.detectedAge ?? "-";
 
     const hasBsc = hasBachelorDiploma(cv);
-    const bscStatus = hasBsc
-      ? lang === "en"
-        ? "✓ Yes (Bachelor's)"
-        : "✓ Var"
-      : lang === "en"
-      ? "No"
-      : "Yok";
+    const bscUniRaw =
+      cv.educationByDegree?.bachelor?.university || cv.university || "";
+    const bscDisplay =
+      hasBsc &&
+      bscUniRaw &&
+      bscUniRaw !== "Belirtilmemiş" &&
+      bscUniRaw !== "Belirsiz"
+        ? bscUniRaw
+        : "-";
     const lockedLabel =
       lang === "en"
-        ? "🔒 Premium — Contact Us to Unlock"
-        : "🔒 Premium — Açmak İçin Bize Ulaşın";
+        ? "🔒 Premium — Contact Us"
+        : "🔒 Premium — Bize Ulaşın";
 
     return [
       idx + 1,
-      cv.source || "—",
-      cv.fullName,
-      translateGender(cv.detectedGender, lang),
+      cv.source || "-",
+      cv.fullName || "-",
+      cv.detectedGender === "Belirsiz"
+        ? "-"
+        : translateGender(cv.detectedGender, lang),
       ageDisplay,
-      noAge
-        ? lang === "en"
-          ? "No Age or Edu Date"
-          : "Yaş & Üni Tarihi Yok"
-        : translateAgeMethod(cv.ageMethod, lang),
-      bscStatus,
+      bscDisplay,
+      lockedLabel,
       lockedLabel,
       lockedLabel,
       lockedLabel,
@@ -1344,19 +1340,18 @@ export default function CVReaderApp() {
   const t = {
     brandSub:
       lang === "en"
-        ? "Smart CV Parsing & Excel Reporting"
-        : "Toplu Özgeçmiş Analizi & Excel Raporlama",
+        ? "Corporate CV Analysis & Excel Reporting"
+        : "Kurumsal Özgeçmiş Analizi & Excel Raporlama",
     navUpload: lang === "en" ? "Upload" : "Yükleme",
-    navSystem: lang === "en" ? "How It Works" : "Nasıl Çalışır",
-    navFeatures: lang === "en" ? "Features" : "Özellikler",
+    navSystem: lang === "en" ? "Services" : "Hizmetler",
     navResults: lang === "en" ? "Results" : "Sonuçlar",
     btnBenchmark:
       lang === "en" ? "Label & Benchmark" : "Etiketle & Başarı Ölç",
     btnExportTop: lang === "en" ? "Export Excel (.xlsx)" : "Excel İndir (.xlsx)",
     btnExportTooltip:
       lang === "en"
-        ? "Download Age, Gender, and Degree-Specific (Associate / Bachelor's / Master's / Ph.D.) University-Department breakdown as Excel (.xlsx)"
-        : "Yüklenen tüm CV'lerin Yaş, Cinsiyet ve Derece Bazlı (Ön Lisans / Lisans / Master / Doktora) Üniversite-Bölüm dökümünü Excel (.xlsx) olarak indir",
+        ? "Download extracted candidate data as Excel (.xlsx)"
+        : "Yüklenen tüm CV'lerin ayrıştırılmış verilerini Excel (.xlsx) olarak indir",
     btnClear: lang === "en" ? "Clear" : "Temizle",
     dragOverlayTitle:
       lang === "en"
@@ -1364,34 +1359,34 @@ export default function CVReaderApp() {
         : "İstediğiniz Kadar CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Bırakın",
     dragOverlaySub:
       lang === "en"
-        ? "No file limits—drop 10 or 1,000+ CVs at once; age, gender, and education details are extracted for instant Excel export."
-        : "Sınır yok; ister 10 ister 1.000+ CV'yi aynı anda bırakın. Yaş, cinsiyet ve eğitim bilgileri çıkarılıp anında Excel'e hazır hale getirilir.",
+        ? "No file limits—drop 10 or 1,000+ CVs at once; all candidate fields are extracted for instant Excel export."
+        : "Sınır yok; ister 10 ister 1.000+ CV'yi aynı anda bırakın. Tüm aday verileri çıkarılıp anında Excel'e hazır hale getirilir.",
     heroEyebrow:
       lang === "en"
-        ? "01 — UNLIMITED CV AUTOMATION FOR COMPANIES & HR TEAMS"
-        : "01 — ŞİRKETLER VE İK EKİPLERİ İÇİN SINIRSIZ ÖZGEÇMİŞ OTOMASYONU",
+        ? "01 — UNLIMITED CV DATA EXTRACTION FOR COMPANIES"
+        : "01 — ŞİRKETLER İÇİN SINIRSIZ ÖZGEÇMİŞ VERİ ÇIKARIMI",
     heroTitle:
       lang === "en"
         ? "Turn Hundreds or Thousands of CVs into a Clean Excel Table in Seconds."
         : "Yüzlerce Hatta Binlerce Özgeçmişi Saniyeler İçinde Düzenli Excel Tablosuna Dönüştürün.",
     heroDescStart:
       lang === "en"
-        ? "Built for companies, HR teams, and businesses of every scale with zero file limits. Drop any number of PDF, Word, folder, or archive files at once—automatically extract each candidate's "
-        : "Her ölçekten şirketin, İK departmanının ve işletmenin işe alım yükünü sıfırlıyoruz. Adet sınırı olmadan; yüzlerce veya binlerce PDF, Word, klasör ya da arşivi tek seferde bırakın, her adayın ",
+        ? "We extract not only "
+        : "Sadece ",
     heroAge: lang === "en" ? "Age" : "Yaş",
     heroGender: lang === "en" ? "Gender" : "Cinsiyet",
     heroAnd: lang === "en" ? " and " : " ve ",
     heroDegrees:
       lang === "en"
-        ? "Associate · Bachelor's · Master's · Ph.D."
-        : "Ön Lisans · Lisans · Yüksek Lisans · Doktora",
+        ? "School / Department"
+        : "Okul / Bölüm",
     heroDescMid:
       lang === "en"
-        ? " university and department records, ready for one-click "
-        : " okul ve bölüm bilgilerini hatasız ayrıştırıp tek tıkla ",
+        ? ", but also Profession & Role, Experience Years, Previous Companies, Foreign Languages, Software & ERP Tools, Certificates, City, Military/Driving Status, and 100+ custom company criteria—ready for one-click "
+        : " değil; Meslek / Ne İşi Yapar, Toplam Deneyim Yılı, Çalıştığı Şirketler, Yabancı Dil Seviyeleri, Yazılım & Programlar (SAP, Excel, AutoCAD, Python vb.), Sertifikalar, Şehir/İlçe, Ehliyet, Askerlik ve şirketinize özel 100+ kriterin tamamını tek tıkla ",
     heroExcel: lang === "en" ? "Excel (.xlsx)" : "Excel (.xlsx)",
     heroDescEnd:
-      lang === "en" ? " download." : " olarak indirin.",
+      lang === "en" ? " download." : " tablosuna dönüştürüyoruz.",
     readingFiles:
       lang === "en" ? "Reading CV files..." : "Dosyalar okunuyor...",
     dropTitleDragging:
@@ -1426,20 +1421,20 @@ export default function CVReaderApp() {
         : "Adet sınırı olmadan yüzlerce veya binlerce PDF, Word, klasör ya da arşivi tek seferde yükleyin.",
     step2Title:
       lang === "en"
-        ? "Built for Every Company & Role"
-        : "Her Şirket ve Sektöre Uygun",
+        ? "100+ Extracted Data Columns"
+        : "100+ Farklı Veri Sütunu",
     step2Desc:
       lang === "en"
-        ? "Associate, Bachelor's, Master's, and Ph.D. universities and departments are matched separately and accurately."
-        : "Ön Lisans, Lisans, Yüksek Lisans ve Doktora okul-bölüm bilgilerini eksiksiz ve ayrı ayrı eşleştirir.",
+        ? "From education tiers to profession, experience years, languages, software, and certificates."
+        : "Eğitim kademelerinden mesleğe, deneyim yılından yabancı dil, yazılım ve sertifikalara kadar her detayı çıkarır.",
     step3Title:
       lang === "en"
         ? "Instant Corporate Excel (.xlsx)"
         : "Anında Kurumsal Excel (.xlsx)",
     step3Desc:
       lang === "en"
-        ? "Download your entire applicant pool with age, gender, and education tiers as a ready-to-filter Excel table."
-        : "Tüm aday havuzunuzu yaş, cinsiyet ve eğitim kırılımlarıyla hazır Excel tablosu olarak indirin.",
+        ? "Download your entire applicant pool as a ready-to-filter Excel table."
+        : "Tüm aday havuzunuzu dilediğiniz kırılımlarla hazır Excel tablosu olarak indirin.",
     viewSplit:
       lang === "en" ? "Card & Detail View" : "Kart & Detay Görünümü",
     viewTable: (count: number) =>
@@ -1452,12 +1447,12 @@ export default function CVReaderApp() {
         : `Excel Olarak İndir (.xlsx) — ${count} CV`,
     tableHeading: (count: number) =>
       lang === "en"
-        ? `Batch CV & Degree-Specific Education Matrix (${count} Candidates)`
-        : `Toplu CV & Derece Bazlı Eğitim Tablosu (${count} Aday)`,
+        ? `Candidate Data Table (${count} Candidates)`
+        : `Aday Veri Tablosu (${count} Aday)`,
     tableSub:
       lang === "en"
-        ? "Complete preview of age, gender, and Associate / Bachelor's / Master's / Ph.D. university-department records included in the Excel (.xlsx) export"
-        : "Excel (.xlsx) çıktısında yer alacak tüm yaş, cinsiyet ve Ön Lisans / Lisans / Yüksek Lisans / Doktora üniversite-bölüm verileri",
+        ? "Preview of candidate records included in the Excel (.xlsx) export"
+        : "Excel (.xlsx) çıktısında yer alacak aday verileri",
     searchTablePlaceholder:
       lang === "en" ? "Search in table..." : "Tabloda ara...",
     colNameFile:
@@ -1467,32 +1462,27 @@ export default function CVReaderApp() {
     colDegrees: lang === "en" ? "Academic Degrees" : "Eğitim Dereceleri",
     colAssoc:
       lang === "en"
-        ? "Associate (Uni — Dept)"
-        : "Ön Lisans (Üni — Bölüm)",
+        ? "Associate"
+        : "Ön Lisans",
     colBachelor:
       lang === "en"
-        ? "Bachelor's (Uni — Dept)"
-        : "Lisans (Üni — Bölüm)",
+        ? "Bachelor's"
+        : "Lisans",
     colMaster:
       lang === "en"
-        ? "Master's (Uni — Dept)"
-        : "Yüksek Lisans / Master (Üni — Bölüm)",
+        ? "Master's"
+        : "Yüksek Lisans",
     colPhd:
       lang === "en"
-        ? "Ph.D. / Doctorate (Uni — Dept)"
-        : "Doktora / Ph.D. (Üni — Bölüm)",
-    ageUnit: lang === "en" ? "yrs" : "Yaş",
-    ageYearsOld: lang === "en" ? "Years Old" : "Yaşında",
-    noAgeEduDate:
-      lang === "en" ? "No Age / Edu Date" : "Yaş & Üni Tarihi Yok",
-    noAgeEduDateLong:
-      lang === "en"
-        ? "No Age / Edu Date (Unspecified)"
-        : "Yaş & Üni Tarihi Yok (Belirsiz)",
-    unspecified: lang === "en" ? "Unspecified" : "Belirsiz",
-    notSpecified: lang === "en" ? "Not Specified" : "Belirtilmemiş",
-    ageNotSpecified:
-      lang === "en" ? "Age Not Specified" : "Yaş Belirtilmemiş",
+        ? "Ph.D. / Doctorate"
+        : "Doktora / Ph.D.",
+    ageUnit: lang === "en" ? "" : "",
+    ageYearsOld: lang === "en" ? "" : "",
+    noAgeEduDate: "-",
+    noAgeEduDateLong: "-",
+    unspecified: "-",
+    notSpecified: "-",
+    ageNotSpecified: "-",
     uploadedCvsTitle: (count: number) =>
       lang === "en" ? `Uploaded CVs (${count})` : `Yüklenen CV'ler (${count})`,
     searchCandidatePlaceholder:
@@ -1504,118 +1494,69 @@ export default function CVReaderApp() {
     removeCvTooltip: lang === "en" ? "Remove CV" : "CV'yi Kaldır",
     aiSummaryHeading:
       lang === "en"
-        ? "Automated Academic & Demographic Extraction"
-        : "Yapay Zeka Akademik & Demografik Tespit Özeti",
+        ? "Extracted Candidate Summary"
+        : "Aday Bilgi Özeti",
     genderLabel: lang === "en" ? "Gender" : "Cinsiyet",
     ageLabel: lang === "en" ? "Age" : "Yaş",
     eduSectionTitle:
       lang === "en"
-        ? "Academic Degrees & University / Department"
-        : "Eğitim Dereceleri & Üniversite / Bölüm",
-    noUniDeptDetected:
-      lang === "en"
-        ? "No explicit university or department record could be detected in the CV text."
-        : "CV metninde açık bir üniversite veya bölüm bilgisi tespit edilemedi.",
+        ? "Extracted Education, Profession & Competency Fields"
+        : "Eğitim, Meslek, Deneyim ve Yetkinlik Alanları",
+    noUniDeptDetected: "-",
     rawCvTextHeading:
-      lang === "en" ? "Extracted CV Text" : "Okunan CV Metni",
+      lang === "en" ? "CV Text" : "CV Metni",
     selectCandidatePrompt:
       lang === "en"
-        ? "Select a candidate from the list on the left to inspect detailed academic records."
+        ? "Select a candidate from the list on the left to inspect details."
         : "Detayları görmek için soldaki listeden bir adaya tıklayın.",
     sec2Eyebrow:
       lang === "en"
-        ? "02 — HOW IT WORKS"
-        : "02 — NASIL ÇALIŞIR?",
+        ? "02 — WHAT WE EXTRACT FOR YOUR COMPANY"
+        : "02 — ŞİRKETİNİZ İÇİN ÇIKARDIĞIMIZ VERİLER VE HİZMETLERİMİZ",
     sec2Title:
       lang === "en"
-        ? "Built for Companies, HR Departments & Every Recruitment Need"
-        : "Şirketler, İK Departmanları ve Her Ölçekte İşletme İçin Tasarlandı",
+        ? "Not Just Age, Gender & School — We Extract Every Detail in a CV"
+        : "Sadece Yaş, Cinsiyet ve Okul Değil; Özgeçmişteki Tüm Bilgileri Tabloya Çıkarıyoruz",
     sec2Sub:
       lang === "en"
-        ? "Instead of opening and reading hundreds or thousands of differently designed CVs one by one, view your entire candidate pool in a single clean table."
-        : "Yüzlerce veya binlerce farklı tasarımdaki özgeçmişi tek tek açıp okumak yerine, mülakat öncesinde tüm aday havuzunuzu tek bir net tabloda görün.",
+        ? "We turn unstructured CV files into a clean Excel spreadsheet tailored to your company's exact hiring criteria."
+        : "Yüzlerce özgeçmişi tek tek okumak yerine, şirketinizin aradığı tüm kriterleri tek bir düzenli Excel tablosunda teslim alın.",
     arch1Tag:
-      lang === "en" ? "01 / UNLIMITED UPLOAD" : "01 / SINIRSIZ YÜKLEME",
+      lang === "en" ? "01 / EDUCATION & IDENTITY" : "01 / KİMLİK, İLETİŞİM & TÜM EĞİTİM KADEMELERİ",
     arch1Title:
       lang === "en"
-        ? "Folder, Archive (.ZIP / .RAR) & Bulk PDF Support"
-        : "Klasör, Arşiv (.ZIP / .RAR) ve Sınırsız PDF Desteği",
+        ? "Age, Gender, City & All University Degrees"
+        : "Yaş, Cinsiyet, Şehir ve Ön Lisans · Lisans · Master · Doktora",
     arch1Desc:
       lang === "en"
-        ? "Drag and drop hundreds or thousands of CVs directly as a folder or compressed archive without opening files one by one."
-        : "İster 10 ister 1.000+ adet özgeçmişi klasörden çıkarmadan veya doğrudan klasör halinde tek seferde sürükleyip bırakın.",
+        ? "Full name, age, gender, city/district, phone, email, and separate columns for Associate, Bachelor's, Master's, and Ph.D. universities, departments, and GPA."
+        : "Ad soyad, yaş, cinsiyet, ikamet şehri/ilçesi, telefon, e-posta ile Ön Lisans, Lisans, Yüksek Lisans ve Doktora üniversite ve bölümlerini ayrı sütunlara çıkarır.",
     arch2Tag:
-      lang === "en" ? "02 / SMART DEGREE SEPARATION" : "02 / NET DERECE AYRIMI",
+      lang === "en" ? "02 / PROFESSION & EXPERIENCE" : "02 / MESLEK, DENEYİM YILI & ÇALIŞTIĞI ŞİRKETLER",
     arch2Title:
       lang === "en"
-        ? "Associate, Bachelor's, Master's & Ph.D. Separation"
-        : "Ön Lisans, Lisans, Yüksek Lisans ve Doktora Ayrımı",
+        ? "Role, Total Experience Years & Past Employers"
+        : "Ne İşi Yapar (Meslek), Toplam Deneyim Yılı ve Geçmiş Şirketler",
     arch2Desc:
       lang === "en"
-        ? "Never mixes up multiple universities or graduate degrees; places each degree's school and department into its own column."
-        : "Adayın birden fazla üniversite veya yüksek lisans/doktora derecesi varsa karıştırmaz; her eğitimi kendi sütununa ayrı yazar.",
+        ? "Candidate's profession/role title, total years of experience, last company, all previous employers, sector experience, and seniority level."
+        : "Adayın ne iş yaptığı (uzmanlık/pozisyon), toplam kaç yıl deneyimi olduğu, son çalıştığı firma, geçmiş tüm şirketleri ve kıdem seviyesi.",
     arch3Tag:
       lang === "en"
-        ? "03 / ONE-CLICK EXCEL"
-        : "03 / TEK TIKLA EXCEL",
+        ? "03 / LANGUAGES, SOFTWARE & 100+ CRITERIA"
+        : "03 / YABANCI DİL, YAZILIM, SERTİFİKA & 100+ ÖZEL KRİTER",
     arch3Title:
       lang === "en"
-        ? "Ready-to-Filter Excel (.xlsx) Table"
-        : "Filtrelenmeye Hazır Excel (.xlsx) Tablosu",
+        ? "Foreign Languages, ERP/Software, Certificates & Custom Fields"
+        : "Dil Seviyeleri, SAP/Office/Yazılım, Ehliyet, Askerlik ve 100+ Kriter",
     arch3Desc:
       lang === "en"
-        ? "Full name, gender, age, and all education levels download with a single click as a clean Excel file."
-        : "Ad soyad, cinsiyet, yaş ve tüm eğitim kademeleri tek tıkla düzenli sütunlara ayrılmış Excel dosyası olarak iner.",
-    sec3Eyebrow:
-      lang === "en"
-        ? "03 — KEY CAPABILITIES"
-        : "03 — TEMEL ÖZELLİKLER",
-    sec3Title:
-      lang === "en"
-        ? "Resilient Parsing Engine Across Diverse CV Layouts"
-        : "Farklı CV Şablonlarına Karşı Dayanıklı Okuma Motoru",
-    feat1Title:
-      lang === "en"
-        ? "Chronological Age Estimation"
-        : "Kronolojik Yaş Hesaplama",
-    feat1Desc:
-      lang === "en"
-        ? "Automatically estimates candidate age from undergraduate and high school entry chronology when date of birth is omitted."
-        : "Doğum tarihi yazmayan özgeçmişlerde lisans ve lise başlangıç kronolojisinden adayın yaşını otomatik tahmin eder.",
-    feat2Title:
-      lang === "en"
-        ? "Structural Department Extraction"
-        : "Yapısal Bölüm Çıkarımı",
-    feat2Desc:
-      lang === "en"
-        ? "Recognizes Engineering, Economics/Business, Law, Arts & Sciences, and Vocational programs in both Turkish and English."
-        : "Mühendislik, İİBF, Hukuk, Fen-Edebiyat ve MYO dahil tüm Türkçe ve İngilizce bölümleri satır yapısından tanır.",
-    feat3Title:
-      lang === "en"
-        ? "Domestic & International Universities"
-        : "Yurtiçi & Yurtdışı Üniversiteler",
-    feat3Desc:
-      lang === "en"
-        ? "Pairs state and foundation universities in Turkey as well as European and US institutions with their corresponding degree tier."
-        : "Türkiye'deki devlet ve vakıf üniversiteleri ile Avrupa/ABD üniversitelerini ilgili derece kademesiyle eşleştirir.",
-    feat4Title:
-      lang === "en"
-        ? "Ground-Truth Memory"
-        : "Ground-Truth Öğrenme",
-    feat4Desc:
-      lang === "en"
-        ? "Candidate records verified in the labeling benchmark are persisted and automatically applied in future batch uploads."
-        : "Etiketleme ekranında doğruladığınız aday verileri sistem hafızasına kaydedilir ve sonraki toplu yüklemelerde korunur.",
+        ? "English/German/foreign language levels, SAP, Excel, AutoCAD, software stacks, professional certificates, military status, driving license, and any custom company criterion."
+        : "İngilizce ve diğer yabancı diller, SAP/ERP, ileri Excel, mühendislik ve yazılım programları, sertifikalar, askerlik, ehliyet ve şirketinize özel 100+ ek kriter.",
     footerDesc:
       lang === "en"
-        ? "Academic & Corporate Curriculum Vitae Analysis and Excel Reporting System"
-        : "Akademik ve Kurumsal Özgeçmiş Analizi & Excel Raporlama Sistemi",
-    footerUploadLink:
-      lang === "en" ? "Batch CV Upload" : "Toplu CV Yükle",
-    footerLabelLink:
-      lang === "en"
-        ? "Ground-Truth Labeling & Accuracy Benchmark"
-        : "Etiketleme & Doğruluk Ölçümü",
+        ? "Corporate Curriculum Vitae Analysis and Excel Reporting System"
+        : "Kurumsal Özgeçmiş Analizi & Excel Raporlama Sistemi",
     modalUploadTitle:
       lang === "en"
         ? "Batch CV Upload (Drag & Drop / Multiple Files / Folder)"
@@ -1662,7 +1603,6 @@ export default function CVReaderApp() {
     >
       {/* =====================================================================
           0. TÜM SAYFAYA YAYILAN SÜREKLİ DÖNGÜDE İŞ MÜLAKATI ARKA PLAN VİDEOSU
-             (GÖZ YORMAYAN KOYU TAŞ / KUMTAŞI-ARDUVAZ KATMANI İLE)
          ===================================================================== */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <video
@@ -1675,12 +1615,11 @@ export default function CVReaderApp() {
         >
           <source src="/videos/interview-bg.mp4?v=2" type="video/mp4" />
         </video>
-        {/* Göz Yormayan Yumuşak Koyu Kumtaşı / Taş-Arduvaz Katman (Beyaz parlama sıfır) */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#c4bdb0]/78 via-[#ccc5b7]/72 to-[#beb7a8]/82 backdrop-blur-[1px]" />
       </div>
 
       {/* =====================================================================
-          1. ÜST BAR (NAVBAR — Koyu Oxford Arduvaz `#182235`, Göz Yormayan Kontrast)
+          1. ÜST BAR (NAVBAR)
          ===================================================================== */}
       <header className="bg-[#182235]/95 backdrop-blur-md border-b border-[#2c3a52] sticky top-0 z-30 shadow-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -1700,7 +1639,7 @@ export default function CVReaderApp() {
             </div>
           </div>
 
-          {/* Orta: Tek Kelimelik Akıcı Menü Linkleri */}
+          {/* Orta: Tek Kelimelik Menü Linkleri */}
           <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold text-[#d2ccc0]">
             <a
               href="#yukleme"
@@ -1714,12 +1653,6 @@ export default function CVReaderApp() {
             >
               {t.navSystem}
             </a>
-            <a
-              href="#ozellikler"
-              className="hover:text-[#f0ece1] transition-colors whitespace-nowrap"
-            >
-              {t.navFeatures}
-            </a>
             {candidates.length > 0 && (
               <a
                 href="#sonuclar"
@@ -1730,9 +1663,8 @@ export default function CVReaderApp() {
             )}
           </nav>
 
-          {/* Sağ: Dil Seçici (TR | EN), Etiketleme & Excel İndir */}
+          {/* Sağ: Dil Seçici (TR | EN), Premium & Excel İndir */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* TR | EN Dil Seçeneği */}
             <div
               className="inline-flex items-center rounded-md border border-[#33435e] bg-[#111927] p-0.5 shrink-0"
               role="group"
@@ -1769,7 +1701,7 @@ export default function CVReaderApp() {
               className="px-3 py-1.5 rounded-md border border-[#eab308]/50 bg-[#eab308]/15 hover:bg-[#eab308]/25 text-[#fde047] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <Lock className="w-3.5 h-3.5 text-[#eab308]" />
-              {lang === "en" ? "Unlock Premium" : "Premium İçin Ulaşın"}
+              {lang === "en" ? "Unlock All 100+ Fields" : "Premium İçin Ulaşın"}
             </button>
 
             {candidates.length > 0 && (
@@ -1812,7 +1744,6 @@ export default function CVReaderApp() {
       </header>
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-12">
-        {/* Tam Ekran Sürükle-Bırak Katmanı */}
         {isDragging && (
           <div
             onDragOver={handleDragOver}
@@ -1832,12 +1763,8 @@ export default function CVReaderApp() {
           </div>
         )}
 
-        {/* =====================================================================
-            2. HERO TANITIM (ADAY YOKKEN) VEYA KOMPAKT AKADEMİK KOMUTA BARI (ADAY YÜKLÜYKEN)
-           ===================================================================== */}
         {candidates.length === 0 ? (
           <section id="yukleme" className="space-y-7 pt-2">
-            {/* Sade, Doğrudan Odaklı Başlık ve Değer Önerisi */}
             <div className="max-w-3xl space-y-3.5">
               <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#9a5b13] pl-2.5">
                 {t.heroEyebrow}
@@ -1845,7 +1772,7 @@ export default function CVReaderApp() {
               <h1 className="font-serif-academic text-2xl sm:text-4xl font-bold tracking-tight text-[#121926] leading-[1.18]">
                 {t.heroTitle}
               </h1>
-              <p className="text-sm sm:text-base text-[#252f40] leading-[1.65] max-w-2xl">
+              <p className="text-sm sm:text-base text-[#252f40] leading-[1.65] max-w-3xl">
                 {t.heroDescStart}
                 <strong className="text-[#121926] font-semibold">
                   {t.heroAge}
@@ -1866,7 +1793,6 @@ export default function CVReaderApp() {
               </p>
             </div>
 
-            {/* Canlı Yükleme & Analiz Durum Çubuğu */}
             {(isParsingPdf || pdfParseStatus) && (
               <div
                 className={`rounded-xl border px-4 py-3 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md shadow-sm ${
@@ -1895,7 +1821,7 @@ export default function CVReaderApp() {
               </div>
             )}
 
-            {/* ANA SAYFA SÜRÜKLE & BIRAK (DRAG & DROP) KARTI — Von Restorff Odak Alanı (`#e4dfd3`) */}
+            {/* ANA SAYFA SÜRÜKLE & BIRAK KARTI */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -1926,7 +1852,6 @@ export default function CVReaderApp() {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
-                  {/* Çoklu Dosya Seç Butonu (Von Restorff Birincil Odak Butonu) */}
                   <label className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-sm transition-all whitespace-nowrap shrink-0 border border-[#2c3d5e]">
                     <Upload className="w-3.5 h-3.5 text-[#eab308]" />
                     {t.btnSelectFiles}
@@ -1939,7 +1864,6 @@ export default function CVReaderApp() {
                     />
                   </label>
 
-                  {/* Klasör Seç Butonu */}
                   <label className="px-4 py-2.5 rounded-lg border border-[#9e9585] bg-[#d6cfc0] hover:bg-[#cbc3b3] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0">
                     📁 {t.btnSelectFolder}
                     <input
@@ -1956,13 +1880,13 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              {/* SEÇİLEBİLİR PARSER KRİTERLERİ: DEFAULT AÇIK ALANLAR & KİLİTLİ PREMİUM ALANLAR */}
+              {/* SEÇİLEBİLİR VERİ SÜTUNLARI: TÜM HİZMETLERİMİZ (SADECE YAŞ, CİNSİYET, OKUL DEĞİL; 100+ KRİTER) */}
               <div className="mt-6 pt-5 border-t border-[#c4bdb0] text-left space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#182235]">
                     {lang === "en"
-                      ? "EXTRACTED DATA FIELDS (DEFAULT & PREMIUM SELECTION)"
-                      : "ÇIKARILACAK VERİ SÜTUNLARI (AKTİF VE PREMİUM SEÇİM ALANLARI)"}
+                      ? "EXTRACTED DATA COLUMNS (ACTIVE & 100+ PREMIUM FIELDS)"
+                      : "ÇIKARILAN VERİ SÜTUNLARI (AKTİF ALANLAR & 100+ PREMİUM SEÇENEK)"}
                   </span>
                   <button
                     type="button"
@@ -1971,20 +1895,20 @@ export default function CVReaderApp() {
                   >
                     <Lock className="w-3 h-3" />
                     {lang === "en"
-                      ? "Unlock Premium Fields — Contact Us"
-                      : "Kilitli Alanları Açmak İçin Bize Ulaşın →"}
+                      ? "Unlock All 100+ Fields — Contact Us"
+                      : "Tüm Kilitli Alanları Açmak İçin Bize Ulaşın →"}
                   </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* 4 Default Açık Alan (✓) */}
+                  {/* 4 Default Açık Alan */}
                   {[
-                    lang === "en" ? "Full Name" : "İsim Soyisim",
+                    lang === "en" ? "Full Name" : "Ad Soyad",
                     lang === "en" ? "Age" : "Yaş",
                     lang === "en" ? "Gender" : "Cinsiyet",
                     lang === "en"
-                      ? "Bachelor's Diploma?"
-                      : "Lisans Diploması Var mı?",
+                      ? "Bachelor's University"
+                      : "Lisans Üniversitesi",
                   ].map((fieldLabel) => (
                     <span
                       key={fieldLabel}
@@ -1997,23 +1921,30 @@ export default function CVReaderApp() {
                     </span>
                   ))}
 
-                  {/* 5 Seçilebilir Görünümlü Kilitli Premium Alan (🔒 — Tıklayınca Bize Ulaşın Formu Açılır) */}
+                  {/* Seçilebilir Kilitli Premium Alanlar (Sadece okul değil; meslek, deneyim, yabancı dil, yazılım, sertifika vb. hepsi) */}
                   {[
-                    lang === "en"
-                      ? "Associate Degree?"
-                      : "Ön Lisans Var mı?",
-                    lang === "en"
-                      ? "Associate Department"
-                      : "Ön Lisans Bölümü",
+                    lang === "en" ? "Associate Degree" : "Ön Lisans & Bölümü",
                     lang === "en"
                       ? "Bachelor's Department"
                       : "Lisans Bölümü",
                     lang === "en"
-                      ? "Master's Degree & Dept"
-                      : "Yüksek Lisans (Master)",
+                      ? "Master's & Ph.D."
+                      : "Yüksek Lisans & Doktora",
                     lang === "en"
-                      ? "Ph.D. / Doctorate"
-                      : "Doktora (Ph.D.)",
+                      ? "Profession / Role"
+                      : "Meslek / Ne İşi Yapar",
+                    lang === "en"
+                      ? "Experience Years & Companies"
+                      : "Deneyim Yılı & Şirketler",
+                    lang === "en"
+                      ? "Foreign Languages"
+                      : "Yabancı Dil Seviyesi",
+                    lang === "en"
+                      ? "Software, SAP & Excel"
+                      : "Yazılım, SAP & Programlar",
+                    lang === "en"
+                      ? "Certificates, City, Military & 100+ More"
+                      : "Sertifika, Şehir, Ehliyet & 100+ Özel Kriter",
                   ].map((lockedLabel) => (
                     <button
                       key={lockedLabel}
@@ -2038,7 +1969,6 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              {/* Alt 01-02-03 Akademik İş Akışı Şeridi (Cowan 3-Chunk Kuralı) */}
               <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
                 <div className="flex items-start gap-2.5">
                   <span className="font-mono-academic text-xs font-bold text-[#7c470b] shrink-0">
@@ -2199,19 +2129,19 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              {/* YÜKLEME SONRASI SEÇİLEBİLİR PARSER KRİTER BARI (4 DEFAULT AÇIK + 5 KİLİTLİ PREMİUM) */}
+              {/* YÜKLEME SONRASI SEÇİLEBİLİR VERİ SÜTUNLARI BARI */}
               <div className="px-4 sm:px-5 py-3 bg-[#131b2b] border-t border-[#2c3a52] flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#93c5fd] mr-1">
-                    {lang === "en" ? "FIELDS:" : "AKTİF & KİLİTLİ ALANLAR:"}
+                    {lang === "en" ? "FIELDS:" : "AKTİF & PREMİUM ALANLAR:"}
                   </span>
                   {[
-                    lang === "en" ? "Full Name" : "İsim Soyisim",
+                    lang === "en" ? "Full Name" : "Ad Soyad",
                     lang === "en" ? "Age" : "Yaş",
                     lang === "en" ? "Gender" : "Cinsiyet",
                     lang === "en"
-                      ? "Bachelor's Diploma?"
-                      : "Lisans Diploması Var mı?",
+                      ? "Bachelor's University"
+                      : "Lisans Üniversitesi",
                   ].map((openField) => (
                     <span
                       key={openField}
@@ -2223,21 +2153,25 @@ export default function CVReaderApp() {
                   ))}
 
                   {[
-                    lang === "en"
-                      ? "Associate Degree?"
-                      : "Ön Lisans Var mı?",
-                    lang === "en"
-                      ? "Associate Dept"
-                      : "Ön Lisans Bölümü",
+                    lang === "en" ? "Associate Degree" : "Ön Lisans",
                     lang === "en"
                       ? "Bachelor's Dept"
                       : "Lisans Bölümü",
                     lang === "en"
-                      ? "Master's (M.Sc.)"
-                      : "Yüksek Lisans",
+                      ? "Master's & Ph.D."
+                      : "Yüksek Lisans & Doktora",
                     lang === "en"
-                      ? "Ph.D. / Doctorate"
-                      : "Doktora (Ph.D.)",
+                      ? "Profession / Role"
+                      : "Meslek / Pozisyon",
+                    lang === "en"
+                      ? "Experience & Companies"
+                      : "Deneyim Yılı & Şirketler",
+                    lang === "en"
+                      ? "Languages & Software"
+                      : "Yabancı Dil & Yazılım",
+                    lang === "en"
+                      ? "100+ Custom Criteria"
+                      : "100+ Özel Kriter",
                   ].map((lockedField) => (
                     <button
                       key={lockedField}
@@ -2272,8 +2206,8 @@ export default function CVReaderApp() {
                   <div>
                     <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#4a5363]">
                       {lang === "en"
-                        ? "02 / STRUCTURED CANDIDATE MATRIX"
-                        : "02 / YAPILANDIRILMIŞ ADAY MATRİSİ"}
+                        ? "02 / CANDIDATE DATA TABLE"
+                        : "02 / ADAY VERİ TABLOSU"}
                     </div>
                     <h2 className="font-serif-academic font-bold text-base text-[#121926] mt-0.5">
                       {t.tableHeading(displayedEvaluations.length)}
@@ -2315,25 +2249,25 @@ export default function CVReaderApp() {
                         </th>
                         <th className="py-3 px-3.5 font-semibold whitespace-nowrap">
                           {lang === "en"
-                            ? "Bachelor's Diploma?"
-                            : "Lisans Diploması Var mı?"}
+                            ? "Bachelor's University"
+                            : "Lisans Üniversitesi"}
                         </th>
                         {[
-                          lang === "en"
-                            ? "Associate Degree?"
-                            : "Ön Lisans Var mı?",
-                          lang === "en"
-                            ? "Associate Department"
-                            : "Ön Lisans Bölümü",
                           lang === "en"
                             ? "Bachelor's Department"
                             : "Lisans Bölümü",
                           lang === "en"
-                            ? "Master's (M.Sc.)"
-                            : "Yüksek Lisans (Master)",
+                            ? "Associate & Master's / Ph.D."
+                            : "Ön Lisans · Master · Doktora",
                           lang === "en"
-                            ? "Ph.D. / Doctorate"
-                            : "Doktora (Ph.D.)",
+                            ? "Profession / Role"
+                            : "Meslek / Ne İşi Yapar",
+                          lang === "en"
+                            ? "Experience & Companies"
+                            : "Deneyim Yılı & Şirketler",
+                          lang === "en"
+                            ? "Languages, Software & 100+ More"
+                            : "Yabancı Dil, Yazılım & 100+ Kriter",
                         ].map((lockedCol) => (
                           <th
                             key={lockedCol}
@@ -2352,6 +2286,17 @@ export default function CVReaderApp() {
                       {visibleEvaluations.map((item, idx) => {
                         const hasBsc = hasBachelorDiploma(item.cv);
                         const ageMissing = isAgeMissingCase(item.cv);
+                        const bscUniRaw =
+                          item.cv.educationByDegree?.bachelor?.university ||
+                          item.cv.university ||
+                          "";
+                        const bscUniDisplay =
+                          hasBsc &&
+                          bscUniRaw &&
+                          bscUniRaw !== "Belirtilmemiş" &&
+                          bscUniRaw !== "Belirsiz"
+                            ? bscUniRaw
+                            : "-";
 
                         const renderLockedPremiumCell = (
                           featureLabel: string
@@ -2394,64 +2339,22 @@ export default function CVReaderApp() {
                               </div>
                             </td>
                             <td className="py-3 px-3.5 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                                  item.cv.detectedGender === "Kadın"
-                                    ? "bg-[#182235] text-[#f0ece1]"
-                                    : item.cv.detectedGender === "Erkek"
-                                    ? "bg-[#cfc8b8] text-[#182235] border border-[#aba393]"
-                                    : "bg-amber-900/15 text-amber-950 border border-amber-800/30"
-                                }`}
-                              >
-                                {translateGender(item.cv.detectedGender, lang)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3.5 whitespace-nowrap">
-                              {item.cv.detectedAge !== null ? (
-                                <div>
-                                  <span className="font-bold text-[#121926]">
-                                    {item.cv.detectedAge} {t.ageUnit}
-                                  </span>
-                                  <div className="text-[10px] text-[#4a5363]">
-                                    {translateAgeMethod(
-                                      item.cv.ageMethod,
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#182235] text-[#f0ece1]">
+                                {item.cv.detectedGender === "Belirsiz"
+                                  ? "-"
+                                  : translateGender(
+                                      item.cv.detectedGender,
                                       lang
                                     )}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded bg-amber-900/15 text-amber-950 border border-amber-800/30 text-[11px] font-medium">
-                                  {ageMissing
-                                    ? t.noAgeEduDate
-                                    : t.unspecified}
-                                </span>
-                              )}
+                              </span>
                             </td>
-                            <td className="py-3 px-3.5 whitespace-nowrap">
-                              {hasBsc ? (
-                                <span className="px-2.5 py-1 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-bold inline-flex items-center gap-1">
-                                  <Check className="w-3 h-3 text-[#eab308]" />
-                                  {lang === "en" ? "Yes" : "Var"}
-                                </span>
-                              ) : (
-                                <span className="px-2.5 py-1 rounded bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898] text-[11px] font-semibold">
-                                  {lang === "en" ? "No" : "Yok"}
-                                </span>
-                              )}
+                            <td className="py-3 px-3.5 whitespace-nowrap font-bold text-[#121926]">
+                              {item.cv.detectedAge !== null && !ageMissing
+                                ? item.cv.detectedAge
+                                : "-"}
                             </td>
-                            <td className="py-3 px-3.5">
-                              {renderLockedPremiumCell(
-                                lang === "en"
-                                  ? "Associate Degree Status"
-                                  : "Ön Lisans Var mı?"
-                              )}
-                            </td>
-                            <td className="py-3 px-3.5">
-                              {renderLockedPremiumCell(
-                                lang === "en"
-                                  ? "Associate Department"
-                                  : "Ön Lisans Bölümü"
-                              )}
+                            <td className="py-3 px-3.5 whitespace-nowrap font-semibold text-[#121926]">
+                              {bscUniDisplay}
                             </td>
                             <td className="py-3 px-3.5">
                               {renderLockedPremiumCell(
@@ -2463,15 +2366,29 @@ export default function CVReaderApp() {
                             <td className="py-3 px-3.5">
                               {renderLockedPremiumCell(
                                 lang === "en"
-                                  ? "Master's Degree & Department"
-                                  : "Yüksek Lisans (Master)"
+                                  ? "Associate, Master's & Ph.D."
+                                  : "Ön Lisans, Yüksek Lisans & Doktora"
                               )}
                             </td>
                             <td className="py-3 px-3.5">
                               {renderLockedPremiumCell(
                                 lang === "en"
-                                  ? "Ph.D. / Doctorate"
-                                  : "Doktora (Ph.D.)"
+                                  ? "Profession / Role"
+                                  : "Meslek / Ne İşi Yapar"
+                              )}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Experience Years & Companies"
+                                  : "Deneyim Yılı & Çalıştığı Şirketler"
+                              )}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              {renderLockedPremiumCell(
+                                lang === "en"
+                                  ? "Foreign Languages, Software & 100+ Criteria"
+                                  : "Yabancı Dil, Yazılım, Sertifika & 100+ Kriter"
                               )}
                             </td>
                           </tr>
@@ -2485,8 +2402,8 @@ export default function CVReaderApp() {
                   <div className="p-3 bg-[#dad3c5] border-t border-[#c4bdb0] flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="text-[#3b4454] font-medium">
                       {lang === "en"
-                        ? `Showing ${visibleEvaluations.length} of ${displayedEvaluations.length} candidates (Excel export includes all ${displayedEvaluations.length})`
-                        : `Toplam ${displayedEvaluations.length} adaydan ilk ${visibleEvaluations.length} aday gösteriliyor (Excel çıktısı tüm ${displayedEvaluations.length} adayı kapsar)`}
+                        ? `Showing ${visibleEvaluations.length} of ${displayedEvaluations.length} candidates`
+                        : `Toplam ${displayedEvaluations.length} adaydan ilk ${visibleEvaluations.length} aday gösteriliyor`}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
@@ -2517,12 +2434,11 @@ export default function CVReaderApp() {
               </div>
             ) : (
               /* ===============================================================
-                 İKİLİ AKADEMİK DOSYA GÖRÜNÜMÜ (SOL: ADAY LİSTESİ, SAĞ: AKADEMİK KARNE)
+                 İKİLİ GÖRÜNÜM (SOL: ADAY LİSTESİ, SAĞ: ADAY ÖZETİ)
                  =============================================================== */
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 {/* SOL SÜTUN: ADAY HAVUZU LİSTESİ (5 Sütun) */}
                 <div className="lg:col-span-5 bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
-                  {/* Liste Üst Başlığı ve Arama */}
                   <div className="p-4 border-b border-[#c4bdb0] bg-[#dad3c5] flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.16em] text-[#4a5363]">
@@ -2547,7 +2463,6 @@ export default function CVReaderApp() {
                     </div>
                   </div>
 
-                  {/* Aday Kartları Listesi */}
                   <div
                     onScroll={handleListScroll}
                     className="divide-y divide-[#c4bdb0] max-h-[720px] overflow-y-auto"
@@ -2562,6 +2477,17 @@ export default function CVReaderApp() {
                           selectedEvaluation?.cv.id === item.cv.id;
                         const hasBsc = hasBachelorDiploma(item.cv);
                         const ageMissing = isAgeMissingCase(item.cv);
+                        const bscUniRaw =
+                          item.cv.educationByDegree?.bachelor?.university ||
+                          item.cv.university ||
+                          "";
+                        const bscUniDisplay =
+                          hasBsc &&
+                          bscUniRaw &&
+                          bscUniRaw !== "Belirtilmemiş" &&
+                          bscUniRaw !== "Belirsiz"
+                            ? bscUniRaw
+                            : "-";
 
                         return (
                           <div
@@ -2573,7 +2499,6 @@ export default function CVReaderApp() {
                                 : "bg-[#e2dcd0] border-l-transparent hover:bg-[#d8d1c3]"
                             }`}
                           >
-                            {/* Sol: Sıra No & Aday Özeti */}
                             <div className="flex items-start gap-3 min-w-0 flex-1">
                               <span
                                 className={`font-mono-academic text-xs font-bold px-2 py-1 rounded shrink-0 mt-0.5 ${
@@ -2593,40 +2518,27 @@ export default function CVReaderApp() {
                                     </span>
                                   </div>
 
-                                  {/* 4 Default Açık Alan: İsim + Cinsiyet + Yaş + Lisans Diploması Var mı? */}
                                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
                                     <span className="text-[11px] px-2 py-0.5 rounded bg-[#d4cdc0] border border-[#b8b0a0] text-[#182235] font-semibold">
-                                      {translateGender(
-                                        item.cv.detectedGender,
-                                        lang
-                                      )}
+                                      {item.cv.detectedGender === "Belirsiz"
+                                        ? "-"
+                                        : translateGender(
+                                            item.cv.detectedGender,
+                                            lang
+                                          )}
                                     </span>
                                     <span className="text-[11px] px-2 py-0.5 rounded bg-[#d4cdc0] border border-[#b8b0a0] text-[#273142] font-medium">
-                                      {item.cv.detectedAge !== null
-                                        ? `${item.cv.detectedAge} ${t.ageUnit}`
-                                        : ageMissing
-                                        ? t.noAgeEduDate
-                                        : t.ageNotSpecified}
+                                      {item.cv.detectedAge !== null &&
+                                      !ageMissing
+                                        ? `${item.cv.detectedAge}`
+                                        : "-"}
                                     </span>
-                                    <span
-                                      className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
-                                        hasBsc
-                                          ? "bg-[#182235] text-[#f0ece1]"
-                                          : "bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898]"
-                                      }`}
-                                    >
-                                      {lang === "en"
-                                        ? `Bachelor's Diploma: ${
-                                            hasBsc ? "✓ Yes" : "No"
-                                          }`
-                                        : `Lisans Diploması: ${
-                                            hasBsc ? "✓ Var" : "Yok"
-                                          }`}
+                                    <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-[#182235] text-[#f0ece1] truncate max-w-[200px]">
+                                      {bscUniDisplay}
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Kilitli Premium Eğitim Kırılımları Satırı */}
                                 <div className="pt-0.5">
                                   <button
                                     type="button"
@@ -2634,8 +2546,8 @@ export default function CVReaderApp() {
                                       e.stopPropagation();
                                       openPremiumModal(
                                         lang === "en"
-                                          ? "Department & Graduate Degree Breakdown"
-                                          : "Ön Lisans, Lisans Bölümü, Yüksek Lisans & Doktora"
+                                          ? "Department, Profession, Experience & 100+ Criteria"
+                                          : "Bölüm, Yüksek Lisans, Meslek, Deneyim, Dil & 100+ Kriter"
                                       );
                                     }}
                                     className="w-full text-left text-[11px] bg-[#e4dfd3] hover:bg-[#182235] text-[#333d4f] hover:text-[#f0ece1] border border-[#b8b0a0] hover:border-[#182235] rounded-md px-2.5 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all"
@@ -2644,8 +2556,8 @@ export default function CVReaderApp() {
                                       <Lock className="w-3 h-3 text-[#7c470b] shrink-0" />
                                       <span className="truncate">
                                         {lang === "en"
-                                          ? "Associate · Bachelor's Dept · Master's · Ph.D."
-                                          : "Ön Lisans · Lisans Bölümü · Yüksek Lisans · Ph.D."}
+                                          ? "Dept · Master's · Profession · Exp · Languages · Software"
+                                          : "Bölüm · Master · Meslek · Deneyim · Dil · Yazılım · 100+ Kriter"}
                                       </span>
                                     </span>
                                     <span className="text-[10px] font-mono-academic font-bold text-[#7c470b] bg-[#d6cfc0] px-1.5 py-0.5 rounded shrink-0">
@@ -2656,7 +2568,6 @@ export default function CVReaderApp() {
                               </div>
                             </div>
 
-                            {/* Sağ: Adayı Kaldır */}
                             <div
                               className="shrink-0"
                               onClick={(e) => e.stopPropagation()}
@@ -2711,7 +2622,7 @@ export default function CVReaderApp() {
                   )}
                 </div>
 
-                {/* SAĞ SÜTUN: SEÇİLİ ADAY AKADEMİK KARNESİ (7 Sütun) */}
+                {/* SAĞ SÜTUN: SEÇİLİ ADAY ÖZETİ (7 Sütun) */}
                 <div className="lg:col-span-7 bg-[#e2dcd0]/96 backdrop-blur-md border border-[#b8b0a0] rounded-xl overflow-hidden shadow-md">
                   {selectedEvaluation ? (
                     (() => {
@@ -2719,121 +2630,83 @@ export default function CVReaderApp() {
                       const ageMissing = isAgeMissingCase(
                         selectedEvaluation.cv
                       );
+                      const bscUniRaw =
+                        selectedEvaluation.cv.educationByDegree?.bachelor
+                          ?.university ||
+                        selectedEvaluation.cv.university ||
+                        "";
+                      const bscUniDisplay =
+                        hasBsc &&
+                        bscUniRaw &&
+                        bscUniRaw !== "Belirtilmemiş" &&
+                        bscUniRaw !== "Belirsiz"
+                          ? bscUniRaw
+                          : "-";
 
                       return (
                         <div>
-                          {/* AKADEMİK KARNE ÜST BAŞLIĞI (Koyu Oxford Arduvaz Şerit) */}
                           <div className="bg-[#182235] text-[#f0ece1] px-5 py-4 border-b border-[#2c3a52] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="min-w-0">
                               <div className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.18em] text-[#93c5fd]">
                                 {lang === "en"
-                                  ? "02 / CANDIDATE ACADEMIC & DEMOGRAPHIC DOSSIER"
-                                  : "02 / ADAY AKADEMİK VE DEMOGRAFİK KARNESİ"}
+                                  ? "02 / CANDIDATE SUMMARY"
+                                  : "02 / ADAY VERİ ÖZETİ"}
                               </div>
                               <h3 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#f0ece1] mt-0.5 truncate">
                                 {selectedEvaluation.cv.fullName}
                               </h3>
                               <p className="text-xs text-[#b8b2a6] mt-0.5 truncate">
-                                {translateEduField(
-                                  selectedEvaluation.cv.city,
-                                  lang
-                                )}{" "}
-                                • {selectedEvaluation.cv.source}
+                                {selectedEvaluation.cv.source}
                               </p>
-                            </div>
-
-                            {/* Sağ: Varsayılan Lisans Diploması Durumu */}
-                            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                              <span
-                                className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 ${
-                                  hasBsc
-                                    ? "bg-[#e2dcd0] text-[#182235]"
-                                    : "bg-[#25344f] text-[#d2ccc0]"
-                                }`}
-                              >
-                                {hasBsc && (
-                                  <Check className="w-3.5 h-3.5 text-[#7c470b] stroke-[3]" />
-                                )}
-                                {lang === "en"
-                                  ? `Bachelor's Diploma: ${
-                                      hasBsc ? "Yes" : "No"
-                                    }`
-                                  : `Lisans Diploması: ${
-                                      hasBsc ? "Var" : "Yok"
-                                    }`}
-                              </span>
                             </div>
                           </div>
 
-                          {/* AKADEMİK KARNE GÖVDESİ */}
                           <div className="p-5 space-y-5">
-                            {/* BÖLÜM I: DEMOGRAFİK VE KRONOLOJİK ANALİZ (2 Sütunlu Mimari Kartlar) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                              {/* 01 / Cinsiyet Kartı */}
-                              <div className="p-4 rounded-lg bg-[#ece7db] border border-[#b8b0a0] flex flex-col justify-between space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
-                                    01 / {t.genderLabel}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] text-[11px] font-bold">
-                                    {translateGender(
-                                      selectedEvaluation.cv.detectedGender,
-                                      lang
-                                    )}
-                                  </span>
+                            {/* BÖLÜM I: TEMEL AÇIK ALANLAR (Cinsiyet, Yaş, Lisans Üniversitesi — Varsa değeri, yoksa '-') */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="p-3.5 rounded-lg bg-[#ece7db] border border-[#b8b0a0] space-y-1">
+                                <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#4a5363]">
+                                  {t.genderLabel}
+                                </span>
+                                <div className="font-serif-academic text-base font-bold text-[#121926]">
+                                  {selectedEvaluation.cv.detectedGender ===
+                                  "Belirsiz"
+                                    ? "-"
+                                    : translateGender(
+                                        selectedEvaluation.cv.detectedGender,
+                                        lang
+                                      )}
                                 </div>
-                                <div className="font-serif-academic text-lg font-bold text-[#121926]">
-                                  {translateGender(
-                                    selectedEvaluation.cv.detectedGender,
-                                    lang
-                                  )}
-                                </div>
-                                <p className="text-xs text-[#333d4f] leading-relaxed border-t border-[#d4cdc0] pt-2">
-                                  {selectedEvaluation.cv.genderEvidence
-                                    .map((e) =>
-                                      translateGenderSignal(e.signal, lang)
-                                    )
-                                    .slice(0, 2)
-                                    .join(" + ")}
-                                </p>
                               </div>
 
-                              {/* 02 / Kronolojik Yaş Kartı */}
-                              <div className="p-4 rounded-lg bg-[#ece7db] border border-[#b8b0a0] flex flex-col justify-between space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
-                                    02 / {t.ageLabel}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded bg-[#d6cfc0] border border-[#b0a898] text-[#182235] text-[10px] font-bold truncate">
-                                    {translateAgeMethod(
-                                      selectedEvaluation.cv.ageMethod,
-                                      lang
-                                    )}
-                                  </span>
+                              <div className="p-3.5 rounded-lg bg-[#ece7db] border border-[#b8b0a0] space-y-1">
+                                <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#4a5363]">
+                                  {t.ageLabel}
+                                </span>
+                                <div className="font-serif-academic text-base font-bold text-[#121926]">
+                                  {selectedEvaluation.cv.detectedAge !== null &&
+                                  !ageMissing
+                                    ? selectedEvaluation.cv.detectedAge
+                                    : "-"}
                                 </div>
-                                <div className="font-serif-academic text-lg font-bold text-[#121926]">
-                                  {selectedEvaluation.cv.detectedAge !== null
-                                    ? `${selectedEvaluation.cv.detectedAge} ${t.ageYearsOld}`
-                                    : ageMissing
-                                    ? t.noAgeEduDateLong
-                                    : t.unspecified}
+                              </div>
+
+                              <div className="p-3.5 rounded-lg bg-[#ece7db] border border-[#b8b0a0] space-y-1">
+                                <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#4a5363]">
+                                  {lang === "en"
+                                    ? "Bachelor's University"
+                                    : "Lisans Üniversitesi"}
+                                </span>
+                                <div className="font-serif-academic text-sm font-bold text-[#121926] truncate">
+                                  {bscUniDisplay}
                                 </div>
-                                <p className="text-xs text-[#333d4f] leading-relaxed border-t border-[#d4cdc0] pt-2">
-                                  {translateAgeEvidence(
-                                    selectedEvaluation.cv.ageEvidence,
-                                    lang
-                                  )}
-                                </p>
                               </div>
                             </div>
 
-                            {/* BÖLÜM II: LİSANS DİPLOMASI (DEFAULT AÇIK) & PREMİUM EĞİTİM KIRILIMLARI (KİLİTLİ SEÇİLEBİLİR) */}
-                            <div className="rounded-lg bg-[#ece7db] border border-[#b8b0a0] p-4 space-y-4">
-                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#cfc8b8] pb-3">
+                            {/* BÖLÜM II: DİĞER TÜM HİZMETLERİMİZ VE PREMİUM ALANLAR (100+ KRİTER) */}
+                            <div className="rounded-lg bg-[#ece7db] border border-[#b8b0a0] p-4 space-y-3.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#cfc8b8] pb-2.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#4a5363]">
-                                    03 /
-                                  </span>
                                   <GraduationCap className="w-4 h-4 text-[#182235]" />
                                   <h4 className="font-serif-academic font-bold text-sm text-[#121926]">
                                     {t.eduSectionTitle}
@@ -2846,178 +2719,107 @@ export default function CVReaderApp() {
                                 >
                                   <Lock className="w-3 h-3" />
                                   {lang === "en"
-                                    ? "Unlock All Academic Fields"
-                                    : "Tüm Eğitim Detayları İçin Bize Ulaşın"}
+                                    ? "Unlock All 100+ Fields"
+                                    : "Tüm Alanları Açmak İçin Bize Ulaşın"}
                                 </button>
                               </div>
 
-                              {/* VARSAYILAN AÇIK ALAN: LİSANS DİPLOMASI VAR MI? */}
-                              <div className="p-3.5 rounded-lg bg-[#e2dcd0] border border-[#b0a898] flex items-center justify-between gap-3">
-                                <div>
-                                  <div className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#4a5363]">
-                                    {lang === "en"
-                                      ? "DEFAULT ACTIVE FIELD"
-                                      : "VARSAYILAN AÇIK KRİTER (DEFAULT)"}
-                                  </div>
-                                  <div className="font-serif-academic font-bold text-sm text-[#121926] mt-0.5">
-                                    {lang === "en"
-                                      ? "Bachelor's Degree Diploma Status"
-                                      : "Lisans Diploması Var mı?"}
-                                  </div>
-                                </div>
-                                <span
-                                  className={`px-3 py-1.5 rounded-md text-xs font-bold inline-flex items-center gap-1.5 ${
-                                    hasBsc
-                                      ? "bg-[#182235] text-[#f0ece1]"
-                                      : "bg-[#cfc8b8] text-[#3b4454] border border-[#b0a898]"
-                                  }`}
-                                >
-                                  {hasBsc && (
-                                    <Check className="w-3.5 h-3.5 text-[#eab308] stroke-[3]" />
-                                  )}
-                                  {hasBsc
-                                    ? lang === "en"
-                                      ? "✓ Yes (Bachelor's Diploma)"
-                                      : "✓ Var (Lisans Diploması Mevcut)"
-                                    : lang === "en"
-                                    ? "No"
-                                    : "Yok"}
-                                </span>
-                              </div>
-
-                              {/* KİLİTLİ PREMİUM AKADEMİK ALANLAR (SEÇİLEBİLİR KARTLAR — TIKLAYINCA BİZE ULAŞIN FORMU AÇILIR) */}
-                              <div className="space-y-2.5">
-                                <div className="text-[11px] font-mono-academic font-bold uppercase tracking-wider text-[#3b4454]">
-                                  {lang === "en"
-                                    ? "SELECTABLE PREMIUM ACADEMIC BREAKDOWN (CLICK TO UNLOCK)"
-                                    : "PREMİUM AKADEMİK KIRILIMLAR (AKTİF ETMEK İÇİN SEÇİN / TIKLAYIN)"}
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                  {[
-                                    {
-                                      title:
-                                        lang === "en"
-                                          ? "Associate Degree Status (Yes / No)"
-                                          : "Ön Lisans Diploması Var mı?",
-                                      sub:
-                                        lang === "en"
-                                          ? "Vocational / Associate graduation check"
-                                          : "MYO / Ön Lisans mezuniyet durumu",
-                                    },
-                                    {
-                                      title:
-                                        lang === "en"
-                                          ? "Associate Department & University"
-                                          : "Ön Lisans Bölümü & Üniversitesi",
-                                      sub:
-                                        lang === "en"
-                                          ? "2-year program and school details"
-                                          : "Ön lisans okulu ve bölüm adı",
-                                    },
-                                    {
-                                      title:
-                                        lang === "en"
-                                          ? "Bachelor's Department & University"
-                                          : "Lisans Bölümü & Üniversitesi",
-                                      sub:
-                                        lang === "en"
-                                          ? "4-year undergraduate major & faculty"
-                                          : "Lisans fakülte, üniversite ve bölüm adı",
-                                    },
-                                    {
-                                      title:
-                                        lang === "en"
-                                          ? "Master's Degree (M.Sc. / M.A. / MBA)"
-                                          : "Yüksek Lisans (Master) & Bölümü",
-                                      sub:
-                                        lang === "en"
-                                          ? "Graduate university & specialization"
-                                          : "Yüksek lisans üniversite ve uzmanlık alanı",
-                                    },
-                                    {
-                                      title:
-                                        lang === "en"
-                                          ? "Ph.D. / Doctorate & Department"
-                                          : "Doktora (Ph.D.) & Bölümü",
-                                      sub:
-                                        lang === "en"
-                                          ? "Doctoral institution & research field"
-                                          : "Doktora üniversitesi ve akademik program",
-                                    },
-                                  ].map((pItem) => (
-                                    <button
-                                      key={pItem.title}
-                                      type="button"
-                                      onClick={() =>
-                                        openPremiumModal(pItem.title)
-                                      }
-                                      className="group p-3 rounded-lg bg-[#dfd9ca] hover:bg-[#182235] border border-[#b8b0a0] hover:border-[#182235] text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 shadow-2xs"
-                                    >
-                                      <div className="space-y-0.5 min-w-0">
-                                        <div className="text-xs font-bold text-[#121926] group-hover:text-[#f0ece1] flex items-center gap-1.5">
-                                          <Lock className="w-3.5 h-3.5 text-[#7c470b] group-hover:text-[#eab308] shrink-0" />
-                                          <span className="truncate">
-                                            {pItem.title}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] text-[#4a5363] group-hover:text-[#cbd5e1] truncate">
-                                          {pItem.sub}
-                                        </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {[
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Bachelor's & Associate Department"
+                                        : "Lisans & Ön Lisans Bölümü",
+                                    sub:
+                                      lang === "en"
+                                        ? "Faculty, department, GPA & graduation year"
+                                        : "Fakülte, bölüm, mezuniyet yılı ve ortalama",
+                                  },
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Master's & Ph.D. Degrees"
+                                        : "Yüksek Lisans (Master) & Doktora",
+                                    sub:
+                                      lang === "en"
+                                        ? "Graduate university & specialization"
+                                        : "Lisansüstü üniversite ve uzmanlık alanı",
+                                  },
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Profession / What They Do"
+                                        : "Meslek / Ne İşi Yapar (Pozisyon)",
+                                    sub:
+                                      lang === "en"
+                                        ? "Primary role title & specialization"
+                                        : "Adayın ana mesleği, unvanı ve uzmanlığı",
+                                  },
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Total Experience Years & Companies"
+                                        : "Toplam Deneyim Yılı & Çalıştığı Şirketler",
+                                    sub:
+                                      lang === "en"
+                                        ? "Years of experience & employer list"
+                                        : "Kaç yıl tecrübeli olduğu ve geçmiş firmaları",
+                                  },
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Foreign Languages & Software / ERP"
+                                        : "Yabancı Dil, Yazılım, SAP & Office",
+                                    sub:
+                                      lang === "en"
+                                        ? "English/German, SAP, Excel, AutoCAD, Python..."
+                                        : "İngilizce/Almanca, SAP, Excel, AutoCAD, Yazılım...",
+                                  },
+                                  {
+                                    title:
+                                      lang === "en"
+                                        ? "Certificates, City, Military & 100+ Criteria"
+                                        : "Sertifika, Şehir/İlçe, Ehliyet, Askerlik & 100+ Kriter",
+                                    sub:
+                                      lang === "en"
+                                        ? "All custom criteria tailored to your company"
+                                        : "Şirketinize özel 100'den fazla ek değerlendirme alanı",
+                                  },
+                                ].map((pItem) => (
+                                  <button
+                                    key={pItem.title}
+                                    type="button"
+                                    onClick={() =>
+                                      openPremiumModal(pItem.title)
+                                    }
+                                    className="group p-3 rounded-lg bg-[#dfd9ca] hover:bg-[#182235] border border-[#b8b0a0] hover:border-[#182235] text-left transition-all cursor-pointer flex items-start justify-between gap-2.5 shadow-2xs"
+                                  >
+                                    <div className="space-y-0.5 min-w-0">
+                                      <div className="text-xs font-bold text-[#121926] group-hover:text-[#f0ece1] flex items-center gap-1.5">
+                                        <Lock className="w-3.5 h-3.5 text-[#7c470b] group-hover:text-[#eab308] shrink-0" />
+                                        <span className="truncate">
+                                          {pItem.title}
+                                        </span>
                                       </div>
-                                      <span className="px-2 py-0.5 rounded bg-[#cfc8b8] group-hover:bg-[#eab308] text-[#182235] text-[10px] font-mono-academic font-bold shrink-0">
-                                        {lang === "en"
-                                          ? "Contact Us"
-                                          : "Bize Ulaşın"}
-                                      </span>
-                                    </button>
-                                  ))}
-                                </div>
+                                      <div className="text-[11px] text-[#4a5363] group-hover:text-[#cbd5e1] truncate">
+                                        {pItem.sub}
+                                      </div>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded bg-[#cfc8b8] group-hover:bg-[#eab308] text-[#182235] text-[10px] font-mono-academic font-bold shrink-0">
+                                      {lang === "en"
+                                        ? "Contact Us"
+                                        : "Bize Ulaşın"}
+                                    </span>
+                                  </button>
+                                ))}
                               </div>
                             </div>
 
-                            {/* Yetenek Kanıtları (Varsa) */}
-                            {selectedEvaluation.skillAssessments.length > 0 && (
-                              <div className="space-y-2">
-                                {selectedEvaluation.skillAssessments.map(
-                                  (sa) => (
-                                    <div
-                                      key={sa.skill}
-                                      className="p-3 rounded-lg bg-[#ece7db] border border-[#c4bdb0] text-xs space-y-1"
-                                    >
-                                      <div className="flex items-center justify-between font-semibold text-[#121926]">
-                                        <span className="flex items-center gap-1.5">
-                                          {sa.level ===
-                                          "Uzman / Proje Kanıtlı" ? (
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-[#182235]" />
-                                          ) : (
-                                            <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                                          )}
-                                          {sa.skill}
-                                        </span>
-                                        <span
-                                          className={
-                                            sa.level === "Uzman / Proje Kanıtlı"
-                                              ? "text-[#182235]"
-                                              : "text-amber-800"
-                                          }
-                                        >
-                                          {translateSkillLevel(sa.level, lang)}
-                                        </span>
-                                      </div>
-                                      <p className="text-[#333d4f] italic">
-                                        &ldquo;{sa.evidenceSnippet}&rdquo;
-                                      </p>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            )}
-
-                            {/* BÖLÜM III: OKUNAN ÖZGEÇMİŞ METNİ (Koyu Oxford Arduvaz Belge Kutusu) */}
+                            {/* BÖLÜM III: OKUNAN ÖZGEÇMİŞ METNİ */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="text-[10px] font-mono-academic font-bold text-[#3b4454] uppercase tracking-[0.15em] flex items-center gap-1.5">
-                                  <span>04 /</span>
                                   <FileText className="w-3.5 h-3.5 text-[#182235]" />
                                   <span>{t.rawCvTextHeading}</span>
                                 </div>
@@ -3042,7 +2844,7 @@ export default function CVReaderApp() {
         )}
 
         {/* =====================================================================
-            4. SİSTEM MİMARİSİ & PAZARLAMA AKIŞI (Koyu Oxford Arduvaz Kartlar)
+            4. HİZMETLERİMİZ VE ÇIKARDIĞIMIZ VERİLER (SADECE NE YAPTIĞIMIZI ANLATAN SADE BÖLÜM)
            ===================================================================== */}
         <section
           id="sistem"
@@ -3100,77 +2902,10 @@ export default function CVReaderApp() {
             </div>
           </div>
         </section>
-
-        {/* =====================================================================
-            5. TEKNİK ÖZELLİKLER (01–04 Sıcak Taş Kartlar)
-           ===================================================================== */}
-        <section
-          id="ozellikler"
-          className="pt-8 border-t border-[#a8a090] space-y-6"
-        >
-          <div className="space-y-2 max-w-2xl">
-            <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#9a5b13] pl-2.5">
-              {t.sec3Eyebrow}
-            </div>
-            <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#121926] tracking-tight">
-              {t.sec3Title}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-xl bg-[#e3ddd0]/94 backdrop-blur-md border border-[#b5ad9d] space-y-2 shadow-xs academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#7c470b]">
-                01
-              </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
-                {t.feat1Title}
-              </h3>
-              <p className="text-xs text-[#333d4f] leading-relaxed">
-                {t.feat1Desc}
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#e3ddd0]/94 backdrop-blur-md border border-[#b5ad9d] space-y-2 shadow-xs academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#7c470b]">
-                02
-              </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
-                {t.feat2Title}
-              </h3>
-              <p className="text-xs text-[#333d4f] leading-relaxed">
-                {t.feat2Desc}
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#e3ddd0]/94 backdrop-blur-md border border-[#b5ad9d] space-y-2 shadow-xs academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#7c470b]">
-                03
-              </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
-                {t.feat3Title}
-              </h3>
-              <p className="text-xs text-[#333d4f] leading-relaxed">
-                {t.feat3Desc}
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-[#e3ddd0]/94 backdrop-blur-md border border-[#b5ad9d] space-y-2 shadow-xs academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#7c470b]">
-                04
-              </div>
-              <h3 className="font-serif-academic text-sm font-bold text-[#121926]">
-                {t.feat4Title}
-              </h3>
-              <p className="text-xs text-[#333d4f] leading-relaxed">
-                {t.feat4Desc}
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* =====================================================================
-          ALT BİLGİ (FOOTER — Koyu Oxford Arduvaz)
+          ALT BİLGİ (FOOTER — Sağdaki "Toplu CV Yükle" yazısı kaldırıldı)
          ===================================================================== */}
       <footer className="relative z-10 border-t border-[#2c3a52] bg-[#182235]/95 backdrop-blur-md mt-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#b8b2a6]">
@@ -3180,14 +2915,6 @@ export default function CVReaderApp() {
             </span>
             <span>—</span>
             <span>{t.footerDesc}</span>
-          </div>
-          <div className="flex items-center gap-5 font-medium">
-            <a
-              href="#yukleme"
-              className="hover:text-[#f0ece1] transition-colors"
-            >
-              {t.footerUploadLink}
-            </a>
           </div>
         </div>
       </footer>
@@ -3453,17 +3180,21 @@ export default function CVReaderApp() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {[
-                    lang === "en" ? "Associate Degree?" : "Ön Lisans Var mı?",
                     lang === "en"
-                      ? "Associate Department"
-                      : "Ön Lisans Bölümü",
+                      ? "Associate & Bachelor's Dept"
+                      : "Ön Lisans & Lisans Bölümü",
                     lang === "en"
-                      ? "Bachelor's Department"
-                      : "Lisans Bölümü",
+                      ? "Master's & Ph.D."
+                      : "Yüksek Lisans & Doktora",
                     lang === "en"
-                      ? "Master's (M.Sc.)"
-                      : "Yüksek Lisans (Master)",
-                    lang === "en" ? "Ph.D. / Doctorate" : "Doktora (Ph.D.)",
+                      ? "Profession & Experience"
+                      : "Meslek & Deneyim Yılı",
+                    lang === "en"
+                      ? "Languages & Software"
+                      : "Yabancı Dil & Yazılım",
+                    lang === "en"
+                      ? "100+ Custom Criteria"
+                      : "100+ Özel Kriter",
                   ].map((tag) => (
                     <span
                       key={tag}
@@ -3485,8 +3216,8 @@ export default function CVReaderApp() {
                   </h4>
                   <p className="text-xs text-[#cbd5e1] leading-relaxed">
                     {lang === "en"
-                      ? "Our team will contact your company shortly to activate Associate, Bachelor's Department, Master's, and Ph.D. columns for your account."
-                      : "Ekibimiz en kısa sürede sizinle iletişime geçerek şirketiniz için Ön Lisans, Lisans Bölümü, Yüksek Lisans ve Doktora sütunlarını aktif edecektir."}
+                      ? "Our team will contact your company shortly to activate all requested academic, profession, experience, language, software, and custom criteria columns."
+                      : "Ekibimiz en kısa sürede sizinle iletişime geçerek şirketiniz için tüm eğitim, meslek, deneyim, yabancı dil, yazılım ve özel kriter sütunlarını aktif edecektir."}
                   </p>
                   <div className="pt-2">
                     <button
