@@ -8,28 +8,17 @@ import JSZip from "jszip";
 import { createExtractorFromData } from "node-unrar-js";
 import { extractCandidateMetadataFromText } from "@/lib/cvEngine";
 
-function getGroundTruthLabels(): Record<
-  string,
-  {
-    humanName?: string;
-    humanGender: "Kadın" | "Erkek" | "Belirsiz";
-    humanAge: number | null;
-    humanUniversity?: string | null;
-    humanDepartment?: string | null;
-    humanDegree?: string | null;
-  }
-> {
-  let merged: Record<
-    string,
-    {
-      humanName?: string;
-      humanGender: "Kadın" | "Erkek" | "Belirsiz";
-      humanAge: number | null;
-      humanUniversity?: string | null;
-      humanDepartment?: string | null;
-      humanDegree?: string | null;
-    }
-  > = {};
+type GroundTruthRecord = {
+  humanName?: string;
+  humanGender: "Kadın" | "Erkek" | "Belirsiz";
+  humanAge: number | null;
+  humanUniversity?: string | null;
+  humanDepartment?: string | null;
+  humanDegree?: string | null;
+};
+
+function getGroundTruthLabels(): Record<string, GroundTruthRecord> {
+  let merged: Record<string, GroundTruthRecord> = {};
   try {
     const p = path.join(process.cwd(), "data", "ground-truth-labels.json");
     if (fs.existsSync(p)) {
@@ -49,11 +38,28 @@ function getGroundTruthLabels(): Record<
   return merged;
 }
 
+function decodeBufferSmart(arrayBuffer: ArrayBuffer): string {
+  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(arrayBuffer);
+  if (utf8.includes("\uFFFD")) {
+    try {
+      return new TextDecoder("windows-1254", { fatal: false }).decode(
+        arrayBuffer
+      );
+    } catch {
+      return utf8;
+    }
+  }
+  return utf8;
+}
+
 function parseHtmlToCleanText(html: string): string {
   return html
     .replace(/<(script|style|svg|noscript|head)[^>]*>[\s\S]*?<\/\1>/gi, "\n")
     .replace(/<\/?(?:td|th)[^>]*>/gi, " | ")
-    .replace(/<\/?(?:br|p|div|li|tr|h[1-6]|section|article|header|footer|blockquote|dd|dt)[^>]*>/gi, "\n")
+    .replace(
+      /<\/?(?:br|p|div|li|tr|h[1-6]|section|article|header|footer|blockquote|dd|dt)[^>]*>/gi,
+      "\n"
+    )
     .replace(/<[^>]+>/g, " ")
     .replace(/&rarr;|&rightarrow;/gi, " -> ")
     .replace(/&ndash;|&mdash;/gi, " - ")
@@ -71,9 +77,66 @@ function parseHtmlToCleanText(html: string): string {
     .trim();
 }
 
+function parseRtfToCleanText(rtf: string): string {
+  return rtf
+    .replace(/\\par\b|\\line\b/gi, "\n")
+    .replace(/\\tab\b/gi, " ")
+    .replace(/\\'([0-9a-fA-F]{2})/g, (_, hex) => {
+      const code = parseInt(hex, 16);
+      const trMap: Record<number, string> = {
+        0xd0: "Ğ",
+        0xf0: "ğ",
+        0xdd: "İ",
+        0xfd: "ı",
+        0xde: "Ş",
+        0xfe: "ş",
+        0xc7: "Ç",
+        0xe7: "ç",
+        0xd6: "Ö",
+        0xf6: "ö",
+        0xdc: "Ü",
+        0xfc: "ü",
+      };
+      return trMap[code] || String.fromCharCode(code);
+    })
+    .replace(/\\u(-?\d+)\??/g, (_, dec) => {
+      const code = parseInt(dec, 10);
+      return String.fromCharCode(code < 0 ? code + 65536 : code);
+    })
+    .replace(/\{\\(?:fonttbl|colortbl|stylesheet|info|pict)[\s\S]*?\}/gi, " ")
+    .replace(/\\[a-zA-Z]+-?\d*\s?/g, " ")
+    .replace(/[{}]/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
+function resolveArchiveEntryDisplayName(entryPath: string): string {
+  const parts = entryPath.split(/[\\/]/).filter(Boolean);
+  const baseName = parts[parts.length - 1] || entryPath;
+  const stem = baseName.replace(/\.[a-zA-Z0-9]+$/, "").trim();
+  const isGenericBase =
+    /^(?:cv|resume|ozgecmis|özgeçmiş|belge|document|file|scan|untitled|1|2|3)$/i.test(
+      stem
+    );
+  if (isGenericBase && parts.length >= 2) {
+    const parentFolder = parts[parts.length - 2];
+    if (
+      parentFolder &&
+      !/^(?:cv|cvs|resumes|ozgecmisler|özgeçmişler|adaylar|candidates|files|folder|yeni\s*klasör)$/i.test(
+        parentFolder
+      )
+    ) {
+      return `${parentFolder} - ${baseName}`;
+    }
+  }
+  return baseName;
+}
+
 async function parseSingleBuffer(
   fileName: string,
-  arrayBuffer: ArrayBuffer
+  arrayBuffer: ArrayBuffer,
+  labels: Record<string, GroundTruthRecord>
 ): Promise<{
   fileName: string;
   rawText: string;
@@ -88,10 +151,11 @@ async function parseSingleBuffer(
   humanDepartment?: string | null;
   humanDegree?: string | null;
 } | null> {
-  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  const baseOnly = fileName.split(/[\\/]/).pop() || fileName;
+  const ext = baseOnly.split(".").pop()?.toLowerCase() || "";
 
   // Ignore non-CV helper files inside zip archives (e.g. readme.txt, sonuclar.json, .DS_Store, ~$temp.docx)
-  const lowerBase = fileName.toLowerCase();
+  const lowerBase = baseOnly.toLowerCase();
   if (
     lowerBase.startsWith("~$") ||
     lowerBase.startsWith(".") ||
@@ -110,8 +174,18 @@ async function parseSingleBuffer(
   if (ext === "pdf") {
     try {
       const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
-      const { text } = await extractText(pdf, { mergePages: false });
-      extractedText = Array.isArray(text) ? text.join("\n\n") : text || "";
+      try {
+        const { text } = await extractText(pdf, { mergePages: false });
+        extractedText = Array.isArray(text) ? text.join("\n\n") : text || "";
+      } finally {
+        try {
+          await (
+            pdf as unknown as { destroy?: () => Promise<void> }
+          ).destroy?.();
+        } catch {
+          // ignore cleanup error
+        }
+      }
     } catch {
       extractedText = "";
     }
@@ -122,23 +196,26 @@ async function parseSingleBuffer(
       });
       extractedText = result.value || "";
     } catch {
-      extractedText = new TextDecoder("utf-8", { fatal: false })
-        .decode(arrayBuffer)
-        .replace(/[^\x20-\x7E\xA0-\uFFFF\r\n]/g, " ");
+      extractedText = decodeBufferSmart(arrayBuffer).replace(
+        /[^\x20-\x7E\xA0-\uFFFF\r\n]/g,
+        " "
+      );
     }
   } else if (ext === "html" || ext === "htm") {
-    const rawHtml = new TextDecoder("utf-8").decode(arrayBuffer);
+    const rawHtml = decodeBufferSmart(arrayBuffer);
     extractedText = parseHtmlToCleanText(rawHtml);
+  } else if (ext === "rtf") {
+    const rawRtf = decodeBufferSmart(arrayBuffer);
+    extractedText = parseRtfToCleanText(rawRtf);
   } else if (ext === "txt" || ext === "md") {
-    extractedText = new TextDecoder("utf-8").decode(arrayBuffer);
+    extractedText = decodeBufferSmart(arrayBuffer);
   } else {
     return null;
   }
 
   const cleanText = extractedText.replace(/\r\n/g, "\n").trim();
-  const meta = extractCandidateMetadataFromText(cleanText, fileName);
-  const labels = getGroundTruthLabels();
-  const matchedLabel = labels[fileName] || null;
+  const meta = extractCandidateMetadataFromText(cleanText, fileName, false);
+  const matchedLabel = labels[fileName] || labels[baseOnly] || null;
 
   return {
     fileName,
@@ -168,11 +245,16 @@ export async function POST(req: NextRequest) {
 
     if (files.length === 0) {
       return NextResponse.json(
-        { error: "Lütfen en az bir CV dosyası (.pdf, .docx, .html, .zip, .txt) seçin." },
+        {
+          error:
+            "Lütfen en az bir CV dosyası (.pdf, .docx, .html, .zip, .rar, .txt) seçin.",
+        },
         { status: 400 }
       );
     }
 
+    // Load ground-truth labels ONCE per batch request (not per file)
+    const labels = getGroundTruthLabels();
     const parsedResults = [];
 
     for (const file of files) {
@@ -182,15 +264,21 @@ export async function POST(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
 
         if (ext === "zip") {
-          // ZIP arşivinin içindeki tüm PDF / DOCX / HTML CV'leri otomatik çıkar!
           const zip = await JSZip.loadAsync(arrayBuffer);
           const entries = Object.values(zip.files).filter((e) => !e.dir);
           for (const entry of entries) {
             try {
-              const cleanEntryName = entry.name.split(/[\\/]/).pop() || entry.name;
-              if (cleanEntryName.startsWith(".")) continue;
+              const rawBase = entry.name.split(/[\\/]/).pop() || entry.name;
+              if (rawBase.startsWith(".") || rawBase.startsWith("~$")) continue;
+              const displayEntryName = resolveArchiveEntryDisplayName(
+                entry.name
+              );
               const entryBuf = await entry.async("arraybuffer");
-              const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+              const parsed = await parseSingleBuffer(
+                displayEntryName,
+                entryBuf,
+                labels
+              );
               if (parsed) {
                 parsedResults.push(parsed);
               }
@@ -199,20 +287,29 @@ export async function POST(req: NextRequest) {
             }
           }
         } else if (ext === "rar") {
-          // RAR arşivinin içindeki tüm PDF / DOCX / HTML / TXT CV'leri otomatik çıkar!
-          const extractor = await createExtractorFromData({ data: arrayBuffer });
+          const extractor = await createExtractorFromData({
+            data: arrayBuffer,
+          });
           const extracted = extractor.extract();
           for (const item of extracted.files) {
             try {
               if (item.fileHeader.flags.directory || !item.extraction) continue;
-              const cleanEntryName =
-                item.fileHeader.name.split(/[\\/]/).pop() || item.fileHeader.name;
-              if (cleanEntryName.startsWith(".")) continue;
+              const rawBase =
+                item.fileHeader.name.split(/[\\/]/).pop() ||
+                item.fileHeader.name;
+              if (rawBase.startsWith(".") || rawBase.startsWith("~$")) continue;
+              const displayEntryName = resolveArchiveEntryDisplayName(
+                item.fileHeader.name
+              );
               const entryBuf = item.extraction.buffer.slice(
                 item.extraction.byteOffset,
                 item.extraction.byteOffset + item.extraction.byteLength
               ) as ArrayBuffer;
-              const parsed = await parseSingleBuffer(cleanEntryName, entryBuf);
+              const parsed = await parseSingleBuffer(
+                displayEntryName,
+                entryBuf,
+                labels
+              );
               if (parsed) {
                 parsedResults.push(parsed);
               }
@@ -221,7 +318,7 @@ export async function POST(req: NextRequest) {
             }
           }
         } else {
-          const parsed = await parseSingleBuffer(fileName, arrayBuffer);
+          const parsed = await parseSingleBuffer(fileName, arrayBuffer, labels);
           if (parsed) {
             parsedResults.push(parsed);
           }

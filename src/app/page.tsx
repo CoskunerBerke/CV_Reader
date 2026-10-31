@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   CandidateCV,
@@ -9,6 +9,7 @@ import {
   DegreeKey,
   DegreeEducationEntry,
   evaluateCandidateForCompany,
+  extractCandidateMetadataFromText,
   normalizeTr,
   hasDegreeSelected,
 } from "@/lib/cvEngine";
@@ -105,9 +106,17 @@ const DEGREE_CARDS: {
   },
 ];
 
+const candidateDegreeMapCache = new WeakMap<
+  CandidateCV,
+  Record<DegreeKey, DegreeEducationEntry | null>
+>();
+
 function getCandidateDegreeMap(
   cv: CandidateCV
 ): Record<DegreeKey, DegreeEducationEntry | null> {
+  const cached = candidateDegreeMapCache.get(cv);
+  if (cached) return cached;
+
   const degStr =
     (cv.allDegrees && cv.allDegrees.length > 0
       ? cv.allDegrees.join(" + ")
@@ -125,7 +134,7 @@ function getCandidateDegreeMap(
   const hasMsc = hasDegreeSelected(degStr, "Yüksek Lisans (Master's)");
   const hasPhd = hasDegreeSelected(degStr, "Doktora (Ph.D.)");
 
-  return {
+  const computed: Record<DegreeKey, DegreeEducationEntry | null> = {
     associate: hasAssoc
       ? byDeg.associate || { university: fallbackUni, department: fallbackDept }
       : null,
@@ -142,6 +151,9 @@ function getCandidateDegreeMap(
         byDeg.bachelor || { university: fallbackUni, department: fallbackDept }
       : null,
   };
+
+  candidateDegreeMapCache.set(cv, computed);
+  return computed;
 }
 
 function isAgeMissingCase(cv: CandidateCV): boolean {
@@ -476,6 +488,7 @@ export default function CVReaderApp() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [layoutMode, setLayoutMode] = useState<"split" | "table">("split");
+  const [visibleLimit, setVisibleLimit] = useState<number>(100);
 
   // Modallar
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -503,25 +516,65 @@ export default function CVReaderApp() {
     [companies, activeCompanyId]
   );
 
+  // 1000+ CV performansı için aday bazlı değerlendirme önbelleği (O(1) yeniden kullanım)
+  const evaluationCacheRef = useRef<
+    Map<string, { cvRef: CandidateCV; compRef: CompanyProfile; evaluated: EvaluatedCandidate }>
+  >(new Map());
+
   // Adayları aktif şirket kriterlerine göre değerlendir ve sırala
   const evaluatedList = useMemo(() => {
-    const list = candidates.map((cv) => evaluateCandidateForCompany(cv, activeCompany));
+    const cache = evaluationCacheRef.current;
+    const list = candidates.map((cv) => {
+      const existing = cache.get(cv.id);
+      if (
+        existing &&
+        existing.cvRef === cv &&
+        existing.compRef === activeCompany
+      ) {
+        return existing.evaluated;
+      }
+      const evaluated = evaluateCandidateForCompany(cv, activeCompany);
+      cache.set(cv.id, { cvRef: cv, compRef: activeCompany, evaluated });
+      return evaluated;
+    });
     list.sort((a, b) => b.totalMatchScore - a.totalMatchScore);
     return list;
   }, [candidates, activeCompany]);
 
-  // Ekranda gösterilecek adaylar
+  // Arama değiştiğinde görünür pencereyi sıfırla
+  useEffect(() => {
+    setVisibleLimit(100);
+  }, [searchQuery]);
+
+  // Ekranda gösterilecek adaylar (Arama filtresi tüm 1000+ aday üzerinde çalışır)
   const displayedEvaluations = useMemo(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed === "") return evaluatedList;
+    const q = normalizeTr(trimmed);
     return evaluatedList.filter((item) => {
-      if (searchQuery.trim() !== "") {
-        const q = normalizeTr(searchQuery);
-        const inName = normalizeTr(item.cv.fullName).includes(q);
-        const inText = normalizeTr(item.cv.rawText).includes(q);
-        if (!inName && !inText) return false;
-      }
-      return true;
+      if (normalizeTr(item.cv.fullName).includes(q)) return true;
+      if (normalizeTr(item.cv.university).includes(q)) return true;
+      if (item.cv.department && normalizeTr(item.cv.department).includes(q)) return true;
+      if (item.cv.source && normalizeTr(item.cv.source).includes(q)) return true;
+      return normalizeTr(item.cv.rawText).includes(q);
     });
   }, [evaluatedList, searchQuery]);
+
+  // DOM'da aynı anda render edilen aday dilimi (1000+ CV'de sıfır kasma için kademeli pencereleme)
+  const visibleEvaluations = useMemo(
+    () => displayedEvaluations.slice(0, visibleLimit),
+    [displayedEvaluations, visibleLimit]
+  );
+
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (visibleLimit >= displayedEvaluations.length) return;
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 240) {
+      setVisibleLimit((prev) =>
+        Math.min(displayedEvaluations.length, prev + 100)
+      );
+    }
+  };
 
   const selectedEvaluation = useMemo(() => {
     return (
@@ -532,15 +585,55 @@ export default function CVReaderApp() {
   }, [evaluatedList, displayedEvaluations, selectedCandidateId]);
 
   const handleDeleteCandidate = (id: string) => {
+    evaluationCacheRef.current.delete(id);
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const readEntryRecursively = async (entry: FileSystemEntry): Promise<File[]> => {
+  const formatSubfolderAwareFileName = (
+    baseName: string,
+    parentFolder?: string
+  ): string => {
+    const cleanBase = baseName.split(/[\\/]/).pop() || baseName;
+    if (!parentFolder) return cleanBase;
+    const stem = cleanBase.replace(/\.[a-zA-Z0-9]+$/, "").trim();
+    const isGeneric =
+      /^(?:cv|resume|ozgecmis|özgeçmiş|belge|document|file|scan|untitled|1|2|3)$/i.test(
+        stem
+      );
+    if (
+      isGeneric &&
+      !/^(?:cv|cvs|resumes|ozgecmisler|özgeçmişler|adaylar|candidates|files|folder|yeni\s*klasör)$/i.test(
+        parentFolder
+      )
+    ) {
+      return `${parentFolder} - ${cleanBase}`;
+    }
+    return cleanBase;
+  };
+
+  const readEntryRecursively = async (
+    entry: FileSystemEntry,
+    parentDirName = ""
+  ): Promise<File[]> => {
     if (entry.isFile) {
       const fileEntry = entry as FileSystemFileEntry;
       return new Promise<File[]>((resolve) => {
         fileEntry.file(
-          (f) => resolve([f]),
+          (f) => {
+            const awareName = formatSubfolderAwareFileName(
+              f.name,
+              parentDirName
+            );
+            if (awareName !== f.name) {
+              resolve([
+                new File([f], awareName, {
+                  type: f.type || "application/octet-stream",
+                }),
+              ]);
+            } else {
+              resolve([f]);
+            }
+          },
           () => resolve([])
         );
       });
@@ -564,55 +657,279 @@ export default function CVReaderApp() {
           );
         });
       await readBatch();
-      const nested = await Promise.all(allEntries.map(readEntryRecursively));
+      const nested = await Promise.all(
+        allEntries.map((child) => readEntryRecursively(child, dirEntry.name))
+      );
       return nested.flat();
     }
     return [];
   };
 
-  const expandClientFiles = async (inputFiles: File[]): Promise<File[]> => {
+  const isIgnoredHelperFile = (baseName: string): boolean => {
+    if (!baseName || baseName.startsWith(".") || baseName.startsWith("~$")) {
+      return true;
+    }
+    const lower = baseName.toLowerCase();
+    return (
+      lower.includes("readme") ||
+      lower.includes("sonuclar") ||
+      lower.includes("__macosx") ||
+      lower === "desktop.ini" ||
+      lower === "thumbs.db" ||
+      lower.endsWith(".json") ||
+      lower.endsWith(".DS_Store".toLowerCase())
+    );
+  };
+
+  const expandClientFiles = async (
+    inputFiles: File[],
+    depth = 0
+  ): Promise<File[]> => {
     const expanded: File[] = [];
-    const allowedExts = new Set(["pdf", "docx", "doc", "html", "htm", "txt", "md", "rar"]);
+    const allowedDocExts = new Set([
+      "pdf",
+      "docx",
+      "doc",
+      "html",
+      "htm",
+      "txt",
+      "md",
+      "rtf",
+    ]);
 
     for (const file of inputFiles) {
-      const baseTop = file.name.split(/[\\/]/).pop() || file.name;
-      if (!baseTop || baseTop.startsWith(".") || baseTop.startsWith("~$")) continue;
-      const lowerTop = baseTop.toLowerCase();
-      if (lowerTop === "desktop.ini" || lowerTop === "thumbs.db") continue;
-      const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      if (ext === "zip") {
+      const relPath =
+        (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+        file.name;
+      const pathParts = relPath.split(/[\\/]/).filter(Boolean);
+      const baseTop = pathParts[pathParts.length - 1] || file.name;
+      const parentFolder =
+        pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "";
+
+      if (isIgnoredHelperFile(baseTop)) continue;
+      const ext = baseTop.split(".").pop()?.toLowerCase() || "";
+
+      if (ext === "zip" && depth < 2) {
         try {
-          setPdfParseStatus(`"${file.name}" arşivi tarayıcıda açılıyor...`);
+          setPdfParseStatus(`"${baseTop}" arşivi tarayıcıda açılıyor...`);
           const JSZip = (await import("jszip")).default;
           const buf = await file.arrayBuffer();
           const zip = await JSZip.loadAsync(buf);
           const entries = Object.values(zip.files).filter((e) => !e.dir);
           for (const entry of entries) {
-            const baseName = entry.name.split(/[\\/]/).pop() || entry.name;
-            if (!baseName || baseName.startsWith(".") || baseName.startsWith("~$")) continue;
-            const lower = baseName.toLowerCase();
-            if (
-              lower.includes("readme") ||
-              lower.includes("sonuclar") ||
-              lower.includes("__macosx") ||
-              lower === "desktop.ini" ||
-              lower === "thumbs.db"
-            ) {
+            const eParts = entry.name.split(/[\\/]/).filter(Boolean);
+            const baseName = eParts[eParts.length - 1] || entry.name;
+            const eParent =
+              eParts.length >= 2 ? eParts[eParts.length - 2] : "";
+            if (isIgnoredHelperFile(baseName)) continue;
+            const entryExt = baseName.split(".").pop()?.toLowerCase() || "";
+            if (entryExt === "zip" || entryExt === "rar") {
+              const nestedBlob = await entry.async("blob");
+              const nestedFile = new File([nestedBlob], baseName);
+              const subExpanded = await expandClientFiles(
+                [nestedFile],
+                depth + 1
+              );
+              expanded.push(...subExpanded);
               continue;
             }
-            const entryExt = baseName.split(".").pop()?.toLowerCase() || "";
-            if (!allowedExts.has(entryExt)) continue;
+            if (!allowedDocExts.has(entryExt)) continue;
             const blob = await entry.async("blob");
-            expanded.push(new File([blob], baseName, { type: blob.type || "application/octet-stream" }));
+            const finalName = formatSubfolderAwareFileName(baseName, eParent);
+            expanded.push(
+              new File([blob], finalName, {
+                type: blob.type || "application/octet-stream",
+              })
+            );
           }
         } catch {
           expanded.push(file);
         }
-      } else if (allowedExts.has(ext)) {
-        expanded.push(file);
+      } else if (ext === "rar" && depth < 2) {
+        try {
+          setPdfParseStatus(`"${baseTop}" RAR arşivi tarayıcıda açılıyor...`);
+          const { createExtractorFromData } = await import("node-unrar-js");
+          const buf = await file.arrayBuffer();
+          const extractor = await createExtractorFromData({ data: buf });
+          const extracted = extractor.extract();
+          for (const item of extracted.files) {
+            if (item.fileHeader.flags.directory || !item.extraction) continue;
+            const eParts = item.fileHeader.name.split(/[\\/]/).filter(Boolean);
+            const baseName = eParts[eParts.length - 1] || item.fileHeader.name;
+            const eParent =
+              eParts.length >= 2 ? eParts[eParts.length - 2] : "";
+            if (isIgnoredHelperFile(baseName)) continue;
+            const entryExt = baseName.split(".").pop()?.toLowerCase() || "";
+            if (!allowedDocExts.has(entryExt)) continue;
+            const entryBuf = item.extraction.buffer.slice(
+              item.extraction.byteOffset,
+              item.extraction.byteOffset + item.extraction.byteLength
+            ) as ArrayBuffer;
+            const finalName = formatSubfolderAwareFileName(baseName, eParent);
+            expanded.push(
+              new File([entryBuf], finalName, {
+                type: "application/octet-stream",
+              })
+            );
+          }
+        } catch {
+          expanded.push(file);
+        }
+      } else if (allowedDocExts.has(ext)) {
+        const finalName = formatSubfolderAwareFileName(baseTop, parentFolder);
+        if (finalName !== file.name) {
+          expanded.push(
+            new File([file], finalName, {
+              type: file.type || "application/octet-stream",
+            })
+          );
+        } else {
+          expanded.push(file);
+        }
       }
     }
     return expanded;
+  };
+
+  type ServerParsedFileItem = {
+    fileName: string;
+    rawText: string;
+    fullName: string;
+    university: string;
+    city: string;
+    experienceYears: number;
+    hasHumanLabel?: boolean;
+    humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
+    humanAge?: number | null;
+    humanUniversity?: string | null;
+    humanDepartment?: string | null;
+    humanDegree?: string | null;
+  };
+
+  // Büyük dosyalar (>3.2 MB) veya ağ/sunucu hatası durumları için %100 Tarayıcı İçi (Client-Side) Yedek Okuyucu
+  const parseSingleFileClientFallback = async (
+    file: File
+  ): Promise<ServerParsedFileItem | null> => {
+    try {
+      const fileName = file.name || "cv.pdf";
+      const ext = fileName.split(".").pop()?.toLowerCase() || "";
+      const arrayBuffer = await file.arrayBuffer();
+      let extractedText = "";
+
+      if (ext === "pdf") {
+        try {
+          const { extractText, getDocumentProxy } = await import("unpdf");
+          const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
+          try {
+            const { text } = await extractText(pdf, { mergePages: false });
+            extractedText = Array.isArray(text) ? text.join("\n\n") : text || "";
+          } finally {
+            try {
+              await (
+                pdf as unknown as { destroy?: () => Promise<void> }
+              ).destroy?.();
+            } catch {
+              // ignore
+            }
+          }
+        } catch {
+          extractedText = "";
+        }
+      } else if (ext === "docx" || ext === "doc") {
+        try {
+          const mammoth = (await import("mammoth")).default;
+          const res = await mammoth.extractRawText({ arrayBuffer });
+          extractedText = res.value || "";
+        } catch {
+          extractedText = new TextDecoder("utf-8", { fatal: false }).decode(
+            arrayBuffer
+          );
+        }
+      } else {
+        const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(
+          arrayBuffer
+        );
+        extractedText = utf8.includes("\uFFFD")
+          ? new TextDecoder("windows-1254", { fatal: false }).decode(
+              arrayBuffer
+            )
+          : utf8;
+        if (ext === "html" || ext === "htm") {
+          extractedText = extractedText
+            .replace(
+              /<(script|style|svg|noscript|head)[^>]*>[\s\S]*?<\/\1>/gi,
+              "\n"
+            )
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      }
+
+      const cleanText = extractedText.replace(/\r\n/g, "\n").trim();
+      const meta = extractCandidateMetadataFromText(cleanText, fileName, false);
+      return {
+        fileName,
+        rawText: cleanText,
+        fullName: meta.fullName,
+        university: meta.university,
+        city: meta.city,
+        experienceYears: meta.experienceYears,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const mapParsedItemToCandidate = (
+    f: ServerParsedFileItem,
+    uniqueIdx: number
+  ): CandidateCV => {
+    const built = buildCandidateFromRaw(
+      `cv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${uniqueIdx}`,
+      f.fullName,
+      f.rawText,
+      f.experienceYears,
+      f.humanDegree || "Lisans",
+      f.humanUniversity || f.university,
+      f.city,
+      activeCompany.requiredSkills,
+      f.fileName
+    );
+    if (f.humanUniversity) {
+      built.university = f.humanUniversity;
+    }
+    if (f.humanDepartment) {
+      built.department = f.humanDepartment;
+    }
+    if (f.humanDegree) {
+      built.educationLevel = f.humanDegree;
+    }
+    if (f.humanGender) {
+      built.detectedGender = f.humanGender;
+      built.genderConfidence = 100;
+      built.genderEvidence = [
+        {
+          layer: "Kullanıcı Ground-Truth Etiketi",
+          signal: `Kullanıcı tarafından '${f.humanGender}' olarak doğrulandı ve öğrenildi`,
+          weight: 100,
+          direction: f.humanGender === "Kadın" ? "Kadın" : "Erkek",
+        },
+      ];
+    }
+    if (f.humanAge !== null && f.humanAge !== undefined) {
+      built.detectedAge = f.humanAge;
+      built.ageMethod = "Doğrudan Yaş Beyanı";
+      built.ageConfidence = 100;
+      built.ageEvidence = `Kullanıcı tarafından '${f.humanAge} yaş' olarak etiketlendi ve öğrenildi.`;
+    } else if (f.hasHumanLabel && f.humanAge === null) {
+      built.detectedAge = null;
+      built.ageMethod = "Bilinmiyor";
+      built.ageConfidence = 100;
+      built.ageEvidence =
+        "CV'de ne doğum tarihi ne de üniversite/eğitim başlangıç yılı yer alıyor (Yaş & Üni Tarihi Yok).";
+    }
+    return built;
   };
 
   const processFiles = async (
@@ -633,21 +950,42 @@ export default function CVReaderApp() {
     try {
       const expandedFiles = await expandClientFiles(rawArray);
       if (expandedFiles.length === 0) {
-        setPdfParseStatus("⚠️ Desteklenen bir CV dosyası (.pdf, .docx, .html, .zip, .rar, .txt) bulunamadı.");
+        setPdfParseStatus(
+          "⚠️ Desteklenen bir CV dosyası (.pdf, .docx, .html, .zip, .rar, .txt, .rtf) bulunamadı."
+        );
         setIsParsingPdf(false);
         return;
+      }
+
+      const isBulkOrAuto = expandedFiles.length > 1 || autoAddSingleInModal;
+      if (isBulkOrAuto) {
+        setIsUploadModalOpen(false);
+      }
+
+      // Vercel 4.5MB serverless body limitine takılmamak için >3.2MB dosyaları ayırıp tarayıcıda işle
+      const MAX_SINGLE_SERVER_BYTES = 3.2 * 1024 * 1024;
+      const MAX_FILES_PER_BATCH = 8;
+      const MAX_BYTES_PER_BATCH = 3.2 * 1024 * 1024;
+
+      const oversizedFiles: File[] = [];
+      const normalFiles: File[] = [];
+      for (const f of expandedFiles) {
+        if (f.size > MAX_SINGLE_SERVER_BYTES) {
+          oversizedFiles.push(f);
+        } else {
+          normalFiles.push(f);
+        }
       }
 
       const batches: File[][] = [];
       let currentBatch: File[] = [];
       let currentBytes = 0;
-      const MAX_FILES_PER_BATCH = 5;
-      const MAX_BYTES_PER_BATCH = 3 * 1024 * 1024;
 
-      for (const f of expandedFiles) {
+      for (const f of normalFiles) {
         if (
           currentBatch.length >= MAX_FILES_PER_BATCH ||
-          (currentBatch.length > 0 && currentBytes + f.size > MAX_BYTES_PER_BATCH)
+          (currentBatch.length > 0 &&
+            currentBytes + f.size > MAX_BYTES_PER_BATCH)
         ) {
           batches.push(currentBatch);
           currentBatch = [];
@@ -660,115 +998,28 @@ export default function CVReaderApp() {
         batches.push(currentBatch);
       }
 
-      const isBulkOrAuto = expandedFiles.length > 1 || autoAddSingleInModal;
-      if (isBulkOrAuto) {
-        setIsUploadModalOpen(false);
-      }
-
       let totalParsedCount = 0;
       let processedFileCount = 0;
       let firstAddedId = "";
+      let uniqueCounter = 0;
 
-      for (const batch of batches) {
-        setPdfParseStatus(
-          `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya işlendi...`
-        );
-
-        const formData = new FormData();
-        for (const f of batch) {
-          formData.append("files", f);
-        }
-
-        const res = await fetch("/api/parse-cv", {
-          method: "POST",
-          body: formData,
-        });
-
-        processedFileCount += batch.length;
-
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (!data.files || data.files.length === 0) continue;
-
+      const appendParsedItems = (items: ServerParsedFileItem[]) => {
+        if (items.length === 0) return;
         if (isBulkOrAuto) {
-          const addedCVs: CandidateCV[] = data.files.map(
-            (
-              f: {
-                fileName: string;
-                rawText: string;
-                fullName: string;
-                university: string;
-                city: string;
-                experienceYears: number;
-                hasHumanLabel?: boolean;
-                humanGender?: "Kadın" | "Erkek" | "Belirsiz" | null;
-                humanAge?: number | null;
-                humanUniversity?: string | null;
-                humanDepartment?: string | null;
-                humanDegree?: string | null;
-              },
-              idx: number
-            ) => {
-              const built = buildCandidateFromRaw(
-                `cv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${totalParsedCount + idx}`,
-                f.fullName,
-                f.rawText,
-                f.experienceYears,
-                f.humanDegree || "Lisans",
-                f.humanUniversity || f.university,
-                f.city,
-                activeCompany.requiredSkills,
-                f.fileName
-              );
-              if (f.humanUniversity) {
-                built.university = f.humanUniversity;
-              }
-              if (f.humanDepartment) {
-                built.department = f.humanDepartment;
-              }
-              if (f.humanDegree) {
-                built.educationLevel = f.humanDegree;
-              }
-              if (f.humanGender) {
-                built.detectedGender = f.humanGender;
-                built.genderConfidence = 100;
-                built.genderEvidence = [
-                  {
-                    layer: "Kullanıcı Ground-Truth Etiketi",
-                    signal: `Kullanıcı tarafından '${f.humanGender}' olarak doğrulandı ve öğrenildi`,
-                    weight: 100,
-                    direction: f.humanGender === "Kadın" ? "Kadın" : "Erkek",
-                  },
-                ];
-              }
-              if (f.humanAge !== null && f.humanAge !== undefined) {
-                built.detectedAge = f.humanAge;
-                built.ageMethod = "Doğrudan Yaş Beyanı";
-                built.ageConfidence = 100;
-                built.ageEvidence = `Kullanıcı tarafından '${f.humanAge} yaş' olarak etiketlendi ve öğrenildi.`;
-              } else if (f.hasHumanLabel && f.humanAge === null) {
-                built.detectedAge = null;
-                built.ageMethod = "Bilinmiyor";
-                built.ageConfidence = 100;
-                built.ageEvidence =
-                  "CV'de ne doğum tarihi ne de üniversite/eğitim başlangıç yılı yer alıyor (Yaş & Üni Tarihi Yok).";
-              }
-              return built;
-            }
+          const addedCVs = items.map((item) =>
+            mapParsedItemToCandidate(item, ++uniqueCounter)
           );
-
           totalParsedCount += addedCVs.length;
           if (!firstAddedId && addedCVs[0]) {
             firstAddedId = addedCVs[0].id;
             setSelectedCandidateId(firstAddedId);
           }
-
           setCandidates((prev) => [...prev, ...addedCVs]);
           setPdfParseStatus(
             `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya (${totalParsedCount} CV eklendi)...`
           );
         } else {
-          const first = data.files[0];
+          const first = items[0];
           setUploadName(first.fullName);
           setUploadUni(first.university);
           setUploadCity(first.city);
@@ -778,11 +1029,77 @@ export default function CVReaderApp() {
             `✓ "${first.fileName}" okundu. "Analiz Et ve Ekle" butonuna basabilirsiniz.`
           );
         }
+      };
+
+      // 1) Önce >3.2MB olan yüksek boyutlu CV'leri tarayıcı içinde (413 hatası olmadan) çözümle
+      for (const bigFile of oversizedFiles) {
+        setPdfParseStatus(
+          `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya işlendi...`
+        );
+        const fallbackItem = await parseSingleFileClientFallback(bigFile);
+        processedFileCount += 1;
+        if (fallbackItem) {
+          appendParsedItems([fallbackItem]);
+        }
       }
+
+      // 2) Normal boyutlu CV gruplarını 3 paralel işçi (worker) ile hızlı ve hataya dayanıklı şekilde işle
+      let nextBatchIdx = 0;
+      const CONCURRENCY = Math.min(3, batches.length);
+
+      const processSingleBatch = async (batch: File[]) => {
+        try {
+          const formData = new FormData();
+          for (const f of batch) {
+            formData.append("files", f);
+          }
+
+          const res = await fetch("/api/parse-cv", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.files && Array.isArray(data.files) && data.files.length > 0) {
+              processedFileCount += batch.length;
+              appendParsedItems(data.files);
+              return;
+            }
+          }
+        } catch {
+          // Sunucu veya ağ hatası durumunda aşağıdaki tekil client-side fallback devreye girer
+        }
+
+        // Eğer toplu istek başarısız olduysa (örn. 413/500/504), gruptaki hiçbir CV'yi kaybetmemek için tarayıcıda tek tek çözümle!
+        const recovered: ServerParsedFileItem[] = [];
+        for (const f of batch) {
+          const item = await parseSingleFileClientFallback(f);
+          if (item) recovered.push(item);
+        }
+        processedFileCount += batch.length;
+        appendParsedItems(recovered);
+      };
+
+      const workers = Array.from({ length: CONCURRENCY }, async () => {
+        while (nextBatchIdx < batches.length) {
+          const currentIdx = nextBatchIdx++;
+          const batch = batches[currentIdx];
+          if (!batch) break;
+          setPdfParseStatus(
+            `Analiz ediliyor: ${processedFileCount} / ${expandedFiles.length} dosya işlendi...`
+          );
+          await processSingleBatch(batch);
+        }
+      });
+
+      await Promise.all(workers);
 
       if (isBulkOrAuto) {
         if (totalParsedCount > 0) {
-          setPdfParseStatus(`✓ Toplam ${totalParsedCount} adet CV başarıyla yüklendi ve analiz edildi.`);
+          setPdfParseStatus(
+            `✓ Toplam ${totalParsedCount} adet CV başarıyla yüklendi ve analiz edildi.`
+          );
         } else {
           setPdfParseStatus("⚠️ Seçilen dosyalardan CV metni çıkarılamadı.");
         }
@@ -893,7 +1210,9 @@ export default function CVReaderApp() {
     const fallbackFiles = dt.files ? Array.from(dt.files) : [];
 
     if (entries.length > 0 && entries.some((en) => en.isDirectory)) {
-      const nestedFiles = await Promise.all(entries.map(readEntryRecursively));
+      const nestedFiles = await Promise.all(
+        entries.map((en) => readEntryRecursively(en))
+      );
       const flatFiles = nestedFiles.flat();
       if (flatFiles.length > 0) {
         await processFiles(flatFiles, autoAdd);
@@ -904,7 +1223,9 @@ export default function CVReaderApp() {
     if (fallbackFiles.length > 0) {
       await processFiles(fallbackFiles, autoAdd);
     } else if (entries.length > 0) {
-      const nestedFiles = await Promise.all(entries.map(readEntryRecursively));
+      const nestedFiles = await Promise.all(
+        entries.map((en) => readEntryRecursively(en))
+      );
       await processFiles(nestedFiles.flat(), autoAdd);
     } else {
       await processFiles([], autoAdd);
@@ -1787,7 +2108,10 @@ export default function CVReaderApp() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto max-h-[680px]">
+                <div
+                  onScroll={handleListScroll}
+                  className="overflow-x-auto max-h-[680px]"
+                >
                   <table className="w-full text-left border-collapse text-xs">
                     <thead className="bg-[#182235] text-[#f0ece1] sticky top-0 z-10">
                       <tr>
@@ -1821,7 +2145,7 @@ export default function CVReaderApp() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#c4bdb0]">
-                      {displayedEvaluations.map((item, idx) => {
+                      {visibleEvaluations.map((item, idx) => {
                         const degMap = getCandidateDegreeMap(item.cv);
                         const activeDegrees = DEGREE_CARDS.filter(
                           (d) => degMap[d.key] !== null
@@ -1936,6 +2260,40 @@ export default function CVReaderApp() {
                     </tbody>
                   </table>
                 </div>
+
+                {displayedEvaluations.length > visibleLimit && (
+                  <div className="p-3 bg-[#dad3c5] border-t border-[#c4bdb0] flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-[#3b4454] font-medium">
+                      {lang === "en"
+                        ? `Showing ${visibleEvaluations.length} of ${displayedEvaluations.length} candidates (Excel export includes all ${displayedEvaluations.length})`
+                        : `Toplam ${displayedEvaluations.length} adaydan ilk ${visibleEvaluations.length} aday gösteriliyor (Excel çıktısı tüm ${displayedEvaluations.length} adayı kapsar)`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleLimit((prev) =>
+                            Math.min(displayedEvaluations.length, prev + 100)
+                          )
+                        }
+                        className="px-3 py-1 rounded bg-[#182235] text-[#f0ece1] font-semibold cursor-pointer hover:bg-[#22304a]"
+                      >
+                        {lang === "en" ? "+100 More" : "+100 Daha Göster"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleLimit(displayedEvaluations.length)
+                        }
+                        className="px-3 py-1 rounded border border-[#182235] text-[#182235] font-semibold cursor-pointer hover:bg-[#cfc8b8]"
+                      >
+                        {lang === "en"
+                          ? `Show All (${displayedEvaluations.length})`
+                          : `Tümünü Göster (${displayedEvaluations.length})`}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* ===============================================================
@@ -1970,13 +2328,16 @@ export default function CVReaderApp() {
                   </div>
 
                   {/* Aday Kartları Listesi */}
-                  <div className="divide-y divide-[#c4bdb0] max-h-[720px] overflow-y-auto">
+                  <div
+                    onScroll={handleListScroll}
+                    className="divide-y divide-[#c4bdb0] max-h-[720px] overflow-y-auto"
+                  >
                     {displayedEvaluations.length === 0 ? (
                       <div className="p-8 text-center text-sm text-[#4a5363]">
                         {t.noCandidatesMatch}
                       </div>
                     ) : (
-                      displayedEvaluations.map((item, idx) => {
+                      visibleEvaluations.map((item, idx) => {
                         const isSelected =
                           selectedEvaluation?.cv.id === item.cv.id;
                         const degMap = getCandidateDegreeMap(item.cv);
@@ -2096,6 +2457,38 @@ export default function CVReaderApp() {
                       })
                     )}
                   </div>
+
+                  {displayedEvaluations.length > visibleLimit && (
+                    <div className="p-3 bg-[#dad3c5] border-t border-[#c4bdb0] flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[#3b4454] font-medium">
+                        {lang === "en"
+                          ? `${visibleEvaluations.length} / ${displayedEvaluations.length} shown`
+                          : `${visibleEvaluations.length} / ${displayedEvaluations.length} gösteriliyor`}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleLimit((prev) =>
+                              Math.min(displayedEvaluations.length, prev + 100)
+                            )
+                          }
+                          className="px-2.5 py-1 rounded bg-[#182235] text-[#f0ece1] font-semibold cursor-pointer hover:bg-[#22304a]"
+                        >
+                          +100
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleLimit(displayedEvaluations.length)
+                          }
+                          className="px-2.5 py-1 rounded border border-[#182235] text-[#182235] font-semibold cursor-pointer hover:bg-[#cfc8b8]"
+                        >
+                          {lang === "en" ? "Show All" : "Tümünü Göster"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* SAĞ SÜTUN: SEÇİLİ ADAY AKADEMİK KARNESİ (7 Sütun) */}

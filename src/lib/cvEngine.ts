@@ -265,10 +265,95 @@ export function toAsciiTr(text: string): string {
     .replace(/ü/g, "u");
 }
 
+const ASCII_FEMALE_NAMES = new Set(Array.from(FEMALE_NAMES).map(toAsciiTr));
+const ASCII_MALE_NAMES = new Set(Array.from(MALE_NAMES).map(toAsciiTr));
+const ASCII_UNISEX_NAMES = new Set(Array.from(UNISEX_NAMES).map(toAsciiTr));
+
+const SPACED_SECTION_HEADER_WORDS = new Set([
+  "education",
+  "educations",
+  "egitim",
+  "eğitim",
+  "professional",
+  "experience",
+  "experiences",
+  "deneyim",
+  "tecrübe",
+  "tecrube",
+  "certificates",
+  "certifications",
+  "sertifikalar",
+  "publications",
+  "yayınlar",
+  "yayinlar",
+  "references",
+  "referanslar",
+  "languages",
+  "diller",
+  "interests",
+  "hobbies",
+  "hobiler",
+  "objective",
+  "summary",
+  "özet",
+  "ozet",
+  "portfolio",
+  "curriculum",
+  "vitae",
+  "özgeçmiş",
+  "ozgecmis",
+  "skills",
+  "yetenekler",
+  "beceriler",
+  "yetkinlikler",
+  "projects",
+  "projeler",
+  "contact",
+  "contacts",
+  "iletişim",
+  "iletisim",
+  "profile",
+  "profil",
+  "personal",
+  "achievements",
+  "volunteering",
+]);
+
+function trySplitCollapsedSpacedName(collapsedUpper: string): string {
+  const norm = normalizeTr(collapsedUpper);
+  if (
+    norm.length < 6 ||
+    norm.length > 26 ||
+    SPACED_SECTION_HEADER_WORDS.has(norm) ||
+    SPACED_SECTION_HEADER_WORDS.has(toAsciiTr(norm))
+  ) {
+    return collapsedUpper;
+  }
+  // Try longest matching known given name prefix (min 3 chars, leaving at least 3 chars for surname)
+  for (let len = Math.min(12, norm.length - 3); len >= 3; len--) {
+    const prefixNorm = norm.slice(0, len);
+    const prefixAscii = toAsciiTr(prefixNorm);
+    if (
+      FEMALE_NAMES.has(prefixNorm) ||
+      MALE_NAMES.has(prefixNorm) ||
+      UNISEX_NAMES.has(prefixNorm) ||
+      ASCII_FEMALE_NAMES.has(prefixAscii) ||
+      ASCII_MALE_NAMES.has(prefixAscii) ||
+      ASCII_UNISEX_NAMES.has(prefixAscii)
+    ) {
+      return `${collapsedUpper.slice(0, len)} ${collapsedUpper.slice(len)}`;
+    }
+  }
+  return collapsedUpper;
+}
+
 // Clean broken PDF font ligatures (\u0000, Private Use icons, spaced-out letters, concatenated years)
 export function cleanPdfTextQuirks(rawText: string): string {
-  if (!rawText) return "";
-  let s = rawText
+  if (typeof rawText !== "string" || !rawText) return "";
+  // Guard against abnormally huge non-CV documents (e.g. 200-page PDFs accidentally dropped in a 1000-file batch)
+  const boundedRaw = rawText.length > 50000 ? rawText.slice(0, 50000) : rawText;
+
+  let s = boundedRaw
     // Replace Private Use Area icons (FontAwesome etc. \uE000-\uF8FF) with space
     .replace(/[\uE000-\uF8FF]/g, " ")
     // Replace null byte \u0000 between or adjacent to letters with 'i' (broken PDF 'i'/'fi'/'ti' ligatures)
@@ -282,10 +367,20 @@ export function cleanPdfTextQuirks(rawText: string): string {
     .replace(/(?<=[a-zA-ZçğıöşüÇĞİÖŞÜ]{2})(?=(?:19[7-9]\d|20[0-2]\d)\b)/g, " ")
     .replace(/(?<=\b(?:19[7-9]\d|20[0-2]\d))(?=[a-zA-ZçğıöşüÇĞİÖŞÜ]{2})/g, " ");
 
-  // Collapse spaced-out ALL-CAPS headers like "E D U C A T I O N" or "P R O F E S S I O N A L"
+  // Collapse spaced-out ALL-CAPS headers or names like "E D U C A T I O N" or "Y A S E M İ N   S Ü T C Ü"
   s = s.replace(
     /^(\s*)([A-ZÇĞİÖŞÜ])(?:\s+([A-ZÇĞİÖŞÜ])){3,}(\s*)$/gm,
-    (match) => match.replace(/\s+/g, "")
+    (match) => {
+      const trimmed = match.trim();
+      if (/\s{2,}/.test(trimmed)) {
+        return trimmed
+          .split(/\s{2,}/)
+          .map((part) => part.replace(/\s+/g, ""))
+          .join(" ");
+      }
+      const collapsed = trimmed.replace(/\s+/g, "");
+      return trySplitCollapsedSpacedName(collapsed);
+    }
   );
   // Collapse spaced-out emails like "a b d u l h a m i t g u n g o r e n @ g m a i l . c o m"
   s = s.replace(
@@ -295,10 +390,6 @@ export function cleanPdfTextQuirks(rawText: string): string {
 
   return s;
 }
-
-const ASCII_FEMALE_NAMES = new Set(Array.from(FEMALE_NAMES).map(toAsciiTr));
-const ASCII_MALE_NAMES = new Set(Array.from(MALE_NAMES).map(toAsciiTr));
-const ASCII_UNISEX_NAMES = new Set(Array.from(UNISEX_NAMES).map(toAsciiTr));
 
 export function classifyGivenName(rawWord: string): "Kadın" | "Erkek" | "Üniseks" | null {
   const w = normalizeTr(rawWord).replace(/[^a-zçğıöşü]/g, "");
@@ -1271,31 +1362,64 @@ function formatProperCaseName(words: string[]): string {
     .join(" ");
 }
 
-function extractNameFromFileName(fileName: string): string {
+export function extractNameFromFileName(fileName: string): string {
   if (!fileName) return "";
-  const base = fileName.split(/[\\/]/).pop()?.replace(/\.[a-zA-Z0-9]+$/, "") || "";
-  const cleaned = base
-    .replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, "$1 $2")
-    .replace(/[_\-.,()[\]\d]+/g, " ")
-    .replace(
-      /\b(?:cv|resume|ozgecmis|özgeçmiş|tr|en|eng|tur|son|final|guncel|güncel|updated|new|copy|kopya|pdf|doc|docx|a\d|q\d)\b/gi,
-      " "
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-  const words = cleaned.split(/\s+/).filter((w) => w.length >= 2);
-  if (words.length >= 2 && words.length <= 4) {
-    const hasKnownGiven = words.some((w) => classifyGivenName(w) !== null);
-    if (hasKnownGiven) {
-      return formatProperCaseName(words);
+  const segments = fileName
+    .split(/[\\/]/)
+    .map((s) => s.replace(/\.[a-zA-Z0-9]+$/, "").trim())
+    .filter(Boolean)
+    .reverse(); // Check filename first, then parent folder name if filename is generic (e.g. "Ahmet_Yilmaz/CV.pdf")
+
+  const genericDocWords = new Set([
+    "cv", "resume", "ozgecmis", "özgeçmiş", "tr", "en", "eng", "tur",
+    "son", "final", "guncel", "güncel", "updated", "new", "copy", "kopya",
+    "pdf", "doc", "docx", "txt", "html", "htm", "rtf", "belge", "dosya",
+    "file", "document", "scan", "tarama", "untitled", "adsiz", "adsız",
+    "sample", "ornek", "örnek", "test", "form", "basvuru", "başvuru",
+    "application", "aday", "candidate", "yeni", "klasor", "klasör", "folder"
+  ]);
+
+  let fallbackTwoWordCandidate = "";
+
+  for (const seg of segments) {
+    const cleaned = seg
+      .replace(/([a-zçğıöşü])([A-ZÇĞİÖŞÜ])/g, "$1 $2")
+      .replace(/[_\-.,()[\]\d]+/g, " ")
+      .replace(
+        /\b(?:cv|resume|ozgecmis|özgeçmiş|tr|en|eng|tur|son|final|guncel|güncel|updated|new|copy|kopya|pdf|doc|docx|a\d|q\d)\b/gi,
+        " "
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const words = cleaned
+      .split(/\s+/)
+      .filter(
+        (w) =>
+          w.length >= 2 &&
+          /^[a-zA-ZçğıöşüÇĞİÖŞÜ]+$/.test(w) &&
+          !genericDocWords.has(normalizeTr(w)) &&
+          !genericDocWords.has(toAsciiTr(w))
+      );
+
+    if (words.length >= 2 && words.length <= 4) {
+      const hasKnownGiven = words.some((w) => classifyGivenName(w) !== null);
+      if (hasKnownGiven) {
+        return formatProperCaseName(words);
+      }
+      if (!fallbackTwoWordCandidate && words.length >= 2 && words.length <= 3) {
+        fallbackTwoWordCandidate = formatProperCaseName(words);
+      }
     }
   }
-  return "";
+
+  return fallbackTwoWordCandidate;
 }
 
 export function extractCandidateMetadataFromText(
   rawText: string,
-  fileName = ""
+  fileName = "",
+  skipEducation = false
 ): {
   fullName: string;
   university: string;
@@ -1319,7 +1443,7 @@ export function extractCandidateMetadataFromText(
   const rawLines = cleanCandidateText
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 1);
+    .filter((l) => l.length > 1 && l.length < 300);
 
   // 1. AD SOYAD TESPİTİ
   let fullName = "";
@@ -1536,19 +1660,25 @@ export function extractCandidateMetadataFromText(
   }
 
   // 2. ÜNİVERSİTE VE BÖLÜM TESPİTİ (Lisans Öncelikli, Türkçe & İngilizce Kanonikleştirilmiş)
-  const eduInfo = extractEducationFromCV(rawText);
-  const university = eduInfo.university;
-  const department = eduInfo.department;
+  const eduInfo = skipEducation ? null : extractEducationFromCV(rawText);
+  const university = eduInfo ? eduInfo.university : "Belirtilmemiş";
+  const department = eduInfo ? eduInfo.department : "Belirtilmemiş";
 
   // 3. ŞEHİR TESPİTİ
   const cities = [
     "İstanbul", "Ankara", "İzmir", "Bursa", "Kocaeli", "Antalya", "Eskişehir",
     "Adana", "Konya", "Gaziantep", "Kayseri", "Mersin", "Samsun", "Trabzon",
     "Sakarya", "Tekirdağ", "Manisa", "Denizli", "Muğla", "Diyarbakır", "Erzurum",
-    "London", "Cambridge"
+    "Aydın", "Balıkesir", "Çanakkale", "Isparta", "Hatay", "Malatya", "Elazığ",
+    "Sivas", "Kahramanmaraş", "Şanlıurfa", "Van", "Mardin", "Ordu", "Giresun",
+    "Rize", "Zonguldak", "Karabük", "Bolu", "Düzce", "Yalova", "Edirne",
+    "Kırklareli", "Kütahya", "Afyonkarahisar", "Uşak", "Burdur", "Aksaray",
+    "Karaman", "Kırıkkale", "Kırşehir", "Nevşehir", "Niğde", "Yozgat", "Çorum",
+    "Amasya", "Tokat", "Kastamonu", "Sinop", "Bartın", "Çankırı", "Bilecik",
+    "London", "Cambridge", "Berlin", "Munich", "Amsterdam", "Milan", "Padova"
   ];
   let city = "Belirtilmemiş";
-  const norm = normalizeTr(rawText);
+  const norm = normalizeTr(preCleaned);
   for (const c of cities) {
     if (norm.includes(normalizeTr(c))) {
       city = c;
@@ -3165,15 +3295,21 @@ export function extractEducationFromCV(rawText: string): {
       }
       const isPhdDeptLine =
         /(?:\bph\.?\s*d\.?\b|\bdoktora\b|\bdoctorate\b|\bdoctoral\b)/i.test(sameLine);
-      const isMasterDeptLine =
+      const isMasterOnSameLine =
         /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(
-          sameLine +
-            " " +
-            (!hasStandaloneBscKeyword(nextLine) && !/(?:phd|doktora|doctorate)/i.test(nextLine)
-              ? nextLine
-              : "")
+          sameLine
         );
-      const isBscDeptLine = hasStandaloneBscKeyword(sameLine + " " + nextLine);
+      const isMasterDeptLine =
+        isMasterOnSameLine ||
+        (!hasStandaloneBscKeyword(sameLine) &&
+          !hasStandaloneBscKeyword(nextLine) &&
+          !/(?:phd|doktora|doctorate)/i.test(nextLine) &&
+          /(?:\bmaster[’'´]?s?\b|\bm\.?\s*sc\.?\b|\bm\.?\s*s\.?\s+in\b|\byüksek\s*lisans\b)/i.test(
+            nextLine
+          ));
+      const isBscDeptLine =
+        hasStandaloneBscKeyword(sameLine) ||
+        (!isPhdDeptLine && !isMasterOnSameLine && hasStandaloneBscKeyword(nextLine));
 
       if (isPhdDeptLine) phdTaggedDepts.add(entry.canonical);
       if (isMasterDeptLine && !isPhdDeptLine) masterTaggedDepts.add(entry.canonical);
@@ -3185,12 +3321,18 @@ export function extractEducationFromCV(rawText: string): {
       }
 
       const hasBsc =
-        hasStandaloneBscKeyword(nearLines) ||
-        /(?:graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(nearLines);
+        hasStandaloneBscKeyword(sameLine) ||
+        (!isPhdDeptLine &&
+          !isMasterOnSameLine &&
+          (hasStandaloneBscKeyword(nearLines) ||
+            /(?:graduate\s*from|graduated\s*(?:from|of)|graduate\s*of)/i.test(nearLines)));
       const hasPostGrad =
-        /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
-          sameLine + " " + nextLine
-        );
+        isPhdDeptLine ||
+        isMasterOnSameLine ||
+        (!hasStandaloneBscKeyword(sameLine) &&
+          /(?:master|m\.sc|\bmsc\b|yüksek\s*lisans|\bphd\b|ph\.d|doktora|doctorate)/i.test(
+            nextLine
+          ));
 
       if (hasBsc && !hasPostGrad) {
         score += 110;
