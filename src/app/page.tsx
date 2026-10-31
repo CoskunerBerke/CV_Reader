@@ -1311,24 +1311,24 @@ export default function CVReaderApp() {
     btnClear: lang === "en" ? "Clear" : "Temizle",
     dragOverlayTitle:
       lang === "en"
-        ? "Drop CV Files, Folder, or .ZIP / .RAR Archive Here"
-        : "CV Dosyalarını, Klasörü veya .ZIP / .RAR Arşivini Bırakın",
+        ? "Drop Any Number of CV Files, Folders, or .ZIP / .RAR Archives Here"
+        : "İstediğiniz Kadar CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Bırakın",
     dragOverlaySub:
       lang === "en"
-        ? "Drop 30–40+ CVs at once; age, gender, and education details are extracted for instant Excel export."
-        : "30–40+ CV'yi aynı anda bırakabilirsiniz; yaş, cinsiyet ve eğitim bilgileri çıkarılıp Excel'e hazır hale getirilir.",
+        ? "No file limits—drop 10 or 1,000+ CVs at once; age, gender, and education details are extracted for instant Excel export."
+        : "Sınır yok; ister 10 ister 1.000+ CV'yi aynı anda bırakın. Yaş, cinsiyet ve eğitim bilgileri çıkarılıp anında Excel'e hazır hale getirilir.",
     heroEyebrow:
       lang === "en"
-        ? "01 — FAST & ACCURATE HR AUTOMATION"
-        : "01 — HIZLI VE HATASIZ İK OTOMASYONU",
+        ? "01 — UNLIMITED CV AUTOMATION FOR COMPANIES & HR TEAMS"
+        : "01 — ŞİRKETLER VE İK EKİPLERİ İÇİN SINIRSIZ ÖZGEÇMİŞ OTOMASYONU",
     heroTitle:
       lang === "en"
-        ? "Turn Dozens of CVs into a Clean Excel Table in Seconds."
-        : "Onlarca Özgeçmişi Saniyeler İçinde Düzenli Excel Tablosuna Dönüştürün.",
+        ? "Turn Hundreds or Thousands of CVs into a Clean Excel Table in Seconds."
+        : "Yüzlerce Hatta Binlerce Özgeçmişi Saniyeler İçinde Düzenli Excel Tablosuna Dönüştürün.",
     heroDescStart:
       lang === "en"
-        ? "Drag and drop your PDF, Word, folder, or archive files in one go. Automatically extract each candidate's "
-        : "Masaüstünüzden 30–40+ adet PDF, Word, klasör veya arşivi tek seferde bırakın. Her adayın ",
+        ? "Built for companies, HR teams, and businesses of every scale with zero file limits. Drop any number of PDF, Word, folder, or archive files at once—automatically extract each candidate's "
+        : "Her ölçekten şirketin, İK departmanının ve işletmenin işe alım yükünü sıfırlıyoruz. Adet sınırı olmadan; yüzlerce veya binlerce PDF, Word, klasör ya da arşivi tek seferde bırakın, her adayın ",
     heroAge: lang === "en" ? "Age" : "Yaş",
     heroGender: lang === "en" ? "Gender" : "Cinsiyet",
     heroAnd: lang === "en" ? " and " : " ve ",
@@ -1351,16 +1351,16 @@ export default function CVReaderApp() {
         : "Dosyaları veya Klasörü Şimdi Buraya Bırakın!",
     dropTitleEmpty:
       lang === "en"
-        ? "Drag & Drop 30–40+ CV Files, Folder, or .ZIP / .RAR Archive Here"
-        : "30–40+ CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Sürükleyip Bırakın",
+        ? "No Limits: Drag & Drop Any Number of CVs, Folders, or .ZIP / .RAR Archives Here"
+        : "Sınır Yok: İstediğiniz Kadar CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Bırakın",
     dropTitleLoaded: (count: number) =>
       lang === "en"
         ? `Drag & Drop Additional CVs, Folder, or .ZIP Archive Here (${count} CVs Loaded)`
         : `Yeni CV'leri, Klasörü veya .ZIP Arşivini Buraya Sürükleyip Bırakın (${count} CV Yüklü)`,
     dropSubText:
       lang === "en"
-        ? "Drag 30–40+ .PDF, .DOCX, .HTML, .ZIP, .RAR files or an entire folder directly into this workspace. All candidates are unified into a single structured table ready for Excel export."
-        : "Masaüstünden 30–40+ adet .PDF, .DOCX, .HTML, .ZIP, .RAR dosyasını veya doğrudan klasörü bu alana sürükleyin. Tüm adaylar tek tabloda birleştirilir ve Excel çıktısına hazır hale getirilir.",
+        ? "Whether you have 10 applicants or a 1,000+ candidate company archive, drag all .PDF, .DOCX, .HTML, .ZIP, and .RAR files or folders directly into this box. Every candidate is unified into a single table ready for Excel export."
+        : "İster birkaç başvuru ister şirketinizin 1.000+ kişilik aday arşivi olsun; tüm .PDF, .DOCX, .HTML, .ZIP, .RAR dosyalarını veya doğrudan klasörü bu alana sürükleyin. Tüm adaylar saniyeler içinde tek tabloda birleştirilir ve Excel çıktısına hazır hale getirilir.",
     btnSelectFiles:
       lang === "en"
         ? "Select Multiple Files (PDF / ZIP)"
@@ -1369,28 +1369,28 @@ export default function CVReaderApp() {
       lang === "en" ? "Select Folder (Batch)" : "Klasör Seç (Toplu)",
     step1Title:
       lang === "en"
-        ? "Batch File & Folder Ingestion"
-        : "Toplu Dosya & Klasör Bırakma",
+        ? "Unlimited Batch Upload"
+        : "Sınırsız Toplu Yükleme",
     step1Desc:
       lang === "en"
-        ? "Upload dozens of PDF, Word, or archive files simultaneously without selecting one by one."
-        : "Tek tek seçmeden onlarca PDF, Word veya arşiv dosyasını aynı anda yükleyin.",
+        ? "Upload hundreds or thousands of PDF, Word, folder, or archive files at once with no file limits."
+        : "Adet sınırı olmadan yüzlerce veya binlerce PDF, Word, klasör ya da arşivi tek seferde yükleyin.",
     step2Title:
       lang === "en"
-        ? "Degree-Specific Academic Parsing"
-        : "Derece Bazlı Akademik Ayrıştırma",
+        ? "Built for Every Company & Role"
+        : "Her Şirket ve Sektöre Uygun",
     step2Desc:
       lang === "en"
-        ? "Associate, Bachelor's, Master's, and Ph.D. universities and departments are matched separately."
-        : "Ön Lisans, Lisans, Yüksek Lisans ve Doktora üniversite-bölümleri ayrı ayrı eşleşir.",
+        ? "Associate, Bachelor's, Master's, and Ph.D. universities and departments are matched separately and accurately."
+        : "Ön Lisans, Lisans, Yüksek Lisans ve Doktora okul-bölüm bilgilerini eksiksiz ve ayrı ayrı eşleştirir.",
     step3Title:
       lang === "en"
-        ? "Instant Excel (.xlsx) Export"
-        : "Anında Excel (.xlsx) Çıktısı",
+        ? "Instant Corporate Excel (.xlsx)"
+        : "Anında Kurumsal Excel (.xlsx)",
     step3Desc:
       lang === "en"
-        ? "Download age, gender, and all academic tiers as a clean, filterable Excel spreadsheet."
-        : "Yaş, cinsiyet ve tüm eğitim kırılımlarını düzenli Excel tablosu olarak indirin.",
+        ? "Download your entire applicant pool with age, gender, and education tiers as a ready-to-filter Excel table."
+        : "Tüm aday havuzunuzu yaş, cinsiyet ve eğitim kırılımlarıyla hazır Excel tablosu olarak indirin.",
     viewSplit:
       lang === "en" ? "Card & Detail View" : "Kart & Detay Görünümü",
     viewTable: (count: number) =>
@@ -1479,22 +1479,22 @@ export default function CVReaderApp() {
         : "02 — NASIL ÇALIŞIR?",
     sec2Title:
       lang === "en"
-        ? "Complete Pre-Interview Screening in Minutes"
-        : "İşe Alım ve Mülakat Öncesi Ön Elemeyi Dakikalara İndirin",
+        ? "Built for Companies, HR Departments & Every Recruitment Need"
+        : "Şirketler, İK Departmanları ve Her Ölçekte İşletme İçin Tasarlandı",
     sec2Sub:
       lang === "en"
-        ? "Instead of opening and reading dozens of differently designed CVs one by one, view your entire candidate pool in a single clean table."
-        : "Farklı tasarımlardaki onlarca özgeçmişi tek tek açıp okumak yerine, mülakat öncesinde tüm adayları tek bir net tabloda görün.",
+        ? "Instead of opening and reading hundreds or thousands of differently designed CVs one by one, view your entire candidate pool in a single clean table."
+        : "Yüzlerce veya binlerce farklı tasarımdaki özgeçmişi tek tek açıp okumak yerine, mülakat öncesinde tüm aday havuzunuzu tek bir net tabloda görün.",
     arch1Tag:
-      lang === "en" ? "01 / BATCH UPLOAD" : "01 / TOPLU YÜKLEME",
+      lang === "en" ? "01 / UNLIMITED UPLOAD" : "01 / SINIRSIZ YÜKLEME",
     arch1Title:
       lang === "en"
-        ? "Folder, Archive (.ZIP / .RAR) & Multi-PDF Support"
-        : "Klasör, Arşiv (.ZIP / .RAR) ve Çoklu PDF Desteği",
+        ? "Folder, Archive (.ZIP / .RAR) & Bulk PDF Support"
+        : "Klasör, Arşiv (.ZIP / .RAR) ve Sınırsız PDF Desteği",
     arch1Desc:
       lang === "en"
-        ? "Drag and drop 30–40+ CVs directly as a folder or compressed archive without opening files one by one."
-        : "İndirdiğiniz 30–40+ adet özgeçmişi klasörden çıkarmadan veya doğrudan klasör halinde sürükleyip bırakın.",
+        ? "Drag and drop hundreds or thousands of CVs directly as a folder or compressed archive without opening files one by one."
+        : "İster 10 ister 1.000+ adet özgeçmişi klasörden çıkarmadan veya doğrudan klasör halinde tek seferde sürükleyip bırakın.",
     arch2Tag:
       lang === "en" ? "02 / SMART DEGREE SEPARATION" : "02 / NET DERECE AYRIMI",
     arch2Title:
@@ -1573,8 +1573,8 @@ export default function CVReaderApp() {
         : "Toplu CV Yükle (Sürükle & Bırak / Çoklu Dosya / Klasör)",
     modalUploadSub:
       lang === "en"
-        ? "30–40+ PDF (.pdf), Word (.docx), HTML, ZIP, RAR files or an entire folder are automatically parsed upon selection"
-        : "30–40+ adet PDF (.pdf), Word (.docx), HTML, ZIP, RAR veya doğrudan klasör seçtiğiniz anda otomatik eklenir",
+        ? "Any number of PDF (.pdf), Word (.docx), HTML, ZIP, RAR files or an entire folder are automatically parsed upon selection"
+        : "Sınır olmadan istediğiniz kadar PDF (.pdf), Word (.docx), HTML, ZIP, RAR veya doğrudan klasör seçtiğiniz anda otomatik eklenir",
     modalManualSummary:
       lang === "en"
         ? "Manually Add a Single CV via Copy / Paste Text (Optional)"
