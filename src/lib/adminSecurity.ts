@@ -28,8 +28,9 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const LOCAL_SECURITY_FILE = path.join(DATA_DIR, "admin-security.json");
 const TMP_SECURITY_FILE = path.join(os.tmpdir(), "admin-security.json");
 
-const CLOUD_COMMENTS_URL =
-  "https://api.github.com/repos/CoskunerBerke/CV_Reader/issues/1/comments";
+// Issue #2 doğrudan Admin Güvenlik ve Kapı Çalma (Giriş Denemesi) Log Veritabanıdır (100 yorum sınırına asla takılmaz)
+const CLOUD_SECURITY_ISSUE_URL =
+  "https://api.github.com/repos/CoskunerBerke/CV_Reader/issues/2";
 const ENCODED_CLOUD_KEY = [
   46, 33, 38, 22, 112, 42, 121, 47, 38, 25, 47, 57, 3, 124, 37, 24, 7, 44, 11,
   127, 44, 4, 43, 1, 27, 10, 39, 59, 14, 112, 57, 6, 6, 60, 121, 11, 8, 32, 6,
@@ -131,23 +132,40 @@ export function verifyMasterRecoveryKey(inputKey: string): boolean {
   return clean === DEFAULT_MASTER_RECOVERY_KEY;
 }
 
-// Her tekil IP adresini tek bir satırda (en güncel giriş denemesiyle) birleştirir;
-// böylece aynı IP'den gelen arka plan istekleri tabloyu 40-50 satırla şişirmez.
-function deduplicateLogsByUniqueIp(
+// Her gerçek kapı çalma denemesini (farklı zamanlardaki her giriş denemesini) ayrı satır olarak tutar;
+// sadece aynı saniye içindeki (<1.5 sn) tarayıcı çift isteklerini tekilleştirir.
+function sortAndCleanAccessLogs(
   logs: AdminAccessAttemptLog[]
 ): AdminAccessAttemptLog[] {
-  const sorted = [...logs].sort((a, b) =>
-    (b.timestamp || "").localeCompare(a.timestamp || "")
-  );
-  const byIp = new Map<string, AdminAccessAttemptLog>();
-  for (const entry of sorted) {
-    if (!entry?.ip) continue;
-    const norm = normalizeIp(entry.ip);
-    if (!byIp.has(norm)) {
-      byIp.set(norm, { ...entry, ip: norm });
+  const byId = new Map<string, AdminAccessAttemptLog>();
+  for (const item of logs) {
+    if (item && item.id && item.ip) {
+      byId.set(item.id, { ...item, ip: normalizeIp(item.ip) });
     }
   }
-  return Array.from(byIp.values()).slice(0, 150);
+  const sorted = Array.from(byId.values()).sort((a, b) =>
+    (b.timestamp || "").localeCompare(a.timestamp || "")
+  );
+
+  // Sadece aynı IP'den <1500ms içinde gelen çift React/tarayıcı isteğini tekilleştir,
+  // ama kullanıcının her yeni sayfa yenilemesini / her kapı çalmasını ayrı satır olarak koru!
+  const result: AdminAccessAttemptLog[] = [];
+  for (const entry of sorted) {
+    const prev = result[result.length - 1];
+    if (
+      prev &&
+      prev.ip === entry.ip &&
+      prev.status === entry.status &&
+      Math.abs(
+        new Date(prev.timestamp).getTime() - new Date(entry.timestamp).getTime()
+      ) < 1500
+    ) {
+      continue;
+    }
+    result.push(entry);
+  }
+
+  return result.slice(0, 200);
 }
 
 function readLocalSecurityState(): AdminSecurityState {
@@ -188,7 +206,7 @@ function readLocalSecurityState(): AdminSecurityState {
     allowedIps: Array.from(ipSet),
     updatedAt,
     lastAutoRecoveryNote,
-    accessLogs: deduplicateLogsByUniqueIp(rawLogs),
+    accessLogs: sortAndCleanAccessLogs(rawLogs),
   };
 }
 
@@ -209,19 +227,31 @@ function writeLocalSecurityState(state: AdminSecurityState) {
   }
 }
 
+async function saveSecurityStateToCloud(state: AdminSecurityState) {
+  try {
+    await fetch(CLOUD_SECURITY_ISSUE_URL, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${getCloudToken()}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "cv-reader-security-shield",
+      },
+      body: JSON.stringify({
+        body: JSON.stringify(state),
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    // ignore
+  }
+}
+
 export async function getAdminSecurityState(): Promise<AdminSecurityState> {
   const local = readLocalSecurityState();
-  const ipSet = new Set<string>(local.allowedIps);
-  let latestNote = local.lastAutoRecoveryNote;
-  let latestUpdated = local.updatedAt;
-  let logMap = new Map<string, AdminAccessAttemptLog>();
-
-  for (const item of local.accessLogs) {
-    logMap.set(item.id, item);
-  }
 
   try {
-    const res = await fetch(`${CLOUD_COMMENTS_URL}?per_page=100`, {
+    const res = await fetch(CLOUD_SECURITY_ISSUE_URL, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${getCloudToken()}`,
@@ -231,56 +261,40 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
       cache: "no-store",
     });
     if (res.ok) {
-      const comments = await res.json();
-      if (Array.isArray(comments)) {
-        for (const c of comments) {
-          if (!c?.body) continue;
-          try {
-            const parsed = JSON.parse(c.body);
-            if (parsed?.type === "ADMIN_IP_WHITELIST_UPDATE") {
-              if (parsed.replaceAll && Array.isArray(parsed.allowedIps)) {
-                ipSet.clear();
-                for (const baseIp of ["127.0.0.1", "::1", "localhost"]) {
-                  ipSet.add(baseIp);
-                }
-                for (const ip of parsed.allowedIps) {
-                  ipSet.add(normalizeIp(ip));
-                }
-              } else if (Array.isArray(parsed.allowedIps)) {
-                for (const ip of parsed.allowedIps) {
-                  ipSet.add(normalizeIp(ip));
-                }
-              }
-              if (parsed.note) latestNote = parsed.note;
-              if (parsed.updatedAt) latestUpdated = parsed.updatedAt;
-            } else if (parsed?.type === "CLEAR_ADMIN_ACCESS_LOGS") {
-              logMap = new Map<string, AdminAccessAttemptLog>();
-            } else if (
-              parsed?.type === "ADMIN_ACCESS_ATTEMPT_LOG" &&
-              parsed?.log?.id
-            ) {
-              logMap.set(parsed.log.id, parsed.log as AdminAccessAttemptLog);
-            }
-          } catch {
-            // ignore
-          }
-        }
+      const issue = await res.json();
+      if (issue?.body) {
+        const parsed = JSON.parse(issue.body);
+        const allowedIps = Array.isArray(parsed?.allowedIps)
+          ? Array.from(
+              new Set([
+                ...parsed.allowedIps.map((i: string) => normalizeIp(i)),
+                "127.0.0.1",
+                "::1",
+                "localhost",
+              ])
+            )
+          : local.allowedIps;
+
+        const cloudLogs = Array.isArray(parsed?.accessLogs)
+          ? parsed.accessLogs
+          : [];
+
+        const finalState: AdminSecurityState = {
+          allowedIps,
+          updatedAt: parsed?.updatedAt || local.updatedAt,
+          lastAutoRecoveryNote:
+            parsed?.lastAutoRecoveryNote || local.lastAutoRecoveryNote,
+          accessLogs: sortAndCleanAccessLogs(cloudLogs),
+        };
+        writeLocalSecurityState(finalState);
+        return finalState;
       }
     }
   } catch {
     // fallback to local
   }
 
-  const uniqueIpLogs = deduplicateLogsByUniqueIp(Array.from(logMap.values()));
-
-  const finalState: AdminSecurityState = {
-    allowedIps: Array.from(ipSet),
-    updatedAt: latestUpdated,
-    lastAutoRecoveryNote: latestNote,
-    accessLogs: uniqueIpLogs,
-  };
-  writeLocalSecurityState(finalState);
-  return finalState;
+  return local;
 }
 
 export async function recordAdminAccessAttempt(
@@ -296,14 +310,17 @@ export async function recordAdminAccessAttempt(
   const location = extractClientLocation(req);
   const nowMs = Date.now();
 
-  // Aynı IP adresinden aynı durumla son 30 dakika içinde zaten kayıt alındıysa
-  // buluta tekrar tekrar yazma (1 kişi = 1 IP kaydı).
-  const existingForIp = current.accessLogs.find(
+  // 1) Adminin kendi yetkili girişini (authorized) 15 dakikada bir logla ki kendi girişin tabloyu doldurmasın.
+  // 2) AMA dışarıdan kapıyı çalan (blocked / failed_key) HER DENEMEYİ (sadece <1.5 sn çift render hariç) ANINDA LOGLA!
+  const latestSame = current.accessLogs.find(
     (l) => normalizeIp(l.ip) === ip && l.status === status
   );
-  if (existingForIp) {
-    const diffMs = nowMs - new Date(existingForIp.timestamp).getTime();
-    if (diffMs < 30 * 60 * 1000) {
+  if (latestSame) {
+    const diffMs = nowMs - new Date(latestSame.timestamp).getTime();
+    if (status === "authorized" && diffMs < 15 * 60 * 1000) {
+      return current;
+    }
+    if (status !== "authorized" && diffMs < 1500) {
       return current;
     }
   }
@@ -318,34 +335,15 @@ export async function recordAdminAccessAttempt(
     timestamp: new Date(nowMs).toISOString(),
   };
 
-  const nextLogs = deduplicateLogsByUniqueIp([newEntry, ...current.accessLogs]);
+  const nextLogs = sortAndCleanAccessLogs([newEntry, ...current.accessLogs]);
   const nextState: AdminSecurityState = {
     ...current,
+    updatedAt: new Date(nowMs).toISOString(),
     accessLogs: nextLogs,
   };
 
   writeLocalSecurityState(nextState);
-
-  try {
-    await fetch(CLOUD_COMMENTS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getCloudToken()}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "cv-reader-security-shield",
-      },
-      body: JSON.stringify({
-        body: JSON.stringify({
-          type: "ADMIN_ACCESS_ATTEMPT_LOG",
-          log: newEntry,
-        }),
-      }),
-      cache: "no-store",
-    });
-  } catch {
-    // ignore
-  }
+  await saveSecurityStateToCloud(nextState);
 
   return nextState;
 }
@@ -358,28 +356,7 @@ export async function clearAdminAccessLogs(): Promise<AdminSecurityState> {
     updatedAt: new Date().toISOString(),
   };
   writeLocalSecurityState(nextState);
-
-  try {
-    await fetch(CLOUD_COMMENTS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getCloudToken()}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "cv-reader-security-shield",
-      },
-      body: JSON.stringify({
-        body: JSON.stringify({
-          type: "CLEAR_ADMIN_ACCESS_LOGS",
-          updatedAt: nextState.updatedAt,
-        }),
-      }),
-      cache: "no-store",
-    });
-  } catch {
-    // ignore
-  }
-
+  await saveSecurityStateToCloud(nextState);
   return nextState;
 }
 
@@ -401,30 +378,7 @@ export async function updateAdminAllowedIps(
   };
 
   writeLocalSecurityState(nextState);
-
-  try {
-    await fetch(CLOUD_COMMENTS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getCloudToken()}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "cv-reader-security-shield",
-      },
-      body: JSON.stringify({
-        body: JSON.stringify({
-          type: "ADMIN_IP_WHITELIST_UPDATE",
-          replaceAll: Boolean(options.replaceAll),
-          allowedIps: nextIps,
-          note: options.note || `IP güncellendi: ${normalized}`,
-          updatedAt: nextState.updatedAt,
-        }),
-      }),
-      cache: "no-store",
-    });
-  } catch {
-    // ignore
-  }
+  await saveSecurityStateToCloud(nextState);
 
   return nextState;
 }
