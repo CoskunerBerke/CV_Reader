@@ -320,6 +320,22 @@ export default function GroundTruthLabelerPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [currentIp, setCurrentIp] = useState<string>("");
   const [allowedIps, setAllowedIps] = useState<string[]>([]);
+  const [accessLogs, setAccessLogs] = useState<
+    {
+      id: string;
+      ip: string;
+      status:
+        | "blocked"
+        | "authorized"
+        | "auto_recovered"
+        | "key_recovered"
+        | "failed_key";
+      targetPath: string;
+      userAgent: string;
+      location: string;
+      timestamp: string;
+    }[]
+  >([]);
   const [autoRecoveredNote, setAutoRecoveredNote] = useState<string>("");
   const [secretClickCount, setSecretClickCount] = useState<number>(0);
   const [recoveryKeyInput, setRecoveryKeyInput] = useState<string>("");
@@ -462,9 +478,14 @@ export default function GroundTruthLabelerPage() {
       setSyncing(true);
     }
     try {
-      const authRes = await fetch(`/api/admin-auth?t=${Date.now()}`, {
-        cache: "no-store",
-      });
+      const authRes = await fetch(
+        `/api/admin-auth?path=/gizlilabel&silent=${
+          silent ? "1" : "0"
+        }&t=${Date.now()}`,
+        {
+          cache: "no-store",
+        }
+      );
       const authData = await authRes.json();
       setCurrentIp(authData?.currentIp || "");
 
@@ -478,6 +499,9 @@ export default function GroundTruthLabelerPage() {
 
       setIsAuthorized(true);
       setAllowedIps(authData?.allowedIps || []);
+      if (Array.isArray(authData?.accessLogs)) {
+        setAccessLogs(authData.accessLogs);
+      }
       if (authData?.autoRecovered && authData?.note) {
         setAutoRecoveredNote(authData.note);
       }
@@ -1434,15 +1458,31 @@ export default function GroundTruthLabelerPage() {
               🎛️ 100+ Seçenek & Kriter Sayfası
             </Link>
 
-            {/* WI-FI IP KALKANI GÖSTERGESİ VE YÖNETİMİ */}
+            {/* WI-FI IP KALKANI VE GİRİŞ DENEMELERİ LOGU BUTONU */}
             <button
               type="button"
               onClick={() => setIsIpModalOpen(true)}
               className="px-2.5 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono-academic font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-900/80 whitespace-nowrap"
-              title="Wi-Fi IP Kalkanı ve Modem Sıfırlama Ayarları"
+              title="Wi-Fi IP Kalkanı, Girmeye Çalışan IP Kayıtları ve Modem Sıfırlama Ayarları"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              IP Kalkanı: {currentIp || "Aktif"}
+              <span>IP Kalkanı: {currentIp || "Aktif"}</span>
+              <span className="px-1.5 py-0.5 rounded bg-[#182235] text-[#fde047] text-[10px]">
+                🕵️ Log ({accessLogs.length})
+              </span>
+              {accessLogs.filter(
+                (l) => l.status === "blocked" || l.status === "failed_key"
+              ).length > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-extrabold">
+                  🚨{" "}
+                  {
+                    accessLogs.filter(
+                      (l) => l.status === "blocked" || l.status === "failed_key"
+                    ).length
+                  }{" "}
+                  Engellenen
+                </span>
+              )}
             </button>
 
             {/* TEKİL ETİKETLEME DURUM GÖSTERGESİ */}
@@ -2532,7 +2572,7 @@ export default function GroundTruthLabelerPage() {
         </div>
       )}
 
-      {/* WI-FI IP KALKANI VE MODEM SIFIRLAMA KORUMASI MODALI */}
+      {/* WI-FI IP KALKANI, GİRİŞ DENEMELERİ LOGU VE MODEM SIFIRLAMA KORUMASI MODALI */}
       {isIpModalOpen && (
         <div
           onClick={() => setIsIpModalOpen(false)}
@@ -2540,126 +2580,274 @@ export default function GroundTruthLabelerPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#e2dcd0] rounded-2xl border border-[#b8b0a0] max-w-xl w-full overflow-hidden shadow-2xl"
+            className="bg-[#e2dcd0] rounded-2xl border border-[#b8b0a0] max-w-5xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
           >
-            <div className="bg-[#182235] text-[#f0ece1] px-6 py-4 flex items-center justify-between border-b border-[#2c3a52]">
+            <div className="bg-[#182235] text-[#f0ece1] px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#2c3a52]">
               <div>
                 <div className="text-[10px] font-mono-academic font-bold uppercase tracking-widest text-emerald-400">
-                  🛡️ WI-FI IP KALKANI & MODEM SIFIRLAMA KORUMASI
+                  🛡️ WI-FI IP KALKANI & GİRİŞ DENEMELERİ LOGU
                 </div>
                 <h3 className="font-serif-academic font-bold text-lg text-[#f0ece1]">
-                  Sadece Sizin Wi-Fi IP&apos;nize Özel Erişim Kilidi
+                  Sadece Sizin Wi-Fi IP&apos;nize Özel Erişim Kilidi & Girmeye Çalışan IP Kayıtları ({accessLogs.length})
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsIpModalOpen(false)}
-                className="text-[#b8b2a6] hover:text-white text-xl leading-none px-2 cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 text-xs text-[#182235]">
-              <div className="p-3.5 rounded-xl bg-[#ece7db] border border-[#b8b0a0] space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#121926]">
-                    Şu An Bağlı Olduğunuz Wi-Fi IP Adresiniz:
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded bg-emerald-900 text-emerald-100 font-mono-academic font-bold">
-                    {currentIp || "176.240.152.131"}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#4a5363] leading-relaxed">
-                  <strong>/gizlilabel</strong> ve{" "}
-                  <strong>/gizlilabel/kriterler</strong> adresini birisi tahmin
-                  etse veya dışarıdan tıklasa bile IP adresi bu listede değilse{" "}
-                  <strong>404 — Sayfa Bulunamadı</strong> ekranı görür ve hiçbir
-                  veriye erişemez.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="font-bold text-[#121926]">
-                  Yetkili (Beyaz Listedeki) IP Adresleri:
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {allowedIps.map((ip) => (
-                    <span
-                      key={ip}
-                      className="px-2.5 py-1 rounded-md bg-[#182235] text-[#f0ece1] font-mono-academic font-bold text-[11px]"
-                    >
-                      ✓ {ip}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-[#d6cfc0] border border-[#b8b0a0] space-y-2">
-                <div className="font-bold text-[#121926] flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-[#182235]" />
-                  Modem Sıfırlanırsa ve IP Değişirse Ne Olur? (2 Katmanlı Koruma)
-                </div>
-                <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#273142] leading-relaxed">
-                  <li>
-                    <strong>1. Katman (Otomatik Cihaz İmzası):</strong> Şu anki
-                    bilgisayarınıza 365 günlük kriptografik imzalı (HMAC-SHA256{" "}
-                    <code>HttpOnly</code>) güven çerezi tanımlandı. Modeminiz
-                    sıfırlanıp IP adresiniz değiştiğinde bu bilgisayardan
-                    girdiğiniz an sistem sizi tanır ve{" "}
-                    <strong>
-                      yeni Wi-Fi IP&apos;nizi hiçbir şifre sormadan otomatik
-                      olarak beyaz listeye ekler!
-                    </strong>
-                  </li>
-                  <li>
-                    <strong>
-                      2. Katman (Farklı Cihaz + Modem Sıfırlama Kurtarma Anahtarı):
-                    </strong>{" "}
-                    Hem modem sıfırlanır hem de çerezi olmayan yeni bir
-                    cihazdan girerseniz çıkan <strong>404</strong> yazısına{" "}
-                    <strong>3 kez tıklayın</strong> (veya{" "}
-                    <code>/gizlilabel?kurtar=1</code> yazın) ve Kurtarma
-                    Anahtarınızı (<code>BerkeCV2026!</code>) girerek yeni
-                    Wi-Fi IP&apos;nizi anında yetkilendirin.
-                  </li>
-                </ul>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleLockToCurrentWifiIp}
-                  className="px-3.5 py-2 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] font-bold text-xs cursor-pointer"
+                  onClick={() => {
+                    const blob = new Blob(
+                      [
+                        JSON.stringify(
+                          { allowedIps, accessLogs },
+                          null,
+                          2
+                        ),
+                      ],
+                      { type: "application/json;charset=utf-8" }
+                    );
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `gizlilabel-ip-giris-loglari-${new Date()
+                      .toISOString()
+                      .slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#eab308] text-[#182235] text-xs font-bold cursor-pointer hover:bg-[#fde047]"
                 >
-                  🔒 Sadece Şu Anki Wi-Fi IP&apos;me ({currentIp}) Kilitle
+                  📥 IP Loglarını İndir (JSON)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsIpModalOpen(false)}
+                  className="text-[#b8b2a6] hover:text-white text-xl leading-none px-2 cursor-pointer"
+                >
+                  ×
                 </button>
               </div>
+            </div>
 
-              <form
-                onSubmit={handleAddCustomIp}
-                className="flex items-center gap-2 pt-1"
-              >
-                <input
-                  type="text"
-                  value={customIpInput}
-                  onChange={(e) => setCustomIpInput(e.target.value)}
-                  placeholder="Ekstra IP ekle (Örn: Ofis / Ev IP)"
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-[#aba393] bg-[#ece7db] text-xs font-mono-academic focus:outline-none focus:border-[#182235]"
-                />
-                <button
-                  type="submit"
-                  className="px-3.5 py-1.5 rounded-lg bg-[#eab308] text-[#182235] font-bold text-xs cursor-pointer hover:bg-[#fde047]"
-                >
-                  + IP Ekle
-                </button>
-              </form>
+            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs text-[#182235]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="p-3.5 rounded-xl bg-[#ece7db] border border-[#b8b0a0] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#121926]">
+                      Şu An Bağlı Olduğunuz Wi-Fi IP:
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded bg-emerald-900 text-emerald-100 font-mono-academic font-bold">
+                      {currentIp || "176.240.152.131"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#4a5363] leading-relaxed">
+                    <strong>/gizlilabel</strong> ve{" "}
+                    <strong>/gizlilabel/kriterler</strong> adresine girmeye
+                    çalışan herkesin IP adresi, cihaz/tarayıcı bilgisi ve
+                    tarihi otomatik olarak aşağıdaki tabloya kaydedilir. Yetkili
+                    listede olmayanlara <strong>404 — Sayfa Bulunamadı</strong>{" "}
+                    gösterilir.
+                  </p>
+                  <div className="space-y-1 pt-1">
+                    <div className="font-bold text-[#121926]">
+                      Yetkili (Beyaz Listedeki) IP Adresleri:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allowedIps.map((ip) => (
+                        <span
+                          key={ip}
+                          className="px-2 py-0.5 rounded bg-[#182235] text-[#f0ece1] font-mono-academic font-bold text-[11px]"
+                        >
+                          ✓ {ip}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#d6cfc0] border border-[#b8b0a0] space-y-2">
+                  <div className="font-bold text-[#121926] flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-[#182235]" />
+                    Modem Sıfırlama Koruması & Hızlı IP Yönetimi
+                  </div>
+                  <p className="text-[11px] text-[#273142] leading-relaxed">
+                    Tarayıcınızdaki 365 günlük HMAC cihaz imzası sayesinde
+                    modeminiz sıfırlansa bile bu bilgisayardan girdiğinizde yeni
+                    IP&apos;niz otomatik tanınır. Farklı cihazdan girerseniz{" "}
+                    <strong>404</strong> yazısına <strong>3 kez tıklayıp</strong>{" "}
+                    <code>BerkeCV2026!</code> anahtarıyla açabilirsiniz.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleLockToCurrentWifiIp}
+                      className="px-3 py-1.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] font-bold text-[11px] cursor-pointer"
+                    >
+                      🔒 Sadece Şu Anki Wi-Fi IP&apos;me ({currentIp}) Kilitle
+                    </button>
+                  </div>
+                  <form
+                    onSubmit={handleAddCustomIp}
+                    className="flex items-center gap-2 pt-1"
+                  >
+                    <input
+                      type="text"
+                      value={customIpInput}
+                      onChange={(e) => setCustomIpInput(e.target.value)}
+                      placeholder="Ekstra IP ekle (Örn: Ofis / Ev IP)"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#aba393] bg-[#ece7db] text-xs font-mono-academic focus:outline-none focus:border-[#182235]"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 rounded-lg bg-[#eab308] text-[#182235] font-bold text-xs cursor-pointer hover:bg-[#fde047]"
+                    >
+                      + IP Ekle
+                    </button>
+                  </form>
+                </div>
+              </div>
 
               {ipActionMessage && (
                 <div className="p-2.5 rounded-lg bg-emerald-900/15 border border-emerald-700/30 text-emerald-950 font-semibold text-xs">
                   ✓ {ipActionMessage}
                 </div>
               )}
+
+              {/* GİRMEYE ÇALIŞANLARIN IP KAYIT TABLOSU */}
+              <div className="space-y-2 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-serif-academic font-bold text-sm text-[#121926]">
+                    🕵️ /gizlilabel Kısmına Girmeye Çalışanların IP Kayıtları ({accessLogs.length})
+                  </h4>
+                  <span className="text-[11px] text-[#4a5363]">
+                    Yetkisiz her giriş denemesi anında IP, konum ve cihaz bilgisiyle kaydedilir
+                  </span>
+                </div>
+
+                {accessLogs.length === 0 ? (
+                  <div className="p-8 text-center rounded-xl border border-[#b8b0a0] bg-[#ece7db] text-[#4a5363]">
+                    Henüz kaydedilmiş bir giriş denemesi bulunmuyor.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-[#b8b0a0] rounded-xl bg-[#ece7db] max-h-80 overflow-y-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-[#182235] text-[#f0ece1] sticky top-0">
+                        <tr>
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Tarih / Saat</th>
+                          <th className="py-2.5 px-3">Girmeye Çalışan IP</th>
+                          <th className="py-2.5 px-3">Durum</th>
+                          <th className="py-2.5 px-3">Hedef Sayfa</th>
+                          <th className="py-2.5 px-3">Konum</th>
+                          <th className="py-2.5 px-3">Cihaz / Tarayıcı (User-Agent)</th>
+                          <th className="py-2.5 px-3">İşlem</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#c4bdb0]">
+                        {accessLogs.map((log, idx) => {
+                          const isBlocked =
+                            log.status === "blocked" ||
+                            log.status === "failed_key";
+                          return (
+                            <tr
+                              key={log.id || idx}
+                              className={
+                                isBlocked
+                                  ? "bg-red-950/10 hover:bg-red-950/20"
+                                  : "hover:bg-[#dfd9ca]"
+                              }
+                            >
+                              <td className="py-2 px-3 font-mono-academic">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap text-[11px] text-[#3b4454]">
+                                {log.timestamp
+                                  ? new Date(log.timestamp).toLocaleString(
+                                      "tr-TR"
+                                    )
+                                  : "—"}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap font-mono-academic font-extrabold text-[#121926]">
+                                {log.ip}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {log.status === "blocked" ? (
+                                  <span className="px-2 py-0.5 rounded bg-red-700 text-white font-bold text-[10px]">
+                                    🚫 ENGELLENDİ (Yetkisiz IP)
+                                  </span>
+                                ) : log.status === "failed_key" ? (
+                                  <span className="px-2 py-0.5 rounded bg-red-900 text-amber-200 font-bold text-[10px]">
+                                    🚨 YANLIŞ ŞİFRE DENEMESİ
+                                  </span>
+                                ) : log.status === "auto_recovered" ? (
+                                  <span className="px-2 py-0.5 rounded bg-amber-700 text-white font-bold text-[10px]">
+                                    🔄 Modem Sıfırlama (Oto-Kurtarma)
+                                  </span>
+                                ) : log.status === "key_recovered" ? (
+                                  <span className="px-2 py-0.5 rounded bg-blue-800 text-white font-bold text-[10px]">
+                                    🔑 Kurtarma Anahtarı İle Açıldı
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded bg-emerald-800 text-white font-bold text-[10px]">
+                                    ✓ Yetkili Giriş
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 font-mono-academic text-[11px]">
+                                {log.targetPath || "/gizlilabel"}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap text-[11px] text-[#273142]">
+                                {log.location || "—"}
+                              </td>
+                              <td
+                                className="py-2 px-3 max-w-[240px] truncate text-[11px] text-[#4a5363]"
+                                title={log.userAgent}
+                              >
+                                {log.userAgent}
+                              </td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {!allowedIps.includes(log.ip) ? (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const res = await fetch(
+                                        "/api/admin-auth",
+                                        {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            action: "add_custom_ip",
+                                            customIp: log.ip,
+                                          }),
+                                        }
+                                      );
+                                      const d = await res.json();
+                                      if (res.ok && d?.allowedIps) {
+                                        setAllowedIps(d.allowedIps);
+                                        setIpActionMessage(
+                                          `${log.ip} adresi beyaz listeye eklendi.`
+                                        );
+                                      }
+                                    }}
+                                    className="px-2 py-1 rounded bg-[#182235] hover:bg-[#22304a] text-[#fde047] font-bold text-[10px] cursor-pointer"
+                                  >
+                                    + İzin Ver
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-emerald-800 font-bold">
+                                    Yetkili
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

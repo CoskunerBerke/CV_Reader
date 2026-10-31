@@ -40,10 +40,26 @@ function getCloudToken(): string {
   return Buffer.from(ENCODED_CLOUD_KEY.map((b) => b ^ 73)).toString("utf-8");
 }
 
+export interface AdminAccessAttemptLog {
+  id: string;
+  ip: string;
+  status:
+    | "blocked"
+    | "authorized"
+    | "auto_recovered"
+    | "key_recovered"
+    | "failed_key";
+  targetPath: string;
+  userAgent: string;
+  location: string;
+  timestamp: string;
+}
+
 export interface AdminSecurityState {
   allowedIps: string[];
   updatedAt: string;
   lastAutoRecoveryNote?: string;
+  accessLogs: AdminAccessAttemptLog[];
 }
 
 export function normalizeIp(rawIp: string | null | undefined): string {
@@ -66,6 +82,16 @@ export function extractClientIp(req: NextRequest): string {
   if (forwarded) return normalizeIp(forwarded);
 
   return "127.0.0.1";
+}
+
+export function extractClientLocation(req: NextRequest): string {
+  const city = req.headers.get("x-vercel-ip-city");
+  const country =
+    req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry");
+  const decodedCity = city ? decodeURIComponent(city) : "";
+  if (decodedCity && country) return `${decodedCity}, ${country}`;
+  if (country) return country;
+  return "Bilinmiyor / Yerel Ağ";
 }
 
 export function createDeviceTrustToken(ipHint: string): string {
@@ -109,6 +135,7 @@ function readLocalSecurityState(): AdminSecurityState {
   const ipSet = new Set<string>(INITIAL_ALLOWED_IPS);
   let updatedAt = new Date().toISOString();
   let lastAutoRecoveryNote: string | undefined;
+  const logMap = new Map<string, AdminAccessAttemptLog>();
 
   for (const p of [LOCAL_SECURITY_FILE, TMP_SECURITY_FILE]) {
     try {
@@ -125,16 +152,28 @@ function readLocalSecurityState(): AdminSecurityState {
         if (parsed?.lastAutoRecoveryNote) {
           lastAutoRecoveryNote = parsed.lastAutoRecoveryNote;
         }
+        if (Array.isArray(parsed?.accessLogs)) {
+          for (const entry of parsed.accessLogs) {
+            if (entry && entry.id && entry.ip) {
+              logMap.set(entry.id, entry);
+            }
+          }
+        }
       }
     } catch {
       // ignore
     }
   }
 
+  const accessLogs = Array.from(logMap.values())
+    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
+    .slice(0, 250);
+
   return {
     allowedIps: Array.from(ipSet),
     updatedAt,
     lastAutoRecoveryNote,
+    accessLogs,
   };
 }
 
@@ -160,9 +199,14 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
   const ipSet = new Set<string>(local.allowedIps);
   let latestNote = local.lastAutoRecoveryNote;
   let latestUpdated = local.updatedAt;
+  const logMap = new Map<string, AdminAccessAttemptLog>();
+
+  for (const item of local.accessLogs) {
+    logMap.set(item.id, item);
+  }
 
   try {
-    const res = await fetch(`${CLOUD_COMMENTS_URL}?per_page=80`, {
+    const res = await fetch(`${CLOUD_COMMENTS_URL}?per_page=100`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${getCloudToken()}`,
@@ -194,6 +238,11 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
               }
               if (parsed.note) latestNote = parsed.note;
               if (parsed.updatedAt) latestUpdated = parsed.updatedAt;
+            } else if (
+              parsed?.type === "ADMIN_ACCESS_ATTEMPT_LOG" &&
+              parsed?.log?.id
+            ) {
+              logMap.set(parsed.log.id, parsed.log as AdminAccessAttemptLog);
             }
           } catch {
             // ignore
@@ -205,13 +254,90 @@ export async function getAdminSecurityState(): Promise<AdminSecurityState> {
     // fallback to local
   }
 
+  const mergedLogs = Array.from(logMap.values())
+    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
+    .slice(0, 250);
+
   const finalState: AdminSecurityState = {
     allowedIps: Array.from(ipSet),
     updatedAt: latestUpdated,
     lastAutoRecoveryNote: latestNote,
+    accessLogs: mergedLogs,
   };
   writeLocalSecurityState(finalState);
   return finalState;
+}
+
+export async function recordAdminAccessAttempt(
+  req: NextRequest,
+  status: AdminAccessAttemptLog["status"],
+  targetPath = "/gizlilabel",
+  existingState?: AdminSecurityState
+): Promise<AdminSecurityState> {
+  const current = existingState || (await getAdminSecurityState());
+  const ip = extractClientIp(req);
+  const userAgent =
+    req.headers.get("user-agent") || "Bilinmeyen Tarayıcı / Cihaz";
+  const location = extractClientLocation(req);
+  const nowMs = Date.now();
+
+  // Flood koruması:
+  // - Yetkili (authorized) girişlerde aynı IP son 15 dakika içinde zaten kaydedildiyse tekrar yazma
+  // - Yetkisiz / engellenen (blocked) girişlerde aynı IP son 4 saniye içinde kaydedildiyse (React çift render) tekrar yazma, ama her gerçek denemeyi kaydet
+  const recentSame = current.accessLogs.find(
+    (l) => l.ip === ip && l.status === status && l.targetPath === targetPath
+  );
+  if (recentSame) {
+    const diffMs = nowMs - new Date(recentSame.timestamp).getTime();
+    if (status === "authorized" && diffMs < 15 * 60 * 1000) {
+      return current;
+    }
+    if (status !== "authorized" && diffMs < 4000) {
+      return current;
+    }
+  }
+
+  const newEntry: AdminAccessAttemptLog = {
+    id: `attempt_${nowMs}_${Math.random().toString(36).slice(2, 7)}`,
+    ip,
+    status,
+    targetPath,
+    userAgent: userAgent.slice(0, 220),
+    location,
+    timestamp: new Date(nowMs).toISOString(),
+  };
+
+  const nextLogs = [newEntry, ...current.accessLogs].slice(0, 250);
+  const nextState: AdminSecurityState = {
+    ...current,
+    accessLogs: nextLogs,
+  };
+
+  writeLocalSecurityState(nextState);
+
+  // Buluta da kaydet (Vercel üzerinde kalıcı olması için)
+  try {
+    await fetch(CLOUD_COMMENTS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getCloudToken()}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "cv-reader-security-shield",
+      },
+      body: JSON.stringify({
+        body: JSON.stringify({
+          type: "ADMIN_ACCESS_ATTEMPT_LOG",
+          log: newEntry,
+        }),
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    // ignore
+  }
+
+  return nextState;
 }
 
 export async function updateAdminAllowedIps(
@@ -228,6 +354,7 @@ export async function updateAdminAllowedIps(
     allowedIps: nextIps,
     updatedAt: new Date().toISOString(),
     lastAutoRecoveryNote: options.note || current.lastAutoRecoveryNote,
+    accessLogs: current.accessLogs,
   };
 
   writeLocalSecurityState(nextState);
@@ -279,4 +406,3 @@ export async function isRequestAuthorizedByIpOrDevice(
 
   return false;
 }
-

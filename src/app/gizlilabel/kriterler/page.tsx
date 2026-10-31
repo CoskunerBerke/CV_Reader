@@ -94,9 +94,12 @@ export default function HundredCriteriaMatrixPage() {
   const verifyIpAndLoadData = useCallback(async () => {
     setAuthChecking(true);
     try {
-      const authRes = await fetch(`/api/admin-auth?t=${Date.now()}`, {
-        cache: "no-store",
-      });
+      const authRes = await fetch(
+        `/api/admin-auth?path=/gizlilabel/kriterler&t=${Date.now()}`,
+        {
+          cache: "no-store",
+        }
+      );
       const authData = await authRes.json();
       setCurrentIp(authData?.currentIp || "");
 

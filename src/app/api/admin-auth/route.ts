@@ -9,6 +9,7 @@ import {
   verifyMasterRecoveryKey,
   getAdminSecurityState,
   updateAdminAllowedIps,
+  recordAdminAccessAttempt,
 } from "@/lib/adminSecurity";
 
 function applyAdminAuthCookies(res: NextResponse, currentIp: string) {
@@ -31,6 +32,9 @@ function applyAdminAuthCookies(res: NextResponse, currentIp: string) {
 
 export async function GET(req: NextRequest) {
   const currentIp = extractClientIp(req);
+  const targetPath = req.nextUrl.searchParams.get("path") || "/gizlilabel";
+  const isSilent = req.nextUrl.searchParams.get("silent") === "1";
+
   const deviceCookie = req.cookies.get(DEVICE_TRUST_COOKIE)?.value;
   const hasTrustedDevice = verifyDeviceTrustToken(deviceCookie);
 
@@ -39,12 +43,22 @@ export async function GET(req: NextRequest) {
 
   // Durum 1: IP zaten izin verilen Wi-Fi IP listesinde (Örn: 176.240.152.131)
   if (isIpWhitelisted) {
+    const finalState = isSilent
+      ? securityState
+      : await recordAdminAccessAttempt(
+          req,
+          "authorized",
+          targetPath,
+          securityState
+        );
+
     const res = NextResponse.json({
       authorized: true,
       currentIp,
-      allowedIps: securityState.allowedIps,
+      allowedIps: finalState.allowedIps,
+      accessLogs: finalState.accessLogs,
       autoRecovered: false,
-      note: securityState.lastAutoRecoveryNote,
+      note: finalState.lastAutoRecoveryNote,
     });
     applyAdminAuthCookies(res, currentIp);
     return res;
@@ -56,18 +70,28 @@ export async function GET(req: NextRequest) {
       replaceAll: false,
       note: `Modem/IP değişimi algılandı; güvenilir cihaz imzasıyla yeni IP (${currentIp}) otomatik tanımlandı.`,
     });
+    const finalState = await recordAdminAccessAttempt(
+      req,
+      "auto_recovered",
+      targetPath,
+      updated
+    );
+
     const res = NextResponse.json({
       authorized: true,
       currentIp,
-      allowedIps: updated.allowedIps,
+      allowedIps: finalState.allowedIps,
+      accessLogs: finalState.accessLogs,
       autoRecovered: true,
-      note: updated.lastAutoRecoveryNote,
+      note: finalState.lastAutoRecoveryNote,
     });
     applyAdminAuthCookies(res, currentIp);
     return res;
   }
 
-  // Durum 3: Hem IP yabancı hem de güvenilir cihaz imzası yok -> Erişim Reddedildi (403)
+  // Durum 3: Hem IP yabancı hem de güvenilir cihaz imzası yok -> GİRİŞ DENEMESİNİ VE IP'Yİ KAYDET, SONRA 403 DÖNDÜR!
+  await recordAdminAccessAttempt(req, "blocked", targetPath, securityState);
+
   return NextResponse.json(
     {
       authorized: false,
@@ -89,8 +113,9 @@ export async function POST(req: NextRequest) {
       const replaceOldIps = Boolean(body?.replaceOldIps);
 
       if (!verifyMasterRecoveryKey(masterKey)) {
+        await recordAdminAccessAttempt(req, "failed_key", "/gizlilabel");
         return NextResponse.json(
-          { error: "Geçersiz Kurtarma Anahtarı." },
+          { error: "Geçersiz Kurtarma Anahtarı. IP adresiniz kaydedildi." },
           { status: 401 }
         );
       }
@@ -99,12 +124,19 @@ export async function POST(req: NextRequest) {
         replaceAll: replaceOldIps,
         note: `Kurtarma anahtarı ile yeni Wi-Fi IP (${currentIp}) yetkilendirildi.`,
       });
+      const finalState = await recordAdminAccessAttempt(
+        req,
+        "key_recovered",
+        "/gizlilabel",
+        updated
+      );
 
       const res = NextResponse.json({
         success: true,
         authorized: true,
         currentIp,
-        allowedIps: updated.allowedIps,
+        allowedIps: finalState.allowedIps,
+        accessLogs: finalState.accessLogs,
       });
       applyAdminAuthCookies(res, currentIp);
       return res;
@@ -128,6 +160,8 @@ export async function POST(req: NextRequest) {
         success: true,
         currentIp,
         allowedIps: updated.allowedIps,
+        accessLogs: updated.accessLogs,
+        note: updated.lastAutoRecoveryNote,
       });
       applyAdminAuthCookies(res, currentIp);
       return res;
@@ -142,7 +176,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Yetkisiz işlem." }, { status: 403 });
       }
 
-      const targetIp = String(body?.targetIp || "").trim();
+      const targetIp = String(body?.targetIp || body?.customIp || "").trim();
       if (!targetIp) {
         return NextResponse.json(
           { error: "Lütfen geçerli bir IP adresi girin." },
@@ -159,6 +193,8 @@ export async function POST(req: NextRequest) {
         success: true,
         currentIp,
         allowedIps: updated.allowedIps,
+        accessLogs: updated.accessLogs,
+        note: updated.lastAutoRecoveryNote,
       });
     }
 
