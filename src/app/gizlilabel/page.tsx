@@ -1143,7 +1143,7 @@ export default function GroundTruthLabelerPage() {
           preload="auto"
           className="w-full h-full object-cover scale-[1.02] filter brightness-[0.86] contrast-[1.02] saturate-[0.88]"
         >
-          <source src="/videos/interview-bg.mp4" type="video/mp4" />
+          <source src="/videos/interview-bg.mp4?v=2" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-b from-[#c4bdb0]/82 via-[#ccc5b7]/76 to-[#beb7a8]/85 backdrop-blur-[1.5px]" />
       </div>

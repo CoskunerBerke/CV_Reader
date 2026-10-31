@@ -1624,15 +1624,7 @@ export default function CVReaderApp() {
           preload="auto"
           className="w-full h-full object-cover scale-[1.02] filter brightness-[0.86] contrast-[1.02] saturate-[0.88]"
         >
-          <source src="/videos/interview-bg.mp4" type="video/mp4" />
-          <source
-            src="https://assets.mixkit.co/videos/41695/41695-720.mp4"
-            type="video/mp4"
-          />
-          <source
-            src="https://assets.mixkit.co/videos/23225/23225-720.mp4"
-            type="video/mp4"
-          />
+          <source src="/videos/interview-bg.mp4?v=2" type="video/mp4" />
         </video>
         {/* Göz Yormayan Yumuşak Koyu Kumtaşı / Taş-Arduvaz Katman (Beyaz parlama sıfır) */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#c4bdb0]/78 via-[#ccc5b7]/72 to-[#beb7a8]/82 backdrop-blur-[1px]" />
