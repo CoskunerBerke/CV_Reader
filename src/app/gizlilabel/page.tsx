@@ -15,6 +15,9 @@ import {
   ArrowLeft,
   RefreshCw,
   Globe,
+  ShieldCheck,
+  Lock,
+  Sliders,
 } from "lucide-react";
 import {
   isSameUniversity,
@@ -312,6 +315,20 @@ export default function GroundTruthLabelerPage() {
     }
   };
 
+  // WI-FI IP KALKANI & MODEM SIFIRLAMA KURTARMA DURUMU
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  const [currentIp, setCurrentIp] = useState<string>("");
+  const [allowedIps, setAllowedIps] = useState<string[]>([]);
+  const [autoRecoveredNote, setAutoRecoveredNote] = useState<string>("");
+  const [secretClickCount, setSecretClickCount] = useState<number>(0);
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState<string>("");
+  const [replaceOldIps, setReplaceOldIps] = useState<boolean>(true);
+  const [recoveryError, setRecoveryError] = useState<string>("");
+  const [isIpModalOpen, setIsIpModalOpen] = useState<boolean>(false);
+  const [customIpInput, setCustomIpInput] = useState<string>("");
+  const [ipActionMessage, setIpActionMessage] = useState<string>("");
+
   const [activeRater, setActiveRater] = useState<RaterId>("ben");
   const [items, setItems] = useState<BenchmarkCVItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -416,6 +433,12 @@ export default function GroundTruthLabelerPage() {
     } catch {
       // ignore
     }
+    if (
+      typeof window !== "undefined" &&
+      window.location.search.includes("kurtar=1")
+    ) {
+      setSecretClickCount(5);
+    }
   }, []);
 
   const jumpToFirstUnlabeledForRole = useCallback(
@@ -432,9 +455,34 @@ export default function GroundTruthLabelerPage() {
   );
 
   const fetchAll = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setSyncing(true);
+    if (!silent) {
+      setLoading(true);
+      setAuthChecking(true);
+    } else {
+      setSyncing(true);
+    }
     try {
+      const authRes = await fetch(`/api/admin-auth?t=${Date.now()}`, {
+        cache: "no-store",
+      });
+      const authData = await authRes.json();
+      setCurrentIp(authData?.currentIp || "");
+
+      if (!authRes.ok || !authData?.authorized) {
+        setIsAuthorized(false);
+        setAuthChecking(false);
+        setLoading(false);
+        setSyncing(false);
+        return;
+      }
+
+      setIsAuthorized(true);
+      setAllowedIps(authData?.allowedIps || []);
+      if (authData?.autoRecovered && authData?.note) {
+        setAutoRecoveredNote(authData.note);
+      }
+      setAuthChecking(false);
+
       const [res, vaultRes] = await Promise.all([
         fetch(`/api/ground-truth?t=${Date.now()}`, {
           cache: "no-store",
@@ -486,10 +534,85 @@ export default function GroundTruthLabelerPage() {
     } catch {
       // ignore
     } finally {
-      if (!silent) setLoading(false);
-      else setSyncing(false);
+      if (!silent) {
+        setLoading(false);
+        setAuthChecking(false);
+      } else {
+        setSyncing(false);
+      }
     }
   }, []);
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError("");
+    try {
+      const res = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "recover_with_key",
+          masterKey: recoveryKeyInput,
+          replaceOldIps,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.authorized) {
+        setRecoveryError(data?.error || "Geçersiz kurtarma anahtarı.");
+        return;
+      }
+      setRecoveryKeyInput("");
+      await fetchAll(false);
+    } catch {
+      setRecoveryError("Bağlantı hatası oluştu.");
+    }
+  };
+
+  const handleLockToCurrentWifiIp = async () => {
+    setIpActionMessage("");
+    try {
+      const res = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lock_to_current_ip",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.allowedIps) {
+        setAllowedIps(data.allowedIps);
+        setIpActionMessage(
+          data.note || `Sadece mevcut Wi-Fi IP'nize (${currentIp}) kilitlendi.`
+        );
+      }
+    } catch {
+      setIpActionMessage("İşlem sırasında hata oluştu.");
+    }
+  };
+
+  const handleAddCustomIp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customIpInput.trim()) return;
+    setIpActionMessage("");
+    try {
+      const res = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add_custom_ip",
+          customIp: customIpInput.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.allowedIps) {
+        setAllowedIps(data.allowedIps);
+        setCustomIpInput("");
+        setIpActionMessage(data.note || "Yeni IP eklendi.");
+      }
+    } catch {
+      setIpActionMessage("IP eklenemedi.");
+    }
+  };
 
   useEffect(() => {
     fetchAll(false);
@@ -1175,6 +1298,104 @@ export default function GroundTruthLabelerPage() {
       ? t.saveMsgError
       : "";
 
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#182235] text-[#f0ece1] flex items-center justify-center p-6">
+        <div className="text-center space-y-2">
+          <div className="text-xs font-mono-academic uppercase tracking-widest text-[#93c5fd]">
+            GÜVENLİK KALKANI DOĞRULANIYOR
+          </div>
+          <p className="text-sm text-[#d2ccc0]">
+            Wi-Fi IP kalkanı ve cihaz imzası kontrol ediliyor...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // YETKİSİZ IP İSE DÜMDÜZ 404 GÖSTER (404 YAZISINA 3 KEZ TIKLANIRSA MODEM SIFIRLAMA KURTARMA KUTUSU AÇILIR)
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-[#141c2b] text-[#f0ece1] flex flex-col items-center justify-center p-6 select-none">
+        <div className="max-w-md w-full text-center space-y-4">
+          <div
+            onClick={() => setSecretClickCount((c) => c + 1)}
+            className="text-6xl font-serif-academic font-bold text-[#93c5fd] cursor-default"
+            title="404"
+          >
+            404
+          </div>
+          <h1 className="text-xl font-bold">
+            Sayfa Bulunamadı / Page Not Found
+          </h1>
+          <p className="text-xs text-[#9ca3af] leading-relaxed">
+            Aradığınız adres mevcut değil veya sadece yetkili kurum içi Wi-Fi
+            ağına (IP Kalkanı) açıktır.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#212f47] hover:bg-[#2c3e5e] text-xs font-bold text-[#f0ece1]"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Ana Sayfaya Dön
+            </Link>
+          </div>
+
+          {secretClickCount >= 3 && (
+            <form
+              onSubmit={handleRecoverySubmit}
+              className="mt-6 p-5 rounded-xl bg-[#182235] border border-[#384966] text-left space-y-3 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono-academic font-bold uppercase tracking-wider text-[#eab308]">
+                  🔐 MODEM SIFIRLAMA / YENİ WI-FI IP KURTARMA
+                </span>
+                <span className="text-[10px] font-mono-academic text-[#93c5fd]">
+                  IP: {currentIp || "Bilinmiyor"}
+                </span>
+              </div>
+              <p className="text-xs text-[#d2ccc0] leading-relaxed">
+                Modeminiz sıfırlandığı veya yeni bir Wi-Fi ağına geçtiğiniz için
+                IP adresiniz değiştiyse kurtarma anahtarınızı girerek yeni
+                IP&apos;nizi anında beyaz listeye (Whitelist) kaydedin ve bu
+                cihazı 365 gün boyunca otomatik tanınan cihaz yapın:
+              </p>
+              <input
+                type="password"
+                required
+                value={recoveryKeyInput}
+                onChange={(e) => setRecoveryKeyInput(e.target.value)}
+                placeholder="Kurtarma Anahtarı (Master Key)"
+                className="w-full px-3 py-2 rounded-lg bg-[#111927] border border-[#33435e] text-xs text-white focus:outline-none focus:border-[#eab308]"
+              />
+              <label className="flex items-center gap-2 text-xs text-[#d2ccc0] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={replaceOldIps}
+                  onChange={(e) => setReplaceOldIps(e.target.checked)}
+                />
+                Eski IP&apos;leri sil, sadece şu anki yeni Wi-Fi IP&apos;me (
+                {currentIp}) kilitle
+              </label>
+              {recoveryError && (
+                <div className="text-xs text-red-400 font-semibold">
+                  {recoveryError}
+                </div>
+              )}
+              <button
+                type="submit"
+                className="w-full py-2 rounded-lg bg-[#eab308] text-[#182235] font-bold text-xs cursor-pointer hover:bg-[#fde047]"
+              >
+                Yeni Wi-Fi IP&apos;mi Yetkilendir ve Kilidi Aç
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-[#cbc4b4] text-[#141c2b] overflow-x-hidden">
       {/* ARKA PLAN DÖNGÜ VİDEOSU & GÖZ YORMAYAN KOYU KUMTAŞI / ARDUVAZ KATMAN */}
@@ -1203,6 +1424,26 @@ export default function GroundTruthLabelerPage() {
               <ArrowLeft className="w-3.5 h-3.5 text-[#93c5fd]" />
               {t.backToApp}
             </Link>
+
+            {/* 100+ SEÇENEKLİ AYRI KRİTER SAYFASI BUTONU */}
+            <Link
+              href={`/gizlilabel/kriterler?cv=${currentIndex}`}
+              className="px-3 py-1.5 rounded-lg bg-[#eab308] hover:bg-[#fde047] text-[#182235] text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              🎛️ 100+ Seçenek & Kriter Sayfası
+            </Link>
+
+            {/* WI-FI IP KALKANI GÖSTERGESİ VE YÖNETİMİ */}
+            <button
+              type="button"
+              onClick={() => setIsIpModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono-academic font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-900/80 whitespace-nowrap"
+              title="Wi-Fi IP Kalkanı ve Modem Sıfırlama Ayarları"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              IP Kalkanı: {currentIp || "Aktif"}
+            </button>
 
             {/* TEKİL ETİKETLEME DURUM GÖSTERGESİ */}
             <div className="flex items-center bg-[#e2dcd0] text-[#182235] px-3 py-1.5 rounded-lg text-xs font-bold gap-1.5 shadow-2xs">
@@ -1364,6 +1605,19 @@ export default function GroundTruthLabelerPage() {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-5 space-y-5">
+        {autoRecoveredNote && (
+          <div className="bg-emerald-950/90 border border-emerald-500/40 rounded-lg p-3 text-xs text-emerald-200 flex items-center justify-between">
+            <span>✓ {autoRecoveredNote}</span>
+            <button
+              type="button"
+              onClick={() => setAutoRecoveredNote("")}
+              className="text-emerald-300 font-bold px-2 cursor-pointer"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* %90 ALTI UYARI BANNER'I */}
         {stats.totalLabeled > 0 && stats.overallAccuracy < 90 && (
           <div className="bg-red-950/90 border border-red-400/50 rounded-lg p-3.5 flex items-center justify-between gap-3 text-xs text-red-100">
@@ -1462,6 +1716,32 @@ export default function GroundTruthLabelerPage() {
 
             {/* SAĞ SÜTUN (5 Sütun): TEKİL ETİKETLEME FORMU */}
             <div className="lg:col-span-5 space-y-4">
+              {/* YENİ: 100+ SEÇENEKLİ AYRI KRİTER SAYFASINA GEÇİŞ KUTUSU */}
+              <div className="bg-[#182235] text-[#f0ece1] border border-[#384966] rounded-xl p-4 space-y-2.5 shadow-md">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-widest text-[#eab308]">
+                    🎛️ 100+ SEÇENEKLİ TAM MATRİS SAYFASI
+                  </span>
+                  <span className="text-[10px] font-mono-academic text-[#93c5fd]">
+                    5 Sütunlu Tek Ekran
+                  </span>
+                </div>
+                <p className="text-xs text-[#d2ccc0] leading-relaxed">
+                  Yaş, Cinsiyet, Üniversite, Bölüm, Yüksek Lisans, Master,
+                  Doktora, <strong>Ne İşi Yapar (Meslek)</strong>, Deneyim Yılı,
+                  Yabancı Dil ve Yazılım dahil{" "}
+                  <strong>100 ayrı kriterin tamamını</strong> tek sayfada
+                  görüntülemek ve düzenlemek için özel sayfayı açın:
+                </p>
+                <Link
+                  href={`/gizlilabel/kriterler?cv=${currentIndex}`}
+                  className="w-full py-2.5 px-3 rounded-lg bg-[#eab308] hover:bg-[#fde047] text-[#182235] font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+                >
+                  <Sliders className="w-4 h-4" />
+                  Bu CV&apos;nin 100 Seçeneğini Ayrı Sayfada Aç (/gizlilabel/kriterler) ↗
+                </Link>
+              </div>
+
               {/* 1. GEZİNME VE FİLTRE KUTUSU */}
               <div className="bg-[#e2dcd0]/95 backdrop-blur-md border border-[#b8b0a0] rounded-xl p-4 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between gap-2">
@@ -2245,6 +2525,139 @@ export default function GroundTruthLabelerPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WI-FI IP KALKANI VE MODEM SIFIRLAMA KORUMASI MODALI */}
+      {isIpModalOpen && (
+        <div
+          onClick={() => setIsIpModalOpen(false)}
+          className="fixed inset-0 z-50 bg-[#141c2b]/75 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#e2dcd0] rounded-2xl border border-[#b8b0a0] max-w-xl w-full overflow-hidden shadow-2xl"
+          >
+            <div className="bg-[#182235] text-[#f0ece1] px-6 py-4 flex items-center justify-between border-b border-[#2c3a52]">
+              <div>
+                <div className="text-[10px] font-mono-academic font-bold uppercase tracking-widest text-emerald-400">
+                  🛡️ WI-FI IP KALKANI & MODEM SIFIRLAMA KORUMASI
+                </div>
+                <h3 className="font-serif-academic font-bold text-lg text-[#f0ece1]">
+                  Sadece Sizin Wi-Fi IP&apos;nize Özel Erişim Kilidi
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsIpModalOpen(false)}
+                className="text-[#b8b2a6] hover:text-white text-xl leading-none px-2 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-[#182235]">
+              <div className="p-3.5 rounded-xl bg-[#ece7db] border border-[#b8b0a0] space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#121926]">
+                    Şu An Bağlı Olduğunuz Wi-Fi IP Adresiniz:
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded bg-emerald-900 text-emerald-100 font-mono-academic font-bold">
+                    {currentIp || "176.240.152.131"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#4a5363] leading-relaxed">
+                  <strong>/gizlilabel</strong> ve{" "}
+                  <strong>/gizlilabel/kriterler</strong> adresini birisi tahmin
+                  etse veya dışarıdan tıklasa bile IP adresi bu listede değilse{" "}
+                  <strong>404 — Sayfa Bulunamadı</strong> ekranı görür ve hiçbir
+                  veriye erişemez.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="font-bold text-[#121926]">
+                  Yetkili (Beyaz Listedeki) IP Adresleri:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {allowedIps.map((ip) => (
+                    <span
+                      key={ip}
+                      className="px-2.5 py-1 rounded-md bg-[#182235] text-[#f0ece1] font-mono-academic font-bold text-[11px]"
+                    >
+                      ✓ {ip}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#d6cfc0] border border-[#b8b0a0] space-y-2">
+                <div className="font-bold text-[#121926] flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-[#182235]" />
+                  Modem Sıfırlanırsa ve IP Değişirse Ne Olur? (2 Katmanlı Koruma)
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#273142] leading-relaxed">
+                  <li>
+                    <strong>1. Katman (Otomatik Cihaz İmzası):</strong> Şu anki
+                    bilgisayarınıza 365 günlük kriptografik imzalı (HMAC-SHA256{" "}
+                    <code>HttpOnly</code>) güven çerezi tanımlandı. Modeminiz
+                    sıfırlanıp IP adresiniz değiştiğinde bu bilgisayardan
+                    girdiğiniz an sistem sizi tanır ve{" "}
+                    <strong>
+                      yeni Wi-Fi IP&apos;nizi hiçbir şifre sormadan otomatik
+                      olarak beyaz listeye ekler!
+                    </strong>
+                  </li>
+                  <li>
+                    <strong>
+                      2. Katman (Farklı Cihaz + Modem Sıfırlama Kurtarma Anahtarı):
+                    </strong>{" "}
+                    Hem modem sıfırlanır hem de çerezi olmayan yeni bir
+                    cihazdan girerseniz çıkan <strong>404</strong> yazısına{" "}
+                    <strong>3 kez tıklayın</strong> (veya{" "}
+                    <code>/gizlilabel?kurtar=1</code> yazın) ve Kurtarma
+                    Anahtarınızı (<code>BerkeCV2026!</code>) girerek yeni
+                    Wi-Fi IP&apos;nizi anında yetkilendirin.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleLockToCurrentWifiIp}
+                  className="px-3.5 py-2 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] font-bold text-xs cursor-pointer"
+                >
+                  🔒 Sadece Şu Anki Wi-Fi IP&apos;me ({currentIp}) Kilitle
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleAddCustomIp}
+                className="flex items-center gap-2 pt-1"
+              >
+                <input
+                  type="text"
+                  value={customIpInput}
+                  onChange={(e) => setCustomIpInput(e.target.value)}
+                  placeholder="Ekstra IP ekle (Örn: Ofis / Ev IP)"
+                  className="flex-1 px-3 py-1.5 rounded-lg border border-[#aba393] bg-[#ece7db] text-xs font-mono-academic focus:outline-none focus:border-[#182235]"
+                />
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 rounded-lg bg-[#eab308] text-[#182235] font-bold text-xs cursor-pointer hover:bg-[#fde047]"
+                >
+                  + IP Ekle
+                </button>
+              </form>
+
+              {ipActionMessage && (
+                <div className="p-2.5 rounded-lg bg-emerald-900/15 border border-emerald-700/30 text-emerald-950 font-semibold text-xs">
+                  ✓ {ipActionMessage}
                 </div>
               )}
             </div>

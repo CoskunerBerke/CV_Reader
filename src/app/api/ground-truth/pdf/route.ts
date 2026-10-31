@@ -2,36 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import JSZip from "jszip";
+import { isRequestAuthorizedByIpOrDevice } from "@/lib/adminSecurity";
 
 const LOCAL_ZIP_PATH = "C:\\Users\\berke\\OneDrive\\Masaüstü\\Yeni klasör.zip";
 
-function isAuthorizedPdfRequest(req: NextRequest): boolean {
-  if (req.cookies.get("cv_gizli_label_session")?.value === "authorized_v1") {
-    return true;
-  }
-  if (req.headers.get("x-gizli-label-access") === "internal-gizlilabel-v1") {
-    return true;
-  }
-  const referer = req.headers.get("referer");
-  if (referer) {
-    try {
-      const refUrl = new URL(referer);
-      if (
-        refUrl.origin === req.nextUrl.origin &&
-        (refUrl.pathname === "/gizlilabel" ||
-          refUrl.pathname.startsWith("/gizlilabel/"))
-      ) {
-        return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return false;
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedPdfRequest(req)) {
+  if (!(await isRequestAuthorizedByIpOrDevice(req))) {
     return new NextResponse("Not Found", { status: 404 });
   }
   try {

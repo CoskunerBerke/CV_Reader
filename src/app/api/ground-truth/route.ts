@@ -15,6 +15,7 @@ import {
   GenderType,
   EducationByDegreeMap,
 } from "@/lib/cvEngine";
+import { isRequestAuthorizedByIpOrDevice } from "@/lib/adminSecurity";
 
 export type RaterId = "ben" | "arkadasim";
 
@@ -295,33 +296,8 @@ async function getRawTextsFromZip(): Promise<{ fileName: string; rawText: string
   return items;
 }
 
-function isAuthorizedGizliRequest(req: NextRequest): boolean {
-  if (req.headers.get("x-gizli-label-access") === "internal-gizlilabel-v1") {
-    return true;
-  }
-  if (req.cookies.get("cv_gizli_label_session")?.value === "authorized_v1") {
-    return true;
-  }
-  const referer = req.headers.get("referer");
-  if (referer) {
-    try {
-      const refUrl = new URL(referer);
-      if (
-        refUrl.origin === req.nextUrl.origin &&
-        (refUrl.pathname === "/gizlilabel" ||
-          refUrl.pathname.startsWith("/gizlilabel/"))
-      ) {
-        return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return false;
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedGizliRequest(req)) {
+  if (!(await isRequestAuthorizedByIpOrDevice(req))) {
     return new NextResponse("Not Found", { status: 404 });
   }
   try {
@@ -387,7 +363,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorizedGizliRequest(req)) {
+  if (!(await isRequestAuthorizedByIpOrDevice(req))) {
     return new NextResponse("Not Found", { status: 404 });
   }
   try {

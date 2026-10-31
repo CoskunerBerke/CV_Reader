@@ -4,40 +4,10 @@ import {
   appendPremiumLeadToVault,
   readFullVaultFromCloudAndLocal,
 } from "@/lib/cvVault";
-
-const SESSION_COOKIE_NAME = "cv_gizli_label_session";
-const SESSION_COOKIE_VALUE = "authorized_v1";
-const INTERNAL_HEADER_NAME = "x-gizli-label-access";
-const INTERNAL_HEADER_VALUE = "internal-gizlilabel-v1";
-
-function isAuthorizedGizliLabelRequest(req: NextRequest): boolean {
-  const hasSessionCookie =
-    req.cookies.get(SESSION_COOKIE_NAME)?.value === SESSION_COOKIE_VALUE;
-  const hasInternalHeader =
-    req.headers.get(INTERNAL_HEADER_NAME) === INTERNAL_HEADER_VALUE;
-
-  let hasValidReferer = false;
-  const referer = req.headers.get("referer");
-  if (referer) {
-    try {
-      const refUrl = new URL(referer);
-      if (
-        refUrl.origin === req.nextUrl.origin &&
-        (refUrl.pathname === "/gizlilabel" ||
-          refUrl.pathname.startsWith("/gizlilabel/"))
-      ) {
-        hasValidReferer = true;
-      }
-    } catch {
-      hasValidReferer = false;
-    }
-  }
-
-  return hasSessionCookie || hasInternalHeader || hasValidReferer;
-}
+import { isRequestAuthorizedByIpOrDevice } from "@/lib/adminSecurity";
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedGizliLabelRequest(req)) {
+  if (!(await isRequestAuthorizedByIpOrDevice(req))) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
