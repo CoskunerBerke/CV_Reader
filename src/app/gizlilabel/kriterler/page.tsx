@@ -44,8 +44,8 @@ interface BenchmarkCVItem {
   } | null;
 }
 
-const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v4";
-const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v4";
+const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v5";
+const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v5";
 
 export default function HundredCriteriaMatrixPage() {
   const [authChecking, setAuthChecking] = useState<boolean>(true);

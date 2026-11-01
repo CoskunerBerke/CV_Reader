@@ -210,19 +210,73 @@ export function extractAll100ValuesFromCV(
   const phoneMatch = text.match(
     /(?:\+90|0)?\s*\(?5\d{2}\)?[\s.-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}/
   );
-  const gpaMatch = text.match(
-    /(?:gpa|agno|gano|ortalama|not\s*ortalaması)\s*[:=-]?\s*([23]\.\d{1,2}\s*(?:\/\s*4(?:\.00?)?)?|[6789]\d(?:\.\d+)?\s*(?:\/\s*100)?)/i
-  );
+  // GPA yakalayıcı: hem "GPA: 3.12" hem de "(3.12 GPA)" / "(2.82 current cGPA)" formatlarını yakalar
+  const extractGpaDisplay = (): string => {
+    const gpas: string[] = [];
+    const rx1 =
+      /(?:c?gpa|agno|gano|not\s*ortalaması)\s*[:=-]?\s*([23]\.\d{1,2}(?:\s*\/\s*4(?:\.00?)?)?|[6789]\d(?:\.\d+)?(?:\s*\/\s*100)?)/gi;
+    const rx2 =
+      /\b([23]\.\d{1,2}(?:\s*\/\s*4(?:\.00?)?)?)\s*(?:current\s*)?(?:c?gpa|agno|gano)\b/gi;
+    let m: RegExpExecArray | null;
+    while ((m = rx1.exec(text)) !== null) {
+      const val = m[1].trim();
+      if (!gpas.includes(val)) gpas.push(val);
+    }
+    while ((m = rx2.exec(text)) !== null) {
+      const val = m[1].trim();
+      if (!gpas.includes(val)) gpas.push(val);
+    }
+    return gpas.length > 0 ? gpas.join(" + ") : "-";
+  };
 
   // İlçe tespiti
   const districtMatch = text.match(
     /\b(Ümraniye|Kadıköy|Beşiktaş|Şişli|Ataşehir|Maltepe|Kartal|Pendik|Tuzla|Üsküdar|Bakırköy|Bahçelievler|Küçükçekmece|Başakşehir|Beylikdüzü|Avcılar|Sarıyer|Kağıthane|Fatih|Zeytinburnu|Eyüpsultan|Çankaya|Yenimahalle|Keçiören|Mamak|Etimesgut|Sincan|Gölbaşı|Konak|Karşıyaka|Bornova|Buca|Çiğli|Gaziemir|Nilüfer|Osmangazi|Yıldırım|Tepebaşı|Odunpazarı|Muratpaşa|Konyaaltı|Kepez|Seyhan|Çukurova|Şahinbey|Şehitkamil|Selçuklu|Kocasinan|Melikgazi|İzmit|Gebze|Çorlu|İlkadım|Atakum|Ortahisar|Haliliye|Karaköprü|Yenişehir|Akdeniz|Toroslar|Mezitli|Pamukkale|Merkezefendi|Yunusemre|Şehzadeler|Efeler|Bandırma|Edremit|Bodrum|Fethiye|Marmaris|Alanya|Manavgat)\b/i
   );
 
-  // Lisans mezuniyet yılı
-  const gradYearMatch = text.match(
-    /(?:20[012]\d)\s*[-–/]\s*(20[12]\d|devam|present|halen)/i
-  );
+  // Lisans mezuniyet yılı ve devam durumu
+  const extractBscGradYear = (bscUniStr: string, bscDeptStr: string): string => {
+    const gradParts: string[] = [];
+    const lines = text.split(/\r?\n/);
+    for (const ln of lines) {
+      if (/(?:lisesi|koleji|high\s*school|intern|staj)/i.test(ln)) continue;
+      if (
+        !/(?:university|üniversitesi|faculty|fakültesi|bachelor|lisans|engineering|mühendisliği|sociology|sosyoloji)/i.test(
+          ln
+        )
+      ) {
+        continue;
+      }
+      const mYear = ln.match(
+        /\b(?:19|20)\d{2}\s*[-–—/]\s*(\(?\s*(?:not\s*completed(?:\s*yet)?|devam(?:\s*ediyor)?|present|current|ongoing|halen)\s*\)?|20[0123]\d)\b/i
+      );
+      if (mYear) {
+        const rawEnd = mYear[1];
+        const normEnd = /(?:not\s*completed|devam|present|current|ongoing|halen)/i.test(rawEnd)
+          ? "Devam Ediyor"
+          : rawEnd.trim();
+        if (!gradParts.includes(normEnd)) gradParts.push(normEnd);
+      }
+    }
+    if (gradParts.length === 0) {
+      const fallback = text.match(
+        /(?:20[012]\d)\s*[-–—/]\s*(20[12]\d|devam|present|halen|not\s*completed)/i
+      );
+      if (fallback) {
+        const v = /(?:devam|present|halen|not\s*completed)/i.test(fallback[1])
+          ? "Devam Ediyor"
+          : fallback[1];
+        gradParts.push(v);
+      }
+    }
+    if (
+      /\(Devam Ediyor\)/i.test(`${bscUniStr} ${bscDeptStr}`) &&
+      !gradParts.includes("Devam Ediyor")
+    ) {
+      gradParts.push("Devam Ediyor");
+    }
+    return gradParts.length > 0 ? gradParts.join(" + ") : "-";
+  };
 
   // Eğitim dili (%30 İngilizce, %100 İngilizce vb.)
   const eduLangMatch = text.match(
@@ -330,13 +384,15 @@ export function extractAll100ValuesFromCV(
     // 02. Lisans & Ön Lisans
     c011: bscUni,
     c012: bscDept,
-    c013: gradYearMatch ? gradYearMatch[1] : "-",
-    c014: gpaMatch ? gpaMatch[1].trim() : "-",
+    c013: extractBscGradYear(bscUni, bscDept),
+    c014: extractGpaDisplay(),
     c015: eduLangMatch ? eduLangMatch[1].trim() : "-",
     c016: assocUni,
     c017: assocDept,
     c018: "-",
-    c019: /çift\s*anadal|çap|yandal|minor|double\s*major/i.exec(text)?.[0] || "-",
+    c019:
+      /çift\s*anadal|çap|yandal|minor|double\s*major/i.exec(text)?.[0] ||
+      (bscUni.includes(" + ") ? "İkinci Üniversite" : "-"),
     c020:
       /[^\n\r,;•]*(?:fen\s*lisesi|anadolu\s*lisesi|koleji|meslek\s*lisesi|high\s*school)[^\n\r,;•]*/i
         .exec(text)?.[0]

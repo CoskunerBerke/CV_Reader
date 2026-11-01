@@ -3049,6 +3049,57 @@ export function extractEducationFromCV(rawText: string): {
     }
   }
 
+  // Eğitim satırının bitmiş mi (Örn: 2017 - 2022) yoksa devam mı ettiği (Örn: 2020 - (not completed yet), Devam Ediyor, Present, Current cGPA) kontrolü
+  const COMPLETED_YEAR_RANGE_RX =
+    /\b(?:19|20)\d{2}\s*(?:[./]\d{1,2})?\s*[-–—/]\s*(?:19|20)(?:0\d|1\d|2[0-5])\b/i;
+  const ONGOING_EDU_LINE_RX =
+    /(?:not\s*completed(?:\s*yet)?|incomplete|in\s*progress|\bongoing\b|currently\s*studying|current\s*cgpa|devam\s*ediyor|halen\s*devam|aktif\s*öğrenci|\b(?:19|20)\d{2}\b[^\n,;]{0,22}[-–—/]\s*\(?\s*(?:not\s*completed|devam|present|current|ongoing|halen|aktif|\.\.\.)|\b(?:19|20)\d{2}\s*[-–—/]\s*(?:202[789]|203\d)\b)/i;
+
+  const checkEduRowStatus = (
+    sameLine: string,
+    nextLine: string,
+    prevLine: string,
+    idx: number
+  ): { isCompleted: boolean; isOngoing: boolean } => {
+    const inEduBounds =
+      eduStartIdx === -1 || (idx >= eduStartIdx - 100 && idx <= eduEndIdx + 120);
+    if (!inEduBounds) return { isCompleted: false, isOngoing: false };
+    if (
+      /(?:intern(?:ship)?|staj(?:yer)?|working\s+at|engineer\s+at|developer\s+at|specialist\s+at)/i.test(
+        sameLine
+      ) &&
+      !/(?:university|üniversitesi|faculty|fakültesi|bachelor|master|lisans|doktora)/i.test(
+        sameLine
+      )
+    ) {
+      return { isCompleted: false, isOngoing: false };
+    }
+    const hasCompletedOnSame = COMPLETED_YEAR_RANGE_RX.test(sameLine);
+    if (hasCompletedOnSame) {
+      return { isCompleted: true, isOngoing: false };
+    }
+    const hasAnyYearOnSame = /\b(?:19|20)\d{2}\b/.test(sameLine);
+    const ongoingOnSame = ONGOING_EDU_LINE_RX.test(sameLine);
+    const ongoingOnNext =
+      !hasCompletedOnSame &&
+      ! COMPLETED_YEAR_RANGE_RX.test(nextLine) &&
+      !/(?:university|üniversitesi|lisesi|koleji|high\s*school)/i.test(nextLine) &&
+      ONGOING_EDU_LINE_RX.test(nextLine);
+    const ongoingOnPrev =
+      !hasAnyYearOnSame &&
+      !COMPLETED_YEAR_RANGE_RX.test(prevLine) &&
+      !/(?:university|üniversitesi|lisesi|koleji|high\s*school)/i.test(prevLine) &&
+      ONGOING_EDU_LINE_RX.test(prevLine);
+
+    if (ongoingOnSame || ongoingOnNext || ongoingOnPrev) {
+      return { isCompleted: false, isOngoing: true };
+    }
+    if (!hasAnyYearOnSame && COMPLETED_YEAR_RANGE_RX.test(nextLine)) {
+      return { isCompleted: true, isOngoing: false };
+    }
+    return { isCompleted: false, isOngoing: false };
+  };
+
   // 1. ÜNİVERSİTE ADAYLARINI PUANLA (Lisans / Ana Üniversite Öncelikli)
   const uniScores = new Map<string, number>();
   const allFoundUnis: string[] = [];
@@ -3056,6 +3107,11 @@ export function extractEducationFromCV(rawText: string): {
   const masterTaggedUnis = new Set<string>();
   const phdTaggedUnis = new Set<string>();
   const bscTaggedUnis = new Set<string>();
+  const uniCompletedOnBsc = new Set<string>();
+  const uniOngoingOnBsc = new Set<string>();
+  const uniOngoingOnAssoc = new Set<string>();
+  const uniOngoingOnMaster = new Set<string>();
+  const uniOngoingOnPhd = new Set<string>();
 
   for (const entry of UNIVERSITY_DICTIONARY) {
     entry.regex.lastIndex = 0;
@@ -3077,9 +3133,9 @@ export function extractEducationFromCV(rawText: string): {
       const next2Line = nextLineEnd !== -1 ? normText.slice(nextLineEnd + 1, next2LineEnd === -1 ? normText.length : next2LineEnd) : "";
       const nearLines = prevLine + "\n" + sameLine + "\n" + nextLine;
 
-      // Teknokent, Dergi, Sertifika, Kış Okulu, Erasmus, Research Fellow, Hobiler, Zirve/Summit veya Açıköğretim satırıysa atla/düşür
+      // Teknokent, Dergi, Sertifika, Kış Okulu, Erasmus, Research Fellow, Hobiler, Zirve/Summit satırıysa atla/düşür
       if (
-        /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|educational\s*training\s*certificate|intelligence\s*and\s*mind\s*games|yapay\s*zeka\s*enstitüsü|erasmus|exchange\s*program|research\s*fellow|research\s*project|open-distance|açiköğretim|hobiler|capoeira|online\s*wind\s*energy|fundamentals\s*of\s*wind|technology\s*summits|attended\s*the|under\s*mt\s*training|3\s*lessons\s*from)/i.test(
+        /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|educational\s*training\s*certificate|intelligence\s*and\s*mind\s*games|yapay\s*zeka\s*enstitüsü|erasmus|exchange\s*program|research\s*fellow|research\s*project|hobiler|capoeira|online\s*wind\s*energy|fundamentals\s*of\s*wind|technology\s*summits|attended\s*the|under\s*mt\s*training|3\s*lessons\s*from)/i.test(
           sameLine
         ) ||
         /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|educational\s*training\s*certificate|intelligence\s*and\s*mind\s*games|yapay\s*zeka\s*enstitüsü|dr\.\s*öğr\.\s*üyesi|research\s*fellow|online\s*wind\s*energy|fundamentals\s*of\s*wind|technology\s*summits|attended\s*the|under\s*mt\s*training|3\s*lessons\s*from)/i.test(
@@ -3094,11 +3150,11 @@ export function extractEducationFromCV(rawText: string): {
         allFoundUnis.push(entry.canonical);
       }
 
-      if (
+      const isAssocHere =
         /(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’']?s?\b|\bmeslek\s*yüksek\s*okulu\b|\bmyo\b|computer\s*programming|bilgisayar\s*programc[ıi]l[ıi][ğg][ıi])/i.test(
           sameLine + " " + nextLine
-        )
-      ) {
+        );
+      if (isAssocHere) {
         assocTaggedUnis.add(entry.canonical);
       }
 
@@ -3130,9 +3186,23 @@ export function extractEducationFromCV(rawText: string): {
       if (hasPhdHere) phdTaggedUnis.add(entry.canonical);
       if (hasMasterHere && !hasPhdHere) masterTaggedUnis.add(entry.canonical);
 
+      const rowStatus = checkEduRowStatus(sameLine, nextLine, prevLine, idx);
+      if (rowStatus.isOngoing) {
+        if (hasPhdHere) uniOngoingOnPhd.add(entry.canonical);
+        else if (hasMasterHere) uniOngoingOnMaster.add(entry.canonical);
+        else if (isAssocHere) uniOngoingOnAssoc.add(entry.canonical);
+        else uniOngoingOnBsc.add(entry.canonical);
+      } else if (rowStatus.isCompleted && !hasPhdHere && !hasMasterHere && !isAssocHere) {
+        uniCompletedOnBsc.add(entry.canonical);
+      }
+
       let score = 40;
       if (eduStartIdx !== -1 && idx >= eduStartIdx - 120 && idx <= eduEndIdx + 120) {
         score += 65;
+      }
+      // Açıköğretim / Open-Distance ikinci üniversite ise listeye dahil et ama ana örgün üniversitenin önüne geçmesin
+      if (/(?:open[\s-]*distance|aç[ıi]k\s*öğretim|auzef|aöf)/i.test(sameLine)) {
+        score -= 25;
       }
 
       // Lisans (Bachelor / BSc / Lisans / Graduate from) sinyali
@@ -3177,7 +3247,7 @@ export function extractEducationFromCV(rawText: string): {
   for (const line of nonEmptyLines) {
     const nl = normalizeTr(line).replace(/ı/g, "i");
     if (
-      /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|sertifika\s*program|erasmus|exchange\s*program|açiköğretim|lisesi|koleji|high\s*school)/i.test(
+      /(?:teknokent|teknopark|arikent|journal\s*of|dergisi|k[ıi]ş\s*okulu|winter\s*school|certificate\s*program|sertifika\s*program|erasmus|exchange\s*program|lisesi|koleji|high\s*school)/i.test(
         nl
       )
     ) {
@@ -3228,6 +3298,11 @@ export function extractEducationFromCV(rawText: string): {
   const masterTaggedDepts = new Set<string>();
   const phdTaggedDepts = new Set<string>();
   const bscTaggedDepts = new Set<string>();
+  const deptCompletedOnBsc = new Set<string>();
+  const deptOngoingOnBsc = new Set<string>();
+  const deptOngoingOnAssoc = new Set<string>();
+  const deptOngoingOnMaster = new Set<string>();
+  const deptOngoingOnPhd = new Set<string>();
 
   for (const entry of DEPARTMENT_DICTIONARY) {
     entry.regex.lastIndex = 0;
@@ -3287,10 +3362,10 @@ export function extractEducationFromCV(rawText: string): {
         deptFirstIdx.set(entry.canonical, idx);
       }
 
-      if (
+      const isAssocDeptLine =
         entry.canonical === "Bilgisayar Programcılığı" ||
-        /(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’']?s?\b|\bmyo\b)/i.test(sameLine)
-      ) {
+        /(?:\bön\s*lisans\b|\bönlisans\b|\bassociate[’']?s?\b|\bmyo\b)/i.test(sameLine);
+      if (isAssocDeptLine) {
         assocTaggedDepts.add(entry.canonical);
       }
       const isPhdDeptLine =
@@ -3315,9 +3390,22 @@ export function extractEducationFromCV(rawText: string): {
       if (isMasterDeptLine && !isPhdDeptLine) masterTaggedDepts.add(entry.canonical);
       if (isBscDeptLine) bscTaggedDepts.add(entry.canonical);
 
+      const deptRowStatus = checkEduRowStatus(sameLine, nextLine, prevLine, idx);
+      if (deptRowStatus.isOngoing) {
+        if (isPhdDeptLine) deptOngoingOnPhd.add(entry.canonical);
+        else if (isMasterDeptLine) deptOngoingOnMaster.add(entry.canonical);
+        else if (isAssocDeptLine) deptOngoingOnAssoc.add(entry.canonical);
+        else deptOngoingOnBsc.add(entry.canonical);
+      } else if (deptRowStatus.isCompleted && !isPhdDeptLine && !isMasterDeptLine && !isAssocDeptLine) {
+        deptCompletedOnBsc.add(entry.canonical);
+      }
+
       let score = 40;
       if (eduStartIdx !== -1 && idx >= eduStartIdx - 120 && idx <= eduEndIdx + 120) {
         score += 65;
+      }
+      if (/(?:open[\s-]*distance|aç[ıi]k\s*öğretim|auzef|aöf)/i.test(sameLine)) {
+        score -= 25;
       }
 
       const hasBsc =
@@ -3557,6 +3645,40 @@ export function extractEducationFromCV(rawText: string): {
       ? [bestDept, ...allFoundDepts.filter((d) => d !== bestDept)]
       : allFoundDepts;
 
+  const formatUniWithStatus = (u: string, deg: DegreeKey): string => {
+    if (!u || u === "Belirtilmemiş") return u;
+    if (deg === "bachelor" && uniOngoingOnBsc.has(u) && !uniCompletedOnBsc.has(u)) {
+      return `${u} (Devam Ediyor)`;
+    }
+    if (deg === "associate" && uniOngoingOnAssoc.has(u)) {
+      return `${u} (Devam Ediyor)`;
+    }
+    if (deg === "master" && uniOngoingOnMaster.has(u)) {
+      return `${u} (Devam Ediyor)`;
+    }
+    if (deg === "phd" && uniOngoingOnPhd.has(u)) {
+      return `${u} (Devam Ediyor)`;
+    }
+    return u;
+  };
+
+  const formatDeptWithStatus = (d: string, deg: DegreeKey): string => {
+    if (!d || d === "Belirtilmemiş") return d;
+    if (deg === "bachelor" && deptOngoingOnBsc.has(d) && !deptCompletedOnBsc.has(d)) {
+      return `${d} (Devam Ediyor)`;
+    }
+    if (deg === "associate" && deptOngoingOnAssoc.has(d)) {
+      return `${d} (Devam Ediyor)`;
+    }
+    if (deg === "master" && deptOngoingOnMaster.has(d)) {
+      return `${d} (Devam Ediyor)`;
+    }
+    if (deg === "phd" && deptOngoingOnPhd.has(d)) {
+      return `${d} (Devam Ediyor)`;
+    }
+    return d;
+  };
+
   // 4. HER EĞİTİM DERECESİ İÇİN AYRI ÜNİVERSİTE VE BÖLÜM EŞLEŞTİRMESİ (Ön Lisans / Lisans / Yüksek Lisans / Doktora)
   const educationByDegree: EducationByDegreeMap = {};
 
@@ -3565,9 +3687,17 @@ export function extractEducationFromCV(rawText: string): {
       hasAssociate && !allDegrees.includes("Lisans (Bachelor's)")
         ? "associate"
         : "bachelor";
+    const formattedSingleUnis = orderedUnis.map((u) => formatUniWithStatus(u, singleKey));
+    const formattedSingleDepts = orderedDepts.map((d) => formatDeptWithStatus(d, singleKey));
     educationByDegree[singleKey] = {
-      university: orderedUnis.length > 0 ? orderedUnis.join(" + ") : bestUni,
-      department: orderedDepts.length > 0 ? orderedDepts.join(" + ") : bestDept,
+      university:
+        formattedSingleUnis.length > 0
+          ? formattedSingleUnis.join(" + ")
+          : formatUniWithStatus(bestUni, singleKey),
+      department:
+        formattedSingleDepts.length > 0
+          ? formattedSingleDepts.join(" + ")
+          : formatDeptWithStatus(bestDept, singleKey),
     };
   } else {
     const usedPostGradOnlyUnis = new Set<string>();
@@ -3585,8 +3715,8 @@ export function extractEducationFromCV(rawText: string): {
         usedNonBachelorDepts.add(assocDept);
       }
       educationByDegree.associate = {
-        university: assocUni,
-        department: assocDept,
+        university: formatUniWithStatus(assocUni, "associate"),
+        department: formatDeptWithStatus(assocDept, "associate"),
       };
     }
 
@@ -3604,8 +3734,8 @@ export function extractEducationFromCV(rawText: string): {
         usedNonBachelorDepts.add(phdDept);
       }
       educationByDegree.phd = {
-        university: phdUni,
-        department: phdDept,
+        university: formatUniWithStatus(phdUni, "phd"),
+        department: formatDeptWithStatus(phdDept, "phd"),
       };
     }
 
@@ -3637,39 +3767,58 @@ export function extractEducationFromCV(rawText: string): {
       }
 
       educationByDegree.master = {
-        university: masterUni,
-        department: masterDept,
+        university: formatUniWithStatus(masterUni, "master"),
+        department: formatDeptWithStatus(masterDept, "master"),
       };
     }
 
-    // Lisans (Bachelor's): Ana lisans üniversitesi + varsa ikinci lisans üniversitesi (Örn: Anadolu Üni YBS)
-    const bachelorUniList = orderedUnis.filter(
-      (u) => u === bestUni || !usedPostGradOnlyUnis.has(u)
-    );
-    const bachelorDeptList = orderedDepts.filter(
-      (d) => d === bestDept || !usedNonBachelorDepts.has(d)
-    );
+    // Lisans (Bachelor's): Ana lisans üniversitesi + varsa ikinci lisans üniversitesi (Örn: İstanbul Üni / Anadolu Üni)
+    const bachelorUniList = orderedUnis
+      .filter((u) => u === bestUni || !usedPostGradOnlyUnis.has(u))
+      .map((u) => formatUniWithStatus(u, "bachelor"));
+    const bachelorDeptList = orderedDepts
+      .filter((d) => d === bestDept || !usedNonBachelorDepts.has(d))
+      .map((d) => formatDeptWithStatus(d, "bachelor"));
 
     educationByDegree.bachelor = {
       university:
-        bachelorUniList.length > 0 ? bachelorUniList.join(" + ") : bestUni,
+        bachelorUniList.length > 0
+          ? bachelorUniList.join(" + ")
+          : formatUniWithStatus(bestUni, "bachelor"),
       department:
-        bachelorDeptList.length > 0 ? bachelorDeptList.join(" + ") : bestDept,
+        bachelorDeptList.length > 0
+          ? bachelorDeptList.join(" + ")
+          : formatDeptWithStatus(bestDept, "bachelor"),
     };
   }
 
+  const displayOrderedUnis = orderedUnis.map((u) => {
+    if (uniOngoingOnBsc.has(u) && !uniCompletedOnBsc.has(u)) return `${u} (Devam Ediyor)`;
+    if (uniOngoingOnMaster.has(u) && !uniCompletedOnBsc.has(u)) return `${u} (Devam Ediyor)`;
+    if (uniOngoingOnPhd.has(u) && !uniCompletedOnBsc.has(u)) return `${u} (Devam Ediyor)`;
+    if (uniOngoingOnAssoc.has(u) && !uniCompletedOnBsc.has(u)) return `${u} (Devam Ediyor)`;
+    return u;
+  });
+  const displayOrderedDepts = orderedDepts.map((d) => {
+    if (deptOngoingOnBsc.has(d) && !deptCompletedOnBsc.has(d)) return `${d} (Devam Ediyor)`;
+    if (deptOngoingOnMaster.has(d) && !deptCompletedOnBsc.has(d)) return `${d} (Devam Ediyor)`;
+    if (deptOngoingOnPhd.has(d) && !deptCompletedOnBsc.has(d)) return `${d} (Devam Ediyor)`;
+    if (deptOngoingOnAssoc.has(d) && !deptCompletedOnBsc.has(d)) return `${d} (Devam Ediyor)`;
+    return d;
+  });
+
   const combinedUnis =
-    orderedUnis.length > 0 ? orderedUnis.join(" + ") : bestUni;
+    displayOrderedUnis.length > 0 ? displayOrderedUnis.join(" + ") : bestUni;
   const combinedDepts =
-    orderedDepts.length > 0 ? orderedDepts.join(" + ") : bestDept;
+    displayOrderedDepts.length > 0 ? displayOrderedDepts.join(" + ") : bestDept;
 
   const educationSummary = `[${combinedDegrees}] ${combinedUnis} — ${combinedDepts}`;
 
   return {
     university: combinedUnis,
-    allUniversities: orderedUnis.length > 0 ? orderedUnis : [bestUni],
+    allUniversities: displayOrderedUnis.length > 0 ? displayOrderedUnis : [bestUni],
     department: combinedDepts,
-    allDepartments: orderedDepts.length > 0 ? orderedDepts : [bestDept],
+    allDepartments: displayOrderedDepts.length > 0 ? displayOrderedDepts : [bestDept],
     degree: combinedDegrees,
     allDegrees: allDegrees.length > 0 ? allDegrees : ["Lisans (Bachelor's)"],
     educationByDegree,
@@ -3681,6 +3830,10 @@ function stripDegreePrefix(val: string): string {
   return (val || "")
     .replace(
       /^\s*(?:ön\s*lisans|önlisans|associate['’]?s?|lisans|bachelor['’]?s?|yüksek\s*lisans|master['’]?s?|doktora|ph\.?\s*d\.?)\s*:\s*/i,
+      ""
+    )
+    .replace(
+      /\s*\(\s*(?:devam\s*ediyor|halen\s*devam|devam|ongoing|not\s*completed(?:\s*yet)?|in\s*progress)\s*\)\s*/gi,
       ""
     )
     .trim();
