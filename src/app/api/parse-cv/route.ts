@@ -194,16 +194,57 @@ async function parseSingleBuffer(
       extractedText = "";
     }
   } else if (ext === "docx" || ext === "doc") {
+    let bodyText = "";
     try {
       const result = await mammoth.extractRawText({
         buffer: Buffer.from(arrayBuffer),
       });
-      extractedText = result.value || "";
+      bodyText = (result.value || "").trim();
     } catch {
-      extractedText = decodeBufferSmart(arrayBuffer).replace(
-        /[^\x20-\x7E\xA0-\uFFFF\r\n]/g,
-        " "
-      );
+      bodyText = "";
+    }
+
+    // Word (.docx) dosyalarında ad-soyad / iletişim bilgileri bazen üstbilgi (header1.xml) veya tablo hücrelerinde yer alır
+    try {
+      const docxZip = await JSZip.loadAsync(arrayBuffer);
+      const parseWordXml = (xml: string): string =>
+        xml
+          .replace(/<\/w:tc>/gi, " | ")
+          .replace(/<\/w:p>|<\/w:tr>|<w:br[^>]*\/>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/[ \t]+/g, " ")
+          .replace(/\n\s*\n+/g, "\n")
+          .trim();
+
+      const headerChunks: string[] = [];
+      for (const hName of ["word/header1.xml", "word/header2.xml", "word/header3.xml"]) {
+        const hf = docxZip.file(hName);
+        if (hf) {
+          const hTxt = parseWordXml(await hf.async("string"));
+          if (hTxt && !bodyText.includes(hTxt)) headerChunks.push(hTxt);
+        }
+      }
+
+      if (!bodyText) {
+        const docFile = docxZip.file("word/document.xml");
+        if (docFile) {
+          bodyText = parseWordXml(await docFile.async("string"));
+        }
+      }
+
+      extractedText = [...headerChunks, bodyText].filter(Boolean).join("\n\n");
+    } catch {
+      extractedText =
+        bodyText ||
+        decodeBufferSmart(arrayBuffer).replace(
+          /[^\x20-\x7E\xA0-\uFFFF\r\n]/g,
+          " "
+        );
     }
   } else if (ext === "html" || ext === "htm") {
     const rawHtml = decodeBufferSmart(arrayBuffer);

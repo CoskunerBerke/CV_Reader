@@ -872,14 +872,49 @@ export default function CVReaderApp() {
           extractedText = "";
         }
       } else if (ext === "docx" || ext === "doc") {
+        let bodyTxt = "";
         try {
           const mammoth = (await import("mammoth")).default;
           const res = await mammoth.extractRawText({ arrayBuffer });
-          extractedText = res.value || "";
+          bodyTxt = (res.value || "").trim();
         } catch {
-          extractedText = new TextDecoder("utf-8", { fatal: false }).decode(
-            arrayBuffer
-          );
+          bodyTxt = "";
+        }
+        try {
+          const JSZip = (await import("jszip")).default;
+          const docxZip = await JSZip.loadAsync(arrayBuffer);
+          const parseWordXml = (xml: string): string =>
+            xml
+              .replace(/<\/w:tc>/gi, " | ")
+              .replace(/<\/w:p>|<\/w:tr>|<w:br[^>]*\/>/gi, "\n")
+              .replace(/<[^>]+>/g, "")
+              .replace(/&amp;/g, "&")
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&quot;/g, '"')
+              .replace(/&apos;/g, "'")
+              .replace(/[ \t]+/g, " ")
+              .replace(/\n\s*\n+/g, "\n")
+              .trim();
+          const headerChunks: string[] = [];
+          for (const hName of ["word/header1.xml", "word/header2.xml", "word/header3.xml"]) {
+            const hf = docxZip.file(hName);
+            if (hf) {
+              const hTxt = parseWordXml(await hf.async("string"));
+              if (hTxt && !bodyTxt.includes(hTxt)) headerChunks.push(hTxt);
+            }
+          }
+          if (!bodyTxt) {
+            const docFile = docxZip.file("word/document.xml");
+            if (docFile) {
+              bodyTxt = parseWordXml(await docFile.async("string"));
+            }
+          }
+          extractedText = [...headerChunks, bodyTxt].filter(Boolean).join("\n\n");
+        } catch {
+          extractedText =
+            bodyTxt ||
+            new TextDecoder("utf-8", { fatal: false }).decode(arrayBuffer);
         }
       } else {
         const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(
@@ -1410,10 +1445,10 @@ export default function CVReaderApp() {
         : "Sınır yok — ister 10 ister 1.000+ adet .PDF, .DOCX, .ZIP, .RAR dosyasını veya klasörü tek seferde yükleyin.",
     btnSelectFiles:
       lang === "en"
-        ? "Select Multiple Files (PDF / ZIP)"
-        : "Çoklu Dosya Seç (PDF / ZIP)",
+        ? "Upload CV"
+        : "CV Yükle",
     btnSelectFolder:
-      lang === "en" ? "Select Folder (Batch)" : "Klasör Seç (Toplu)",
+      lang === "en" ? "Select Folder" : "Klasör Seç",
     step1Title:
       lang === "en"
         ? "Unlimited Batch Upload"
@@ -1854,9 +1889,9 @@ export default function CVReaderApp() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
-                  <label className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-sm transition-all whitespace-nowrap shrink-0 border border-[#2c3d5e]">
-                    <Upload className="w-3.5 h-3.5 text-[#eab308]" />
+                <div className="flex items-center justify-center shrink-0">
+                  <label className="px-5 py-3 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs sm:text-sm font-semibold cursor-pointer flex items-center gap-2 shadow-sm transition-all whitespace-nowrap shrink-0 border border-[#2c3d5e]">
+                    <Upload className="w-4 h-4 text-[#eab308]" />
                     {t.btnSelectFiles}
                     <input
                       type="file"
@@ -1866,29 +1901,15 @@ export default function CVReaderApp() {
                       className="hidden"
                     />
                   </label>
-
-                  <label className="px-4 py-2.5 rounded-lg border border-[#9e9585] bg-[#d6cfc0] hover:bg-[#cbc3b3] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0">
-                    📁 {t.btnSelectFolder}
-                    <input
-                      type="file"
-                      multiple
-                      {...({
-                        webkitdirectory: "",
-                        directory: "",
-                      } as React.InputHTMLAttributes<HTMLInputElement>)}
-                      onChange={handleDirectFilesUpload}
-                      className="hidden"
-                    />
-                  </label>
                 </div>
               </div>
 
-              {/* SİMETRİK 4x2 SÜTUN SEÇİM MATRİSİ (Eşit Genişlikli 8 Kutu) */}
+              {/* SİMETRİK 4x5 SÜTUN SEÇİM MATRİSİ (Eşit Genişlikli 20 Kutu: 4 Açık + 16 Kilitli) */}
               <div className="mt-6 pt-5 border-t border-[#c4bdb0] text-left space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.14em] text-[#182235]">
                     {lang === "en"
-                      ? "EXCEL TABLE COLUMNS (DEFAULT & PREMIUM)"
+                      ? "EXCEL TABLE COLUMNS (4 DEFAULT OPEN & 100+ PREMIUM OPTIONS)"
                       : "TABLO SÜTUNLARI (STANDART AÇIK & PREMİUM SEÇENEKLER)"}
                   </span>
                   <button
@@ -1903,7 +1924,7 @@ export default function CVReaderApp() {
                   </button>
                 </div>
 
-                {/* 4 Sütun x 2 Satır Tam Hizalı Grid */}
+                {/* 4 Sütun x 5 Satır Tam Hizalı ve Eşit Genişlikli Grid (20 Kutu) */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
                   {/* 1. Satır: 4 Varsayılan Açık Sütun */}
                   {[
@@ -1916,7 +1937,7 @@ export default function CVReaderApp() {
                   ].map((fieldLabel) => (
                     <div
                       key={fieldLabel}
-                      className="px-3.5 py-2.5 rounded-lg bg-[#182235] text-[#f0ece1] border border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 select-none"
+                      className="h-10 px-3.5 rounded-lg bg-[#182235] text-[#f0ece1] border border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 select-none"
                     >
                       <span className="flex items-center gap-2 truncate">
                         <span className="w-4 h-4 rounded-xs bg-[#eab308] text-[#182235] flex items-center justify-center shrink-0">
@@ -1930,7 +1951,7 @@ export default function CVReaderApp() {
                     </div>
                   ))}
 
-                  {/* 2. Satır: 4 Kilitli Seçilebilir Sütun (Eşit Genişlikte) */}
+                  {/* 2.–5. Satırlar: 16 Kilitli Seçilebilir Sütun (Eşit Genişlikte ve Tam Hizalı) */}
                   {[
                     lang === "en" ? "Associate Degree" : "Ön Lisans & Bölümü",
                     lang === "en"
@@ -1940,12 +1961,48 @@ export default function CVReaderApp() {
                       ? "Master's (M.Sc.)"
                       : "Yüksek Lisans (Master)",
                     lang === "en" ? "Ph.D. / Doctorate" : "Doktora (Ph.D.)",
+                    lang === "en"
+                      ? "Graduation Year & GPA"
+                      : "Mezuniyet Yılı & GPA",
+                    lang === "en"
+                      ? "Profession / Role"
+                      : "Meslek / Ne İşi Yapar",
+                    lang === "en"
+                      ? "Total Experience (Years)"
+                      : "Toplam Deneyim (Yıl)",
+                    lang === "en"
+                      ? "Past Employers"
+                      : "Çalıştığı Şirketler",
+                    lang === "en"
+                      ? "English Level"
+                      : "İngilizce Seviyesi",
+                    lang === "en"
+                      ? "2nd Foreign Language"
+                      : "2. Yabancı Dil",
+                    lang === "en"
+                      ? "SAP / ERP & Office"
+                      : "SAP / ERP & Office",
+                    lang === "en"
+                      ? "Software & Tools"
+                      : "Yazılım & Programlar",
+                    lang === "en"
+                      ? "City & District"
+                      : "İkamet Şehri & İlçe",
+                    lang === "en"
+                      ? "Certificates & Licenses"
+                      : "Mesleki Sertifikalar",
+                    lang === "en"
+                      ? "Military & Driving"
+                      : "Askerlik & Ehliyet",
+                    lang === "en"
+                      ? "+80 Custom Criteria"
+                      : "+80 Özel Şirket Kriteri",
                   ].map((lockedLabel) => (
                     <button
                       key={lockedLabel}
                       type="button"
                       onClick={() => openPremiumModal(lockedLabel)}
-                      className="group px-3.5 py-2.5 rounded-lg bg-[#d8d1c3] hover:bg-[#182235] text-[#182235] hover:text-[#f0ece1] border border-[#a8a090] hover:border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 cursor-pointer transition-all text-left"
+                      className="group h-10 px-3.5 rounded-lg bg-[#d8d1c3] hover:bg-[#182235] text-[#182235] hover:text-[#f0ece1] border border-[#a8a090] hover:border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 cursor-pointer transition-all text-left"
                     >
                       <span className="flex items-center gap-2 truncate">
                         <span className="w-4 h-4 rounded-xs border border-[#6b7280] group-hover:border-[#eab308] bg-[#e4dfd3] group-hover:bg-[#eab308]/20 flex items-center justify-center shrink-0">
@@ -2038,29 +2095,14 @@ export default function CVReaderApp() {
                     </button>
                   </div>
 
-                  {/* + Çoklu Dosya Ekle */}
-                  <label className="px-3 py-1.5 rounded-lg border border-[#3b4d6b] bg-[#212f47] hover:bg-[#2a3b57] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
+                  {/* + CV Ekle (Tek Buton) */}
+                  <label className="px-3.5 py-1.5 rounded-lg border border-[#3b4d6b] bg-[#212f47] hover:bg-[#2a3b57] text-[#f0ece1] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
                     <Upload className="w-3.5 h-3.5 text-[#93c5fd]" />
-                    {lang === "en" ? "+ Add Files / ZIP" : "+ Dosya / ZIP Ekle"}
+                    {lang === "en" ? "+ Upload CV" : "+ CV Yükle"}
                     <input
                       type="file"
                       multiple
                       accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={handleDirectFilesUpload}
-                      className="hidden"
-                    />
-                  </label>
-
-                  {/* + Klasör Ekle */}
-                  <label className="px-3 py-1.5 rounded-lg border border-[#3b4d6b] bg-[#1b263b] hover:bg-[#25344f] text-[#d2ccc0] text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0">
-                    {lang === "en" ? "+ Add Folder" : "+ Klasör Ekle"}
-                    <input
-                      type="file"
-                      multiple
-                      {...({
-                        webkitdirectory: "",
-                        directory: "",
-                      } as React.InputHTMLAttributes<HTMLInputElement>)}
                       onChange={handleDirectFilesUpload}
                       className="hidden"
                     />
@@ -3044,20 +3086,6 @@ export default function CVReaderApp() {
                     type="file"
                     multiple
                     accept=".pdf,.docx,.doc,.html,.htm,.zip,.rar,.txt,.md,text/html,application/pdf,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleModalFileSelect}
-                    className="hidden"
-                  />
-                </label>
-
-                <label className="px-3.5 py-2 rounded-md border border-[#a8a090] bg-[#d6cfc0] hover:border-[#182235] text-[#141c2b] text-xs font-semibold cursor-pointer flex items-center gap-1.5">
-                  📁 {t.btnSelectFolder}
-                  <input
-                    type="file"
-                    multiple
-                    {...({
-                      webkitdirectory: "",
-                      directory: "",
-                    } as React.InputHTMLAttributes<HTMLInputElement>)}
                     onChange={handleModalFileSelect}
                     className="hidden"
                   />
