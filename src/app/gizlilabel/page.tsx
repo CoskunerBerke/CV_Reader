@@ -78,8 +78,8 @@ interface BenchmarkCVItem {
   humanLabel: GroundTruthLabel | null;
 }
 
-const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v3";
-const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v3";
+const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v4";
+const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v4";
 
 // Etiketleme panelinde "Temel Alanlar" sekmesinde ilk gösterilecek 16 anahtar alan (Üniversite ve Bölüm yan yana)
 const CORE_FIELD_IDS = new Set([
@@ -1161,18 +1161,6 @@ export default function GroundTruthLabelerPage() {
                             </span>
                             {crit.label}
                           </label>
-                          { hasRealVal && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleUpdateFieldValue(crit.id, "-")
-                              }
-                              title="Yok (-) olarak işaretle"
-                              className="text-[10px] font-mono-academic px-1 rounded bg-[#d6cfc0] hover:bg-[#c4bdb0] text-[#273142] cursor-pointer"
-                            >
-                              -
-                            </button>
-                          )}
                         </div>
                         <input
                           type="text"
