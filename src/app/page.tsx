@@ -2795,19 +2795,6 @@ export default function CVReaderApp() {
                                 ))}
                               </div>
                             </div>
-
-                            {/* BÖLÜM III: OKUNAN ÖZGEÇMİŞ METNİ */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="text-[10px] font-mono-academic font-bold text-[#3b4454] uppercase tracking-[0.15em] flex items-center gap-1.5">
-                                  <FileText className="w-3.5 h-3.5 text-[#182235]" />
-                                  <span>{t.rawCvTextHeading}</span>
-                                </div>
-                              </div>
-                              <pre className="p-4 rounded-lg bg-[#182235] border border-[#2c3a52] text-[#e2dcd0] text-xs font-mono-academic whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto shadow-inner">
-                                {selectedEvaluation.cv.rawText}
-                              </pre>
-                            </div>
                           </div>
                         </div>
                       );
