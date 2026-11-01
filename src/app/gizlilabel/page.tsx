@@ -78,27 +78,27 @@ interface BenchmarkCVItem {
   humanLabel: GroundTruthLabel | null;
 }
 
-const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v2";
-const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v2";
+const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v3";
+const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v3";
 
-// Etiketleme panelinde "Temel Alanlar" sekmesinde ilk gösterilecek 16 anahtar alan (diğer sekmelerde 100 alanın tamamı yer alır)
+// Etiketleme panelinde "Temel Alanlar" sekmesinde ilk gösterilecek 16 anahtar alan (Üniversite ve Bölüm yan yana)
 const CORE_FIELD_IDS = new Set([
-  "c001", // Ad Soyad
-  "c002", // Yaş
-  "c003", // Cinsiyet
-  "c005", // İkamet Şehri
-  "c012", // Lisans Üniversitesi
-  "c013", // Lisans Bölümü
-  "c017", // Ön Lisans Üniversitesi
-  "c018", // Ön Lisans Bölümü
-  "c022", // Yüksek Lisans Üniversitesi
-  "c023", // Yüksek Lisans Bölümü
-  "c027", // Doktora Üniversitesi
-  "c028", // Doktora Bölümü
-  "c031", // Ne İşi Yapar / Ana Meslek
-  "c033", // Toplam İş Deneyimi (Yıl)
-  "c043", // İngilizce Seviyesi
-  "c053", // Programlama Dilleri
+  "c001", // #001 Ad Soyad
+  "c002", // #002 Yaş
+  "c003", // #003 Cinsiyet
+  "c005", // #005 İkamet Şehri
+  "c011", // #011 Lisans Üniversitesi
+  "c012", // #012 Lisans Bölümü
+  "c016", // #016 Ön Lisans Üniversitesi
+  "c017", // #017 Ön Lisans Bölümü
+  "c021", // #021 Yüksek Lisans Üniversitesi
+  "c022", // #022 Yüksek Lisans Bölümü
+  "c026", // #026 Doktora (Ph.D.) Üniversitesi
+  "c027", // #027 Doktora (Ph.D.) Bölümü
+  "c031", // #031 Meslek / Uzmanlık Unvanı
+  "c032", // #032 Toplam İş Deneyimi (Yıl)
+  "c043", // #043 İngilizce Seviyesi
+  "c055", // #055 Python & Veri Bilimi Araçları
 ]);
 
 export default function GroundTruthLabelerPage() {
@@ -453,12 +453,51 @@ export default function GroundTruthLabelerPage() {
       }
       const cleanU = cleanCriterionDisplayValue(lbl.humanUniversity);
       if (cleanU !== "-") {
-        autoExtracted.c011 = cleanU;
-        autoExtracted.c012 = cleanU;
+        for (const rawPart of cleanU.split("|")) {
+          const part = rawPart.trim();
+          if (!part) continue;
+          if (/^ön\s*lisans\s*:/i.test(part)) {
+            autoExtracted.c016 = cleanCriterionDisplayValue(
+              part.replace(/^ön\s*lisans\s*:\s*/i, "")
+            );
+          } else if (/^(?:master|yüksek\s*lisans)\s*:/i.test(part)) {
+            autoExtracted.c021 = cleanCriterionDisplayValue(
+              part.replace(/^(?:master|yüksek\s*lisans)\s*:\s*/i, "")
+            );
+          } else if (/^(?:doktora|ph\.?d\.?)\s*:/i.test(part)) {
+            autoExtracted.c026 = cleanCriterionDisplayValue(
+              part.replace(/^(?:doktora|ph\.?d\.?)\s*:\s*/i, "")
+            );
+          } else {
+            autoExtracted.c011 = cleanCriterionDisplayValue(
+              part.replace(/^lisans\s*:\s*/i, "")
+            );
+          }
+        }
       }
       const cleanD = cleanCriterionDisplayValue(lbl.humanDepartment);
       if (cleanD !== "-") {
-        autoExtracted.c013 = cleanD;
+        for (const rawPart of cleanD.split("|")) {
+          const part = rawPart.trim();
+          if (!part) continue;
+          if (/^ön\s*lisans\s*:/i.test(part)) {
+            autoExtracted.c017 = cleanCriterionDisplayValue(
+              part.replace(/^ön\s*lisans\s*:\s*/i, "")
+            );
+          } else if (/^(?:master|yüksek\s*lisans)\s*:/i.test(part)) {
+            autoExtracted.c022 = cleanCriterionDisplayValue(
+              part.replace(/^(?:master|yüksek\s*lisans)\s*:\s*/i, "")
+            );
+          } else if (/^(?:doktora|ph\.?d\.?)\s*:/i.test(part)) {
+            autoExtracted.c027 = cleanCriterionDisplayValue(
+              part.replace(/^(?:doktora|ph\.?d\.?)\s*:\s*/i, "")
+            );
+          } else {
+            autoExtracted.c012 = cleanCriterionDisplayValue(
+              part.replace(/^lisans\s*:\s*/i, "")
+            );
+          }
+        }
       }
     }
 
@@ -585,14 +624,14 @@ export default function GroundTruthLabelerPage() {
           : null;
 
       // Üniversite & Bölüm birleştirme (varsa değeri, yoksa '-')
-      const bscUni = normalizedForFile.c012;
-      const bscDept = normalizedForFile.c013;
-      const assocUni = normalizedForFile.c017;
-      const assocDept = normalizedForFile.c018;
-      const mscUni = normalizedForFile.c022;
-      const mscDept = normalizedForFile.c023;
-      const phdUni = normalizedForFile.c027;
-      const phdDept = normalizedForFile.c028;
+      const bscUni = normalizedForFile.c011;
+      const bscDept = normalizedForFile.c012;
+      const assocUni = normalizedForFile.c016;
+      const assocDept = normalizedForFile.c017;
+      const mscUni = normalizedForFile.c021;
+      const mscDept = normalizedForFile.c022;
+      const phdUni = normalizedForFile.c026;
+      const phdDept = normalizedForFile.c027;
 
       const uniParts: string[] = [];
       const deptParts: string[] = [];

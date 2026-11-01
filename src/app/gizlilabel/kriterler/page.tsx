@@ -44,8 +44,8 @@ interface BenchmarkCVItem {
   } | null;
 }
 
-const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v2";
-const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v2";
+const CUSTOM_CRITERIA_STORAGE_KEY = "cv_custom_criteria_definitions_v3";
+const CV_100_LABELS_STORAGE_KEY = "cv_100_criteria_labels_by_file_v3";
 
 export default function HundredCriteriaMatrixPage() {
   const [authChecking, setAuthChecking] = useState<boolean>(true);
@@ -217,8 +217,27 @@ export default function HundredCriteriaMatrixPage() {
           currentCv.humanLabel.humanUniversity
         );
         if (cleanU !== "-") {
-          autoExtracted.c011 = cleanU;
-          autoExtracted.c012 = cleanU;
+          for (const rawPart of cleanU.split("|")) {
+            const part = rawPart.trim();
+            if (!part) continue;
+            if (/^ön\s*lisans\s*:/i.test(part)) {
+              autoExtracted.c016 = cleanCriterionDisplayValue(
+                part.replace(/^ön\s*lisans\s*:\s*/i, "")
+              );
+            } else if (/^(?:master|yüksek\s*lisans)\s*:/i.test(part)) {
+              autoExtracted.c021 = cleanCriterionDisplayValue(
+                part.replace(/^(?:master|yüksek\s*lisans)\s*:\s*/i, "")
+              );
+            } else if (/^(?:doktora|ph\.?d\.?)\s*:/i.test(part)) {
+              autoExtracted.c026 = cleanCriterionDisplayValue(
+                part.replace(/^(?:doktora|ph\.?d\.?)\s*:\s*/i, "")
+              );
+            } else {
+              autoExtracted.c011 = cleanCriterionDisplayValue(
+                part.replace(/^lisans\s*:\s*/i, "")
+              );
+            }
+          }
         }
       }
       if (currentCv.humanLabel.humanDepartment) {
@@ -226,7 +245,27 @@ export default function HundredCriteriaMatrixPage() {
           currentCv.humanLabel.humanDepartment
         );
         if (cleanD !== "-") {
-          autoExtracted.c013 = cleanD;
+          for (const rawPart of cleanD.split("|")) {
+            const part = rawPart.trim();
+            if (!part) continue;
+            if (/^ön\s*lisans\s*:/i.test(part)) {
+              autoExtracted.c017 = cleanCriterionDisplayValue(
+                part.replace(/^ön\s*lisans\s*:\s*/i, "")
+              );
+            } else if (/^(?:master|yüksek\s*lisans)\s*:/i.test(part)) {
+              autoExtracted.c022 = cleanCriterionDisplayValue(
+                part.replace(/^(?:master|yüksek\s*lisans)\s*:\s*/i, "")
+              );
+            } else if (/^(?:doktora|ph\.?d\.?)\s*:/i.test(part)) {
+              autoExtracted.c027 = cleanCriterionDisplayValue(
+                part.replace(/^(?:doktora|ph\.?d\.?)\s*:\s*/i, "")
+              );
+            } else {
+              autoExtracted.c012 = cleanCriterionDisplayValue(
+                part.replace(/^lisans\s*:\s*/i, "")
+              );
+            }
+          }
         }
       }
     }
@@ -349,40 +388,42 @@ export default function HundredCriteriaMatrixPage() {
           ? normalizedForFile.c003
           : "Erkek";
 
-      const uniToSave =
-        normalizedForFile.c012 !== "-"
-          ? normalizedForFile.c012
-          : normalizedForFile.c011 !== "-"
-          ? normalizedForFile.c011
-          : "-";
-      const deptToSave =
-        normalizedForFile.c013 !== "-" ? normalizedForFile.c013 : "-";
+      const bscUni = normalizedForFile.c011;
+      const bscDept = normalizedForFile.c012;
+      const assocUni = normalizedForFile.c016;
+      const assocDept = normalizedForFile.c017;
+      const mscUni = normalizedForFile.c021;
+      const mscDept = normalizedForFile.c022;
+      const phdUni = normalizedForFile.c026;
+      const phdDept = normalizedForFile.c027;
 
+      const uniParts: string[] = [];
+      const deptParts: string[] = [];
       const degParts: string[] = [];
-      if (
-        normalizedForFile.c016 !== "-" ||
-        normalizedForFile.c017 !== "-" ||
-        normalizedForFile.c018 !== "-"
-      ) {
+
+      if (assocUni !== "-" || assocDept !== "-") {
         degParts.push("Ön Lisans (Associate)");
+        if (assocUni !== "-") uniParts.push(`Ön Lisans: ${assocUni}`);
+        if (assocDept !== "-") deptParts.push(`Ön Lisans: ${assocDept}`);
       }
-      if (uniToSave !== "-" || deptToSave !== "-") {
+      if (bscUni !== "-" || bscDept !== "-") {
         degParts.push("Lisans (Bachelor's)");
+        if (bscUni !== "-") uniParts.push(bscUni);
+        if (bscDept !== "-") deptParts.push(bscDept);
       }
-      if (
-        normalizedForFile.c021 !== "-" ||
-        normalizedForFile.c022 !== "-" ||
-        normalizedForFile.c023 !== "-"
-      ) {
+      if (mscUni !== "-" || mscDept !== "-") {
         degParts.push("Yüksek Lisans (Master's)");
+        if (mscUni !== "-") uniParts.push(`Master: ${mscUni}`);
+        if (mscDept !== "-") deptParts.push(`Master: ${mscDept}`);
       }
-      if (
-        normalizedForFile.c026 !== "-" ||
-        normalizedForFile.c027 !== "-" ||
-        normalizedForFile.c028 !== "-"
-      ) {
+      if (phdUni !== "-" || phdDept !== "-") {
         degParts.push("Doktora (Ph.D.)");
+        if (phdUni !== "-") uniParts.push(`Doktora: ${phdUni}`);
+        if (phdDept !== "-") deptParts.push(`Doktora: ${phdDept}`);
       }
+
+      const uniToSave = uniParts.length > 0 ? uniParts.join(" | ") : "-";
+      const deptToSave = deptParts.length > 0 ? deptParts.join(" | ") : "-";
       const degToSave = degParts.length > 0 ? degParts.join(" + ") : "-";
 
       await fetch("/api/ground-truth", {
