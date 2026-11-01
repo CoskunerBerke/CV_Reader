@@ -1363,30 +1363,33 @@ export default function CVReaderApp() {
         : "Sınır yok; ister 10 ister 1.000+ CV'yi aynı anda bırakın. Tüm aday verileri çıkarılıp anında Excel'e hazır hale getirilir.",
     heroEyebrow:
       lang === "en"
-        ? "01 — UNLIMITED CV DATA EXTRACTION FOR COMPANIES"
-        : "01 — ŞİRKETLER İÇİN SINIRSIZ ÖZGEÇMİŞ VERİ ÇIKARIMI",
+        ? "01 — CORPORATE CV ANALYSIS & EXCEL REPORTING"
+        : "01 — ŞİRKETLER İÇİN KURUMSAL ÖZGEÇMİŞ ANALİZİ VE EXCEL RAPORLAMA",
     heroTitle:
       lang === "en"
         ? "Turn Hundreds or Thousands of CVs into a Clean Excel Table in Seconds."
         : "Yüzlerce Hatta Binlerce Özgeçmişi Saniyeler İçinde Düzenli Excel Tablosuna Dönüştürün.",
     heroDescStart:
       lang === "en"
-        ? "We extract not only "
-        : "Sadece ",
-    heroAge: lang === "en" ? "Age" : "Yaş",
-    heroGender: lang === "en" ? "Gender" : "Cinsiyet",
-    heroAnd: lang === "en" ? " and " : " ve ",
+        ? "Drop any number of PDF, Word, folder, or archive files at once. Extract "
+        : "Adet sınırı olmadan tüm PDF, Word, klasör veya arşiv dosyalarınızı tek seferde bırakın; ",
+    heroAge: lang === "en" ? "Age, Gender, Education" : "Yaş, Cinsiyet, Eğitim",
+    heroGender:
+      lang === "en"
+        ? "Profession, Experience"
+        : "Meslek, Deneyim Yılı",
+    heroAnd: lang === "en" ? ", and " : " ve ",
     heroDegrees:
       lang === "en"
-        ? "School / Department"
-        : "Okul / Bölüm",
+        ? "100+ Custom Company Criteria"
+        : "Şirketinize Özel 100+ Kriteri",
     heroDescMid:
       lang === "en"
-        ? ", but also Profession & Role, Experience Years, Previous Companies, Foreign Languages, Software & ERP Tools, Certificates, City, Military/Driving Status, and 100+ custom company criteria—ready for one-click "
-        : " değil; Meslek / Ne İşi Yapar, Toplam Deneyim Yılı, Çalıştığı Şirketler, Yabancı Dil Seviyeleri, Yazılım & Programlar (SAP, Excel, AutoCAD, Python vb.), Sertifikalar, Şehir/İlçe, Ehliyet, Askerlik ve şirketinize özel 100+ kriterin tamamını tek tıkla ",
+        ? " into a ready-to-filter "
+        : " tek tıkla düzenli ",
     heroExcel: lang === "en" ? "Excel (.xlsx)" : "Excel (.xlsx)",
     heroDescEnd:
-      lang === "en" ? " download." : " tablosuna dönüştürüyoruz.",
+      lang === "en" ? " spreadsheet." : " tablosu olarak indirin.",
     readingFiles:
       lang === "en" ? "Reading CV files..." : "Dosyalar okunuyor...",
     dropTitleDragging:
@@ -1395,16 +1398,16 @@ export default function CVReaderApp() {
         : "Dosyaları veya Klasörü Şimdi Buraya Bırakın!",
     dropTitleEmpty:
       lang === "en"
-        ? "No Limits: Drag & Drop Any Number of CVs, Folders, or .ZIP / .RAR Archives Here"
-        : "Sınır Yok: İstediğiniz Kadar CV Dosyasını, Klasörü veya .ZIP / .RAR Arşivini Buraya Bırakın",
+        ? "Drag & Drop CV Files, Folders, or .ZIP / .RAR Archives Here"
+        : "CV Dosyalarını, Klasörü veya .ZIP / .RAR Arşivini Buraya Bırakın",
     dropTitleLoaded: (count: number) =>
       lang === "en"
         ? `Drag & Drop Additional CVs, Folder, or .ZIP Archive Here (${count} CVs Loaded)`
         : `Yeni CV'leri, Klasörü veya .ZIP Arşivini Buraya Sürükleyip Bırakın (${count} CV Yüklü)`,
     dropSubText:
       lang === "en"
-        ? "Whether you have 10 applicants or a 1,000+ candidate company archive, drag all .PDF, .DOCX, .HTML, .ZIP, and .RAR files or folders directly into this box. Every candidate is unified into a single table ready for Excel export."
-        : "İster birkaç başvuru ister şirketinizin 1.000+ kişilik aday arşivi olsun; tüm .PDF, .DOCX, .HTML, .ZIP, .RAR dosyalarını veya doğrudan klasörü bu alana sürükleyin. Tüm adaylar saniyeler içinde tek tabloda birleştirilir ve Excel çıktısına hazır hale getirilir.",
+        ? "No file limits — upload 10 or 1,000+ .PDF, .DOCX, .ZIP, or .RAR files at once and export directly to Excel (.xlsx)."
+        : "Sınır yok — ister 10 ister 1.000+ adet .PDF, .DOCX, .ZIP, .RAR dosyasını veya klasörü tek seferde yükleyin.",
     btnSelectFiles:
       lang === "en"
         ? "Select Multiple Files (PDF / ZIP)"
@@ -1821,20 +1824,20 @@ export default function CVReaderApp() {
               </div>
             )}
 
-            {/* ANA SAYFA SÜRÜKLE & BIRAK KARTI */}
+            {/* ANA SAYFA SÜRÜKLE & BIRAK KARTI (SADE, SİMETRİK VE DÜZENLİ) */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDropFiles(e, true)}
-              className={`bg-[#e4dfd3]/96 backdrop-blur-md border-2 border-dashed rounded-2xl p-7 sm:p-9 academic-card-transition shadow-xl ${
+              className={`bg-[#e4dfd3]/96 backdrop-blur-md border-2 border-dashed rounded-2xl p-6 sm:p-8 academic-card-transition shadow-xl ${
                 isDragging
                   ? "border-[#9a5b13] bg-[#dbd4c4] scale-[1.005]"
                   : "border-[#182235]/60 hover:border-[#182235]"
               }`}
             >
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-center lg:text-left">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-5 text-center lg:text-left">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-[#182235] border border-[#334566] text-[#f0ece1] flex items-center justify-center shrink-0 shadow-sm">
+                  <div className="w-13 h-13 rounded-xl bg-[#182235] border border-[#334566] text-[#f0ece1] flex items-center justify-center shrink-0 shadow-sm">
                     {isParsingPdf ? (
                       <Loader2 className="w-6 h-6 text-[#eab308] animate-spin" />
                     ) : (
@@ -1845,7 +1848,7 @@ export default function CVReaderApp() {
                     <h2 className="font-serif-academic text-base sm:text-xl font-bold text-[#121926]">
                       {isDragging ? t.dropTitleDragging : t.dropTitleEmpty}
                     </h2>
-                    <p className="text-xs sm:text-sm text-[#333d4f] mt-1 leading-relaxed max-w-2xl">
+                    <p className="text-xs sm:text-sm text-[#333d4f] mt-1 leading-relaxed max-w-xl">
                       {t.dropSubText}
                     </p>
                   </div>
@@ -1880,28 +1883,29 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              {/* SEÇİLEBİLİR VERİ SÜTUNLARI: TÜM HİZMETLERİMİZ (SADECE YAŞ, CİNSİYET, OKUL DEĞİL; 100+ KRİTER) */}
-              <div className="mt-6 pt-5 border-t border-[#c4bdb0] text-left space-y-2.5">
+              {/* SİMETRİK 4x2 SÜTUN SEÇİM MATRİSİ (Eşit Genişlikli 8 Kutu) */}
+              <div className="mt-6 pt-5 border-t border-[#c4bdb0] text-left space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.15em] text-[#182235]">
+                  <span className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.14em] text-[#182235]">
                     {lang === "en"
-                      ? "EXTRACTED DATA COLUMNS (ACTIVE & 100+ PREMIUM FIELDS)"
-                      : "ÇIKARILAN VERİ SÜTUNLARI (AKTİF ALANLAR & 100+ PREMİUM SEÇENEK)"}
+                      ? "EXCEL TABLE COLUMNS (DEFAULT & PREMIUM)"
+                      : "TABLO SÜTUNLARI (STANDART AÇIK & PREMİUM SEÇENEKLER)"}
                   </span>
                   <button
                     type="button"
                     onClick={() => openPremiumModal()}
-                    className="text-xs font-semibold text-[#7c470b] hover:text-[#182235] underline underline-offset-4 cursor-pointer flex items-center gap-1"
+                    className="text-xs font-semibold text-[#7c470b] hover:text-[#182235] cursor-pointer flex items-center gap-1"
                   >
                     <Lock className="w-3 h-3" />
                     {lang === "en"
-                      ? "Unlock All 100+ Fields — Contact Us"
-                      : "Tüm Kilitli Alanları Açmak İçin Bize Ulaşın →"}
+                      ? "Contact Us for Locked Columns →"
+                      : "Kilitli Sütunları Açmak İçin Bize Ulaşın →"}
                   </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* 4 Default Açık Alan */}
+                {/* 4 Sütun x 2 Satır Tam Hizalı Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {/* 1. Satır: 4 Varsayılan Açık Sütun */}
                   {[
                     lang === "en" ? "Full Name" : "Ad Soyad",
                     lang === "en" ? "Age" : "Yaş",
@@ -1910,98 +1914,50 @@ export default function CVReaderApp() {
                       ? "Bachelor's University"
                       : "Lisans Üniversitesi",
                   ].map((fieldLabel) => (
-                    <span
+                    <div
                       key={fieldLabel}
-                      className="px-3 py-1.5 rounded-lg bg-[#182235] text-[#f0ece1] border border-[#182235] text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs select-none"
+                      className="px-3.5 py-2.5 rounded-lg bg-[#182235] text-[#f0ece1] border border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 select-none"
                     >
-                      <span className="w-3.5 h-3.5 rounded-xs bg-[#eab308] text-[#182235] flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="w-4 h-4 rounded-xs bg-[#eab308] text-[#182235] flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </span>
+                        <span className="truncate">{fieldLabel}</span>
                       </span>
-                      {fieldLabel}
-                    </span>
+                      <span className="text-[10px] font-mono-academic text-[#93c5fd] shrink-0">
+                        {lang === "en" ? "Active" : "Açık"}
+                      </span>
+                    </div>
                   ))}
 
-                  {/* Seçilebilir Kilitli Premium Alanlar (Sadece okul değil; meslek, deneyim, yabancı dil, yazılım, sertifika vb. hepsi) */}
+                  {/* 2. Satır: 4 Kilitli Seçilebilir Sütun (Eşit Genişlikte) */}
                   {[
                     lang === "en" ? "Associate Degree" : "Ön Lisans & Bölümü",
                     lang === "en"
                       ? "Bachelor's Department"
                       : "Lisans Bölümü",
                     lang === "en"
-                      ? "Master's & Ph.D."
-                      : "Yüksek Lisans & Doktora",
-                    lang === "en"
-                      ? "Profession / Role"
-                      : "Meslek / Ne İşi Yapar",
-                    lang === "en"
-                      ? "Experience Years & Companies"
-                      : "Deneyim Yılı & Şirketler",
-                    lang === "en"
-                      ? "Foreign Languages"
-                      : "Yabancı Dil Seviyesi",
-                    lang === "en"
-                      ? "Software, SAP & Excel"
-                      : "Yazılım, SAP & Programlar",
-                    lang === "en"
-                      ? "Certificates, City, Military & 100+ More"
-                      : "Sertifika, Şehir, Ehliyet & 100+ Özel Kriter",
+                      ? "Master's (M.Sc.)"
+                      : "Yüksek Lisans (Master)",
+                    lang === "en" ? "Ph.D. / Doctorate" : "Doktora (Ph.D.)",
                   ].map((lockedLabel) => (
                     <button
                       key={lockedLabel}
                       type="button"
                       onClick={() => openPremiumModal(lockedLabel)}
-                      title={
-                        lang === "en"
-                          ? "Click to request Premium access"
-                          : "Bu alanı aktif etmek için tıklayıp bize ulaşın"
-                      }
-                      className="group px-3 py-1.5 rounded-lg bg-[#d6cfc0] hover:bg-[#182235] text-[#182235] hover:text-[#f0ece1] border border-[#9e9585] hover:border-[#182235] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                      className="group px-3.5 py-2.5 rounded-lg bg-[#d8d1c3] hover:bg-[#182235] text-[#182235] hover:text-[#f0ece1] border border-[#a8a090] hover:border-[#182235] text-xs font-semibold flex items-center justify-between gap-2 cursor-pointer transition-all text-left"
                     >
-                      <span className="w-3.5 h-3.5 rounded-xs border border-[#525b6c] group-hover:border-[#eab308] bg-[#e4dfd3] group-hover:bg-[#eab308]/20 flex items-center justify-center">
-                        <Lock className="w-2.5 h-2.5 text-[#7c470b] group-hover:text-[#eab308]" />
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="w-4 h-4 rounded-xs border border-[#6b7280] group-hover:border-[#eab308] bg-[#e4dfd3] group-hover:bg-[#eab308]/20 flex items-center justify-center shrink-0">
+                          <Lock className="w-2.5 h-2.5 text-[#7c470b] group-hover:text-[#eab308]" />
+                        </span>
+                        <span className="truncate">{lockedLabel}</span>
                       </span>
-                      <span>{lockedLabel}</span>
-                      <span className="text-[10px] font-mono-academic px-1.5 py-0.2 rounded bg-[#c4bdb0] group-hover:bg-[#eab308] text-[#182235] font-bold">
-                        Premium
+                      <span className="text-[10px] font-mono-academic text-[#7c470b] group-hover:text-[#eab308] shrink-0">
+                        {lang === "en" ? "Unlock" : "Kilitli"}
                       </span>
                     </button>
                   ))}
-                </div>
-              </div>
-
-              <div className="mt-6 pt-5 border-t border-[#c4bdb0] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-                <div className="flex items-start gap-2.5">
-                  <span className="font-mono-academic text-xs font-bold text-[#7c470b] shrink-0">
-                    01
-                  </span>
-                  <div className="text-xs text-[#333d4f]">
-                    <strong className="text-[#121926] font-semibold block">
-                      {t.step1Title}
-                    </strong>
-                    {t.step1Desc}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="font-mono-academic text-xs font-bold text-[#7c470b] shrink-0">
-                    02
-                  </span>
-                  <div className="text-xs text-[#333d4f]">
-                    <strong className="text-[#121926] font-semibold block">
-                      {t.step2Title}
-                    </strong>
-                    {t.step2Desc}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="font-mono-academic text-xs font-bold text-[#7c470b] shrink-0">
-                    03
-                  </span>
-                  <div className="text-xs text-[#333d4f]">
-                    <strong className="text-[#121926] font-semibold block">
-                      {t.step3Title}
-                    </strong>
-                    {t.step3Desc}
-                  </div>
                 </div>
               </div>
             </div>
@@ -2129,12 +2085,9 @@ export default function CVReaderApp() {
                 </div>
               </div>
 
-              {/* YÜKLEME SONRASI SEÇİLEBİLİR VERİ SÜTUNLARI BARI */}
-              <div className="px-4 sm:px-5 py-3 bg-[#131b2b] border-t border-[#2c3a52] flex flex-wrap items-center justify-between gap-2.5">
+              {/* YÜKLEME SONRASI SİMETRİK SÜTUN BARI */}
+              <div className="px-4 sm:px-5 py-2.5 bg-[#131b2b] border-t border-[#2c3a52] flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-mono-academic font-bold uppercase tracking-wider text-[#93c5fd] mr-1">
-                    {lang === "en" ? "FIELDS:" : "AKTİF & PREMİUM ALANLAR:"}
-                  </span>
                   {[
                     lang === "en" ? "Full Name" : "Ad Soyad",
                     lang === "en" ? "Age" : "Yaş",
@@ -2153,25 +2106,10 @@ export default function CVReaderApp() {
                   ))}
 
                   {[
-                    lang === "en" ? "Associate Degree" : "Ön Lisans",
-                    lang === "en"
-                      ? "Bachelor's Dept"
-                      : "Lisans Bölümü",
-                    lang === "en"
-                      ? "Master's & Ph.D."
-                      : "Yüksek Lisans & Doktora",
-                    lang === "en"
-                      ? "Profession / Role"
-                      : "Meslek / Pozisyon",
-                    lang === "en"
-                      ? "Experience & Companies"
-                      : "Deneyim Yılı & Şirketler",
-                    lang === "en"
-                      ? "Languages & Software"
-                      : "Yabancı Dil & Yazılım",
-                    lang === "en"
-                      ? "100+ Custom Criteria"
-                      : "100+ Özel Kriter",
+                    lang === "en" ? "Associate Degree" : "Ön Lisans & Bölümü",
+                    lang === "en" ? "Bachelor's Dept" : "Lisans Bölümü",
+                    lang === "en" ? "Master's (M.Sc.)" : "Yüksek Lisans",
+                    lang === "en" ? "Ph.D." : "Doktora",
                   ].map((lockedField) => (
                     <button
                       key={lockedField}
@@ -2179,7 +2117,7 @@ export default function CVReaderApp() {
                       onClick={() => openPremiumModal(lockedField)}
                       className="px-2.5 py-1 rounded bg-[#182235] hover:bg-[#eab308] text-[#d2ccc0] hover:text-[#182235] border border-[#eab308]/40 hover:border-[#eab308] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-all"
                     >
-                      <Lock className="w-3 h-3 text-[#eab308] group-hover:text-[#182235]" />
+                      <Lock className="w-3 h-3 text-[#eab308]" />
                       <span>{lockedField}</span>
                     </button>
                   ))}
@@ -2191,8 +2129,8 @@ export default function CVReaderApp() {
                   className="text-[11px] font-bold text-[#eab308] hover:text-white underline underline-offset-4 cursor-pointer whitespace-nowrap"
                 >
                   {lang === "en"
-                    ? "Contact Us for Premium →"
-                    : "Premium İçin Bize Ulaşın →"}
+                    ? "Unlock All 100+ Columns →"
+                    : "Tüm Kilitli Sütunları Açın →"}
                 </button>
               </div>
             </div>
@@ -2844,7 +2782,7 @@ export default function CVReaderApp() {
         )}
 
         {/* =====================================================================
-            4. HİZMETLERİMİZ VE ÇIKARDIĞIMIZ VERİLER (SADECE NE YAPTIĞIMIZI ANLATAN SADE BÖLÜM)
+            4. KURUMSAL HİZMETLERİMİZ VE ÇIKARDIĞIMIZ VERİLER (6 NET HİZMET KATEGORİSİ)
            ===================================================================== */}
         <section
           id="sistem"
@@ -2853,53 +2791,193 @@ export default function CVReaderApp() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2 max-w-2xl">
               <div className="text-[11px] font-mono-academic font-bold uppercase tracking-[0.2em] text-[#182235] border-l-2 border-[#9a5b13] pl-2.5">
-                {t.sec2Eyebrow}
+                {lang === "en"
+                  ? "02 — OUR SERVICES & EXTRACTED DATA SCOPE"
+                  : "02 — HİZMETLERİMİZ VE ÇIKARDIĞIMIZ VERİ TABLOSU"}
               </div>
               <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#121926] tracking-tight">
-                {t.sec2Title}
+                {lang === "en"
+                  ? "Not Just Age & School — We Extract Every Candidate Detail Your Company Needs"
+                  : "Sadece Yaş, Cinsiyet ve Okul Değil; Şirketinizin Aradığı Tüm Verileri Çıkarıyoruz"}
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-[#273142] max-w-md leading-relaxed">
-              {t.sec2Sub}
-            </p>
+
+            <button
+              type="button"
+              onClick={() => openPremiumModal()}
+              className="px-4 py-2.5 rounded-lg bg-[#182235] hover:bg-[#22304a] text-[#f0ece1] text-xs font-semibold cursor-pointer inline-flex items-center gap-2 shrink-0 self-start md:self-auto shadow-sm transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5 text-[#eab308]" />
+              <span>
+                {lang === "en"
+                  ? "Request Custom Table for Your Company →"
+                  : "Şirketinize Özel Tablo Talep Edin →"}
+              </span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#eab308]">
-                {t.arch1Tag}
-              </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
-                {t.arch1Title}
-              </h3>
-              <p className="text-xs text-[#c7c1b4] leading-relaxed">
-                {t.arch1Desc}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              {
+                num: "01",
+                title:
+                  lang === "en"
+                    ? "Identity, Age, Gender & Contact"
+                    : "Kimlik, Yaş, Cinsiyet & İletişim",
+                items:
+                  lang === "en"
+                    ? [
+                        "Full Name & Birth Year / Age",
+                        "Gender & Marital Status",
+                        "City & District of Residence",
+                        "Phone, Email & LinkedIn",
+                      ]
+                    : [
+                        "Ad Soyad & Doğum Yılı / Yaş",
+                        "Cinsiyet & Medeni Durum",
+                        "İkamet Şehri & İlçesi",
+                        "Telefon, E-Posta & LinkedIn",
+                      ],
+              },
+              {
+                num: "02",
+                title:
+                  lang === "en"
+                    ? "All Education Tiers & Departments"
+                    : "Tüm Eğitim Kademeleri & Bölümler",
+                items:
+                  lang === "en"
+                    ? [
+                        "Associate University & Department",
+                        "Bachelor's University & Department",
+                        "Master's (M.Sc. / MBA) & Thesis",
+                        "Ph.D. / Doctorate & GPA",
+                      ]
+                    : [
+                        "Ön Lisans Üniversite & Bölümü",
+                        "Lisans Üniversite & Bölümü",
+                        "Yüksek Lisans (Master) & Bölümü",
+                        "Doktora (Ph.D.) & Mezuniyet Ortalaması",
+                      ],
+              },
+              {
+                num: "03",
+                title:
+                  lang === "en"
+                    ? "Profession, Role & Experience Years"
+                    : "Meslek, Pozisyon & Deneyim Yılı",
+                items:
+                  lang === "en"
+                    ? [
+                        "Profession / What They Do (Role)",
+                        "Total Years of Experience",
+                        "Current / Last Employer & Title",
+                        "All Past Companies & Seniority",
+                      ]
+                    : [
+                        "Ne İşi Yapar (Meslek / Uzmanlık)",
+                        "Toplam İş Deneyimi (Yıl)",
+                        "Son Çalıştığı Şirket & Görevi",
+                        "Geçmiş Tüm Şirketler & Kıdem Seviyesi",
+                      ],
+              },
+              {
+                num: "04",
+                title:
+                  lang === "en"
+                    ? "Foreign Languages & Software Tools"
+                    : "Yabancı Dil, Yazılım & Programlar",
+                items:
+                  lang === "en"
+                    ? [
+                        "English, German & 2nd Foreign Language",
+                        "SAP, ERP & Advanced Excel",
+                        "Engineering & Design Software (AutoCAD, etc.)",
+                        "Programming Languages & Tech Stack",
+                      ]
+                    : [
+                        "İngilizce, Almanca & İkinci Yabancı Dil",
+                        "SAP, ERP & İleri Excel Yetkinliği",
+                        "Mühendislik & Tasarım Programları",
+                        "Yazılım Dilleri & Teknik Araçlar",
+                      ],
+              },
+              {
+                num: "05",
+                title:
+                  lang === "en"
+                    ? "Certificates, Military & Driving Status"
+                    : "Sertifika, Askerlik, Ehliyet & Koşullar",
+                items:
+                  lang === "en"
+                    ? [
+                        "Professional Certificates (PMP, OHS, CPA)",
+                        "Military Service Status",
+                        "Driving License Class",
+                        "Travel, Shift & Relocation Readiness",
+                      ]
+                    : [
+                        "Mesleki Sertifikalar & Belgeler",
+                        "Askerlik Durumu (Yapıldı / Muaf / Tecilli)",
+                        "Sürücü Belgesi (Ehliyet Sınıfı)",
+                        "Seyahat, Vardiya & Şehir Dışı Uyumu",
+                      ],
+              },
+              {
+                num: "06",
+                title:
+                  lang === "en"
+                    ? "Custom Company Screening & 100+ Criteria"
+                    : "Şirkete Özel Eleme & 100+ Kriter",
+                items:
+                  lang === "en"
+                    ? [
+                        "100+ Custom Columns for Your Job Post",
+                        "Automated Candidate Pre-Screening",
+                        "Bulk Parsing for 1,000+ CV Archives",
+                        "Ready-to-Filter Corporate Excel (.xlsx)",
+                      ]
+                    : [
+                        "İlanınıza Özel 100+ Ek Kriter Sütunu",
+                        "Aranan Niteliklere Göre Aday Filtreleme",
+                        "Binlerce CV'lik Arşivlerin Toplu Analizi",
+                        "Kurumsal İK Sistemlerine Hazır Excel (.xlsx)",
+                      ],
+              },
+            ].map((service) => (
+              <div
+                key={service.num}
+                onClick={() => openPremiumModal(service.title)}
+                className="group p-5 rounded-xl bg-[#e4dfd3]/96 hover:bg-[#182235] border border-[#b0a898] hover:border-[#182235] transition-all cursor-pointer shadow-sm flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between border-b border-[#c4bdb0] group-hover:border-[#2c3a52] pb-2.5 mb-3">
+                    <span className="font-mono-academic text-xs font-bold text-[#7c470b] group-hover:text-[#eab308]">
+                      {service.num}
+                    </span>
+                    <span className="text-[11px] font-mono-academic font-semibold text-[#4a5363] group-hover:text-[#93c5fd]">
+                      {lang === "en" ? "Excel Columns →" : "Tabloya Ekle →"}
+                    </span>
+                  </div>
 
-            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#eab308]">
-                {t.arch2Tag}
-              </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
-                {t.arch2Title}
-              </h3>
-              <p className="text-xs text-[#c7c1b4] leading-relaxed">
-                {t.arch2Desc}
-              </p>
-            </div>
+                  <h3 className="font-serif-academic text-base font-bold text-[#121926] group-hover:text-[#f0ece1] mb-3">
+                    {service.title}
+                  </h3>
 
-            <div className="p-6 rounded-xl bg-[#182235]/94 backdrop-blur-md border border-[#2c3a52] space-y-2.5 shadow-md academic-card-transition">
-              <div className="text-xs font-mono-academic font-bold text-[#eab308]">
-                {t.arch3Tag}
+                  <ul className="space-y-1.5">
+                    {service.items.map((item) => (
+                      <li
+                        key={item}
+                        className="text-xs text-[#273142] group-hover:text-[#d2ccc0] flex items-center gap-2 py-1 border-b border-[#d4cdc0]/70 group-hover:border-[#2c3a52]/70 last:border-b-0"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#7c470b] group-hover:bg-[#eab308] shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <h3 className="font-serif-academic text-base font-bold text-[#f0ece1]">
-                {t.arch3Title}
-              </h3>
-              <p className="text-xs text-[#c7c1b4] leading-relaxed">
-                {t.arch3Desc}
-              </p>
-            </div>
+            ))}
           </div>
         </section>
       </main>
